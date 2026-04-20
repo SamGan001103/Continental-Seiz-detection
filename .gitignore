@@ -127,3 +127,17 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Data / artefacts — local only, not tracked
+sample_data/
+*.probs.npz
+*.reviewed.csv_bi
+*.h5
+*.zip
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
