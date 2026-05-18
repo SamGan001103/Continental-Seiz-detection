@@ -129,6 +129,7 @@ dmypy.json
 .pyre/
 
 # Data / artefacts — local only, not tracked
+artifacts/
 sample_data/
 *.probs.npz
 *.reviewed.csv_bi

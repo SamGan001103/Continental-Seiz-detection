@@ -14,6 +14,87 @@ pg.setConfigOptions(antialias=False, useOpenGL=False, background='w',
                     foreground='k')
 
 
+# ---------------------------------------------------------------------- helpers
+
+def fmt_time(t_sec):
+    """Format a time in seconds as [h:]mm:ss.sss for cursor readouts."""
+    if t_sec < 0:
+        t_sec = 0.0
+    h = int(t_sec // 3600)
+    rem = t_sec - h * 3600
+    m = int(rem // 60)
+    s = rem - m * 60
+    if h:
+        return '{:d}:{:02d}:{:06.3f}'.format(h, m, s)
+    return '{:02d}:{:06.3f}'.format(m, s)
+
+
+class TimeCursor:
+    """Dashed vertical cursor that follows the mouse X across a pyqtgraph
+    PlotWidget. The time readout is rendered by the owning widget via the
+    `on_hover` callback (called with the hover time in seconds, or None
+    when the mouse leaves the ViewBox) — typically into a QLabel below
+    the time axis so it never covers the traces.
+
+    Construct after the PlotWidget has its ViewBox and ranges set."""
+
+    def __init__(self, plot_widget, on_hover=None):
+        self._pw = plot_widget
+        self._on_hover = on_hover
+        pi = plot_widget.getPlotItem()
+        self.vline = pg.InfiniteLine(
+            angle=90, movable=False,
+            pen=pg.mkPen(60, 60, 60, 180, width=1))
+        self.vline.setZValue(50)
+        self.vline.hide()
+        pi.addItem(self.vline, ignoreBounds=True)
+
+        plot_widget.scene().sigMouseMoved.connect(self._on_move)
+
+    def reattach(self):
+        """Re-add the vline to the plot after a PlotItem.clear() removed
+        it. The scene-level sigMouseMoved connection survives clearing,
+        so only the item needs to be re-added."""
+        pi = self._pw.getPlotItem()
+        pi.addItem(self.vline, ignoreBounds=True)
+        self.vline.hide()
+
+    def _on_move(self, scene_pos):
+        vb = self._pw.getPlotItem().vb
+        if vb is None or not vb.sceneBoundingRect().contains(scene_pos):
+            self.vline.hide()
+            if self._on_hover is not None:
+                self._on_hover(None)
+            return
+        view_pos = vb.mapSceneToView(scene_pos)
+        t = float(view_pos.x())
+        self.vline.setPos(t)
+        self.vline.show()
+        if self._on_hover is not None:
+            self._on_hover(t)
+
+
+_TIME_LBL_STYLE = (
+    'color:#333; padding:2px 8px; '
+    'font-family: Consolas, "Courier New", monospace; font-size: 11px;')
+
+
+def _make_time_label():
+    """Small monospace QLabel, right-aligned, sits below the plot's time
+    axis and shows the hover time."""
+    lbl = QtWidgets.QLabel('t = --:--.---')
+    lbl.setStyleSheet(_TIME_LBL_STYLE)
+    lbl.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+    return lbl
+
+
+def _update_time_label(lbl, t):
+    if t is None:
+        lbl.setText('t = --:--.---')
+    else:
+        lbl.setText('t = {}'.format(fmt_time(t)))
+
+
 # ---------------------------------------------------------------------- axis
 
 class _ChannelAxis(pg.AxisItem):
@@ -130,6 +211,13 @@ class SignalView(QtWidgets.QWidget):
         self._pw.scene().sigMouseClicked.connect(self._on_scene_click)
         v.addWidget(self._pw)
 
+        self._time_lbl = _make_time_label()
+        v.addWidget(self._time_lbl)
+
+        self._time_cursor = TimeCursor(
+            self._pw,
+            on_hover=lambda t: _update_time_label(self._time_lbl, t))
+
         self._curves = []
         self._ref_items = []
         self._regions = {}
@@ -196,6 +284,9 @@ class SignalView(QtWidgets.QWidget):
         self._regions = {}
         self._ref_items = []
         self._grid_lines = []
+        # pi.clear() nuked the hover-cursor overlay; put it back before
+        # the user's next mouse move needs it.
+        self._time_cursor.reattach()
         self._channel_names = list(channel_names)
         self._fs = fs
         self._full_unclipped = np.ascontiguousarray(data_full, dtype=np.float32)
@@ -220,10 +311,11 @@ class SignalView(QtWidgets.QWidget):
             self._curves.append(curve)
 
         self._update_y_range()
+        duration_s = data_full.shape[1] / fs
+        pi.vb.setLimits(xMin=0.0, xMax=float(duration_s))
         if keep_x:
             pi.setXRange(prev_x0, prev_x1, padding=0)
         else:
-            duration_s = data_full.shape[1] / fs
             pi.setXRange(0.0, min(initial_span_s, duration_s), padding=0)
         self._redecimate_visible()
 
@@ -359,11 +451,35 @@ class SignalView(QtWidgets.QWidget):
         if r is not None:
             r.setBrush(pg.mkBrush(self._brush_for(new_status)))
 
+    def update_event_region(self, event_id, start, stop):
+        r = self._regions.get(event_id)
+        if r is None:
+            return
+        blocked = False
+        try:
+            r.blockSignals(True)
+            blocked = True
+        except Exception:
+            pass
+        try:
+            r.setRegion((float(start), float(stop)))
+        finally:
+            if blocked:
+                try:
+                    r.blockSignals(False)
+                except Exception:
+                    pass
+
     # ---- viewport controls ------------------------------------------
     def set_timebase(self, seconds_on_screen):
+        """Change seconds-on-screen while keeping the centre of the view
+        anchored — so bumping timebase doesn't yank the reviewer off the
+        event they're focused on."""
         pi = self._pw.getPlotItem()
-        x0, _ = pi.viewRange()[0]
-        pi.setXRange(x0, x0 + float(seconds_on_screen), padding=0)
+        x0, x1 = pi.viewRange()[0]
+        centre = 0.5 * (x0 + x1)
+        half = float(seconds_on_screen) / 2.0
+        pi.setXRange(centre - half, centre + half, padding=0)
 
     def center_on(self, t_sec, half_span=None):
         pi = self._pw.getPlotItem()

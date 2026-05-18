@@ -101,6 +101,7 @@ class EventList(QtWidgets.QWidget):
             if int(self.table.item(row, 0).text()) == event_id:
                 self.table.item(row, 1).setText('{:.1f}'.format(ev['start']))
                 self.table.item(row, 2).setText('{:.1f}'.format(ev['stop']))
+                self.table.item(row, 3).setText('{:.2f}'.format(ev['prob']))
                 self.table.item(row, 4).setText(ev['status'])
                 return
 

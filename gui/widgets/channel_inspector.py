@@ -7,7 +7,8 @@ from PyQt5 import QtCore, QtWidgets
 import pyqtgraph as pg
 import numpy as np
 
-from gui.widgets.signal_view import _SignalViewBox
+from gui.widgets.signal_view import (_SignalViewBox, TimeCursor,
+                                      _make_time_label, _update_time_label)
 
 
 AMPLITUDES_UV = [10, 20, 30, 50, 70, 100, 150, 200, 300, 500,
@@ -138,6 +139,13 @@ class ChannelInspector(QtWidgets.QDialog):
         pi.sigRangeChanged.connect(self._on_range_changed)
         v.addWidget(self._pw)
 
+        self._time_lbl = _make_time_label()
+        v.addWidget(self._time_lbl)
+
+        self._time_cursor = TimeCursor(
+            self._pw,
+            on_hover=lambda t: _update_time_label(self._time_lbl, t))
+
         if reference_intervals:
             for s, e in reference_intervals:
                 r = pg.LinearRegionItem(
@@ -150,6 +158,8 @@ class ChannelInspector(QtWidgets.QDialog):
 
         self._curve = pi.plot(t, self._data,
                               pen=pg.mkPen((20, 60, 160), width=0.9))
+        if len(t):
+            pi.vb.setLimits(xMin=0.0, xMax=float(t[-1]))
 
         # One-shot initial amplitude pick from the initial visible range.
         if initial_x_range is not None:

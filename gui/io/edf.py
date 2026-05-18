@@ -27,11 +27,21 @@ def load_edf_19ch(path):
     cwd = os.getcwd()
     try:
         os.chdir(os.path.join(REPO, 'utils'))  # params lookup is cwd-relative
-        fs, data = read_edf_elec(path)
+        try:
+            fs, data = read_edf_elec(path)
+        except SystemExit as ex:
+            raise RuntimeError(
+                'Could not find the required 19 EEG channels in this EDF. '
+                'Expected TUH-style labels for: {}'.format(
+                    ', '.join(CHANNELS_19))) from ex
     finally:
         os.chdir(cwd)
-    if fs > TARGET_FS:
+    fs = float(fs)
+    if fs <= 0:
+        raise RuntimeError('Invalid EDF sampling rate: {}'.format(fs))
+    if fs != TARGET_FS:
         data = resample(data, int(data.shape[1] * TARGET_FS / fs), axis=1)
         fs = TARGET_FS
+    fs = int(round(fs))          # pyedflib returns float; callers slice with it
     duration_s = data.shape[1] / fs
     return data.astype(np.float32), fs, duration_s

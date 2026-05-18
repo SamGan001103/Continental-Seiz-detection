@@ -16,6 +16,8 @@ Keyboard shortcuts:
 """
 import os
 import sys
+import json
+import time
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -24,8 +26,11 @@ if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
 from gui.io.edf import load_edf_19ch
-from gui.io.cache import load_probs, cache_path_for
+from gui.io.cache import (load_probs, load_probability_file,
+                          save_probability_file)
 from gui.io.csv_bi import read_csv_bi, write_csv_bi
+from gui.io.zuna import ZunaFullRunner, zuna_session_paths
+from gui.events import clamp_interval, rebuild_events
 from gui.processing import (apply_montage, apply_filters, MONTAGES)
 from gui.widgets.signal_view import SignalView
 from gui.widgets.prob_strip import ProbStrip
@@ -36,6 +41,37 @@ SENSITIVITIES = [7, 10, 15, 20, 30, 50, 70, 100, 150]   # µV / div
 TIMEBASES = [5, 10, 15, 20, 30, 60, 120, 300]           # s / screen
 
 
+class ZunaRunThread(QtCore.QThread):
+    statusChanged = QtCore.pyqtSignal(str)
+    finishedOk = QtCore.pyqtSignal(str, dict)
+    failed = QtCore.pyqtSignal(str, str)
+
+    def __init__(self, edf_path, parent=None):
+        super().__init__(parent)
+        self.edf_path = os.path.abspath(edf_path)
+        self._runner = ZunaFullRunner(self.edf_path)
+
+    def cancel(self):
+        self._runner.cancel()
+
+    def run(self):
+        try:
+            paths = self._runner.run(status_cb=self.statusChanged.emit)
+        except Exception as ex:
+            self.failed.emit(self.edf_path, str(ex))
+            return
+        self.finishedOk.emit(self.edf_path, paths)
+
+    def settings(self):
+        return {
+            'diffusion_steps': self._runner.diffusion_steps,
+            'tokens_per_batch': self._runner.tokens_per_batch,
+            'gpu_device': self._runner.gpu_device,
+            'zuna_python': self._runner.zuna_python,
+            'paths': self._runner.paths,
+        }
+
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
@@ -44,11 +80,26 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # ------------------ state
         self._edf_path = None
-        self._raw_data = None          # [19, N] float32, original order
+        self._original_data = None     # [19, N] float32, original EDF order
+        self._zuna_data = None         # [19, N] float32, reconstructed signal
+        self._raw_data = None          # active display signal source
         self._fs = 250
         self._duration_s = 0.0
         self._refs = []                # list[(start, stop)]
         self._probs = None             # (window_starts, probs) | None
+        self._prob_sources = {}         # source key -> cache dict
+        self._events_by_source = {}     # source key -> reviewed event list
+        self._prob_source = 'baseline'
+        self._zuna_paths = None
+        self._zuna_thread = None
+        self._zuna_progress = None
+        self._zuna_progress_timer = QtCore.QTimer(self)
+        self._zuna_progress_timer.setInterval(1000)
+        self._zuna_progress_timer.timeout.connect(self._update_zuna_progress)
+        self._zuna_progress_started = None
+        self._zuna_stage_started = None
+        self._zuna_stage = 'Idle'
+        self._zuna_run_settings = {}
         self._segment_s = 12
         self._events = []
         self._threshold = 0.5
@@ -175,6 +226,23 @@ class MainWindow(QtWidgets.QMainWindow):
         tb.addWidget(self.chk_refs)
         tb.addSeparator()
 
+        tb.addWidget(QtWidgets.QLabel('AI source'))
+        self.cb_source = QtWidgets.QComboBox()
+        self.cb_source.addItem('Baseline', 'baseline')
+        self.cb_source.setToolTip(
+            'Switch between original-EDF baseline probabilities and full '
+            'ZUNA probabilities after ZUNA has finished.')
+        self.cb_source.currentIndexChanged.connect(self._on_source_change)
+        tb.addWidget(self.cb_source)
+
+        self.a_run_zuna = tb.addAction('Run full ZUNA')
+        self.a_run_zuna.setToolTip(
+            'Run full-file ZUNA reconstruction for this EDF. This is optional '
+            'and computationally heavy.')
+        self.a_run_zuna.setEnabled(False)
+        self.a_run_zuna.triggered.connect(self._run_full_zuna_for_session)
+        tb.addSeparator()
+
         tb.addWidget(QtWidgets.QLabel('Threshold'))
         self.thr_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.thr_slider.setRange(0, 100)
@@ -211,6 +279,20 @@ class MainWindow(QtWidgets.QMainWindow):
         add('.', lambda: self._bump_timebase(+1))
         add(',', lambda: self._bump_timebase(-1))
 
+    def closeEvent(self, event):
+        if self._zuna_thread is not None and self._zuna_thread.isRunning():
+            answer = QtWidgets.QMessageBox.question(
+                self, 'Cancel full ZUNA?',
+                'Full ZUNA is still running. Cancel it and close the GUI?',
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                QtWidgets.QMessageBox.Yes)
+            if answer != QtWidgets.QMessageBox.Yes:
+                event.ignore()
+                return
+            self._zuna_thread.cancel()
+            self._zuna_thread.wait(5000)
+        super().closeEvent(event)
+
     # ==================================================================
     # File loading
     # ==================================================================
@@ -224,13 +306,30 @@ class MainWindow(QtWidgets.QMainWindow):
             self.load_edf(path)
 
     def load_edf(self, path):
+        self._cancel_zuna_for_file_change()
         self.statusBar().showMessage('Loading {}…'.format(os.path.basename(path)))
         QtWidgets.QApplication.processEvents()
-        data, fs, dur = load_edf_19ch(path)
+        try:
+            data, fs, dur = load_edf_19ch(path)
+        except Exception as ex:
+            QtWidgets.QMessageBox.critical(
+                self, 'Could not open EDF',
+                'Could not load this EDF:\n\n{}'.format(ex))
+            self.statusBar().showMessage('EDF load failed.', 5000)
+            return
         self._edf_path = path
+        self._original_data = data
+        self._zuna_data = None
         self._raw_data = data
         self._fs = fs
         self._duration_s = dur
+        self._events = []
+        self._events_by_source = {}
+        self._prob_sources = {}
+        self._prob_source = 'baseline'
+        self._zuna_paths = zuna_session_paths(path)
+        self._reset_source_combo()
+        self.a_run_zuna.setEnabled(True)
         self.setWindowTitle('Seizure Review — {}'.format(os.path.basename(path)))
 
         # references (ground truth) — optional
@@ -240,25 +339,507 @@ class MainWindow(QtWidgets.QMainWindow):
         self.signal_view.set_references(self._refs)
         self.prob_strip.set_references(self._refs)
 
-        # probability cache
+        # probability cache — run inference on-demand if missing
         cached = load_probs(path)
+        if cached is None:
+            cached = self._ensure_probs_with_progress(path)
         if cached is None:
             self._probs = None
             self.prob_strip.set_probs([], [])
-            msg = 'No prob cache — run: python precompute_probs.py "{}"'.format(path)
+            msg = '{} — inference cancelled, no probabilities loaded.'.format(
+                os.path.basename(path))
         else:
-            self._probs = (cached['window_starts'], cached['probs'])
-            self._segment_s = cached['meta'].get('segment_s', 12)
-            self.prob_strip.set_probs(cached['window_starts'],
-                                      cached['probs'],
-                                      segment_s=self._segment_s)
+            self._set_source_cache('baseline', cached)
+            self._activate_prob_source('baseline', preserve_view=True)
             msg = '{} — {:.1f}s, {} prob windows, {} reference seizures'.format(
                 os.path.basename(path), dur, len(cached['probs']), len(self._refs))
 
+        if self._load_cached_zuna_source():
+            msg += ' — cached ZUNA available'
+
         # Fresh file: do reset the viewport to the start.
         self._refresh_signal_view(preserve_view=False)
-        self._rebuild_events_from_probs()
+        self._rebuild_events_from_probs(preserve_review=False)
         self.statusBar().showMessage(msg)
+
+    def _ensure_probs_with_progress(self, edf_path):
+        """Run inference on an EDF that has no cached probs, with a
+        cancellable progress dialog. Caches the result next to the EDF.
+        Returns a dict matching load_probs()'s shape, or None if the user
+        cancelled or inference failed."""
+        from gui.io.infer import compute_probs
+        from gui.io.cache import save_probs
+
+        dlg = QtWidgets.QProgressDialog(
+            'Loading model (first open only)…',
+            'Cancel', 0, 100, self)
+        dlg.setWindowTitle('Detecting seizures')
+        dlg.setWindowModality(QtCore.Qt.WindowModal)
+        dlg.setMinimumDuration(0)
+        dlg.setAutoClose(False)
+        dlg.setAutoReset(False)
+        dlg.setValue(0)
+        dlg.show()
+        QtWidgets.QApplication.processEvents()
+
+        class _Cancelled(Exception):
+            pass
+
+        def progress_cb(i, n):
+            if dlg.maximum() != n:
+                dlg.setMaximum(n)
+            dlg.setValue(i)
+            dlg.setLabelText('Scoring window {}/{}…'.format(i, n))
+            QtWidgets.QApplication.processEvents()
+            if dlg.wasCanceled():
+                raise _Cancelled()
+
+        try:
+            starts, probs = compute_probs(edf_path, progress_cb=progress_cb)
+        except _Cancelled:
+            return None
+        except Exception as ex:
+            QtWidgets.QMessageBox.critical(
+                self, 'Inference failed',
+                'Could not run seizure detection on this file:\n\n{}'.format(ex))
+            return None
+        finally:
+            dlg.close()
+
+        meta = {'step_s': 6, 'segment_s': 12, 'use_ica': True,
+                'fs': 250, 'weights': 'convlstm_ICA_12_train.h5'}
+        try:
+            save_probs(edf_path, starts, probs, meta=meta)
+        except Exception as ex:
+            self.statusBar().showMessage(
+                'Inference done but failed to write cache: {}'.format(ex), 5000)
+        return {'window_starts': starts, 'probs': probs, 'meta': meta}
+
+    def _reset_source_combo(self):
+        self.cb_source.blockSignals(True)
+        self.cb_source.clear()
+        self.cb_source.addItem('Baseline', 'baseline')
+        self.cb_source.setCurrentIndex(0)
+        self.cb_source.blockSignals(False)
+
+    def _set_source_cache(self, key, cache):
+        self._prob_sources[key] = cache
+        if key == 'zuna':
+            self._ensure_zuna_combo_item()
+
+    def _ensure_zuna_combo_item(self):
+        for i in range(self.cb_source.count()):
+            if self.cb_source.itemData(i) == 'zuna':
+                return
+        self.cb_source.blockSignals(True)
+        self.cb_source.addItem('ZUNA full', 'zuna')
+        self.cb_source.blockSignals(False)
+
+    def _on_source_change(self, _idx):
+        key = self.cb_source.currentData()
+        if not key:
+            return
+        key = str(key)
+        if key not in self._prob_sources:
+            self._sync_source_combo_to_key(self._prob_source)
+            self.statusBar().showMessage(
+                '{} source is not available for this EDF yet.'.format(
+                    'ZUNA' if key == 'zuna' else 'Baseline'), 5000)
+            return
+        self._activate_prob_source(key, preserve_view=True)
+
+    def _activate_prob_source(self, key, preserve_view=True):
+        cache = self._prob_sources.get(key)
+        if cache is None:
+            return
+        if self._prob_source:
+            self._events_by_source[self._prob_source] = list(self._events)
+        self._prob_source = key
+        if key == 'zuna' and self._zuna_data is not None:
+            self._raw_data = self._zuna_data
+        else:
+            self._raw_data = self._original_data
+        self._probs = (cache['window_starts'], cache['probs'])
+        self._segment_s = int(cache.get('meta', {}).get('segment_s', 12))
+        self.prob_strip.set_probs(
+            cache['window_starts'], cache['probs'],
+            segment_s=self._segment_s)
+        self._events = list(self._events_by_source.get(key, []))
+        self._refresh_signal_view(preserve_view=preserve_view)
+        self._rebuild_events_from_probs(
+            preserve_review=bool(self._events))
+        self._sync_source_combo_to_key(key)
+        self._update_source_status()
+
+    def _sync_source_combo_to_key(self, key):
+        self.cb_source.blockSignals(True)
+        for i in range(self.cb_source.count()):
+            if self.cb_source.itemData(i) == key:
+                self.cb_source.setCurrentIndex(i)
+                break
+        self.cb_source.blockSignals(False)
+
+    def _update_source_status(self):
+        if not self._edf_path:
+            return
+        label = 'ZUNA full' if self._prob_source == 'zuna' else 'Baseline'
+        n = len(self._probs[1]) if self._probs is not None else 0
+        extra = ''
+        if self._prob_source == 'zuna':
+            extra = ' — reconstructed signal displayed'
+        self.statusBar().showMessage(
+            '{} source active — {} prob windows{}'.format(label, n, extra))
+
+    def _load_cached_zuna_source(self):
+        if not self._edf_path:
+            return False
+        paths = self._zuna_paths or zuna_session_paths(self._edf_path)
+        if not (os.path.exists(paths['npz']) and os.path.exists(paths['probs'])):
+            return False
+        try:
+            from gui.io.infer import load_signal_npz
+            data, fs, duration_s = load_signal_npz(paths['npz'])
+            cache = load_probability_file(paths['probs'])
+            if cache is None:
+                return False
+            if not self._zuna_cache_matches_current_file(cache, paths):
+                return False
+        except Exception as ex:
+            self.statusBar().showMessage(
+                'Cached ZUNA output could not be loaded: {}'.format(ex), 7000)
+            return False
+        if abs(float(duration_s) - float(self._duration_s)) > 2.0:
+            self.statusBar().showMessage(
+                'Ignoring cached ZUNA output: duration differs from EDF.',
+                7000)
+            return False
+        if int(fs) != int(self._fs):
+            self.statusBar().showMessage(
+                'Ignoring cached ZUNA output: sampling rate differs from EDF.',
+                7000)
+            return False
+        self._zuna_data = data
+        self._set_source_cache('zuna', cache)
+        self._zuna_paths = paths
+        return True
+
+    def _zuna_cache_matches_current_file(self, cache, paths):
+        meta = cache.get('meta', {})
+        if meta.get('source') != 'full_zuna':
+            return False
+        if os.path.abspath(meta.get('source_edf', '')) != os.path.abspath(self._edf_path):
+            return False
+        if os.path.abspath(meta.get('source_npz', '')) != os.path.abspath(paths['npz']):
+            return False
+        try:
+            edf_st = os.stat(self._edf_path)
+            npz_st = os.stat(paths['npz'])
+            if int(meta.get('source_edf_size', -1)) != int(edf_st.st_size):
+                return False
+            if abs(float(meta.get('source_edf_mtime', -1.0)) -
+                   float(edf_st.st_mtime)) > 1.0:
+                return False
+            if int(meta.get('source_npz_size', -1)) != int(npz_st.st_size):
+                return False
+            if abs(float(meta.get('source_npz_mtime', -1.0)) -
+                   float(npz_st.st_mtime)) > 1.0:
+                return False
+        except Exception:
+            return False
+        return True
+
+    def _cancel_zuna_for_file_change(self):
+        if self._zuna_thread is None or not self._zuna_thread.isRunning():
+            return
+        self._zuna_thread.cancel()
+        if self._zuna_progress is not None:
+            self._zuna_progress.close()
+            self._zuna_progress = None
+        self.statusBar().showMessage(
+            'Cancelled previous full-ZUNA run because a new EDF was opened.',
+            7000)
+
+    def _run_full_zuna_for_session(self):
+        if not self._edf_path:
+            return
+        if self._zuna_thread is not None and self._zuna_thread.isRunning():
+            QtWidgets.QMessageBox.information(
+                self, 'ZUNA already running',
+                'A full ZUNA reconstruction is already running for this EDF.')
+            return
+        if self._load_cached_zuna_source():
+            self._activate_prob_source('zuna', preserve_view=True)
+            return
+
+        paths = self._zuna_paths or zuna_session_paths(self._edf_path)
+        if os.path.exists(paths['npz']) and not os.path.exists(paths['probs']):
+            self._score_zuna_output(paths)
+            return
+
+        answer = QtWidgets.QMessageBox.question(
+            self, 'Run full ZUNA?',
+            'Full ZUNA reconstructs the whole EDF and can take a long time. '
+            'The baseline detector will remain available while it runs.\n\n'
+            'Run full ZUNA for this file now?',
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No)
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+
+        try:
+            self._zuna_thread = ZunaRunThread(self._edf_path, self)
+        except Exception as ex:
+            QtWidgets.QMessageBox.critical(
+                self, 'ZUNA setup failed',
+                'Could not start full ZUNA:\n\n{}'.format(ex))
+            return
+
+        self._zuna_run_settings = self._zuna_thread.settings()
+        self._zuna_stage = 'Starting full ZUNA'
+        self._zuna_progress_started = time.time()
+        self._zuna_stage_started = self._zuna_progress_started
+
+        self._zuna_progress = QtWidgets.QProgressDialog(
+            'Starting full ZUNA...', 'Cancel ZUNA', 0, 100, self)
+        self._zuna_progress.setWindowTitle('Full ZUNA reconstruction')
+        self._zuna_progress.setWindowModality(QtCore.Qt.NonModal)
+        self._zuna_progress.setMinimumDuration(0)
+        self._zuna_progress.setAutoClose(False)
+        self._zuna_progress.setAutoReset(False)
+        self._zuna_progress.setValue(0)
+        self._zuna_progress.show()
+        self._update_zuna_progress()
+
+        self._zuna_thread.statusChanged.connect(self._on_zuna_status)
+        self._zuna_thread.finishedOk.connect(self._on_zuna_finished)
+        self._zuna_thread.failed.connect(self._on_zuna_failed)
+        self._zuna_progress.canceled.connect(self._zuna_thread.cancel)
+        self.a_run_zuna.setEnabled(False)
+        self._zuna_progress_timer.start()
+        self._zuna_thread.start()
+        self.statusBar().showMessage('Full ZUNA started in background.')
+
+    def _on_zuna_status(self, text):
+        self._zuna_stage = text
+        self._zuna_stage_started = time.time()
+        self._update_zuna_progress()
+        self.statusBar().showMessage(text)
+
+    def _format_seconds(self, seconds):
+        seconds = int(max(0, round(float(seconds))))
+        h, rem = divmod(seconds, 3600)
+        m, s = divmod(rem, 60)
+        if h:
+            return '{}h {:02d}m {:02d}s'.format(h, m, s)
+        return '{}m {:02d}s'.format(m, s)
+
+    def _count_files(self, path, suffix):
+        if not path or not os.path.isdir(path):
+            return 0
+        count = 0
+        for _root, _dirs, files in os.walk(path):
+            for name in files:
+                if name.endswith(suffix):
+                    count += 1
+        return count
+
+    def _zuna_progress_value(self, paths):
+        stage = self._zuna_stage.lower()
+        if paths.get('npz') and os.path.exists(paths['npz']):
+            return 100
+        if paths.get('out_fif') and os.path.exists(paths['out_fif']):
+            return 90
+        pt_input_count = self._count_files(
+            os.path.join(paths.get('work_dir', ''), '2_pt_input'), '.pt')
+        pt_output_count = self._count_files(
+            os.path.join(paths.get('work_dir', ''), '3_pt_output'), '.pt')
+        if pt_input_count:
+            if pt_output_count:
+                ratio = min(float(pt_output_count) / float(pt_input_count), 1.0)
+                return int(35 + 45 * ratio)
+            return 30
+        if paths.get('fif') and os.path.exists(paths['fif']):
+            return 20
+        if 'preparing' in stage:
+            return 10
+        if 'running full zuna' in stage:
+            return 25
+        if 'exporting' in stage:
+            return 85
+        return 0
+
+    def _update_zuna_progress(self):
+        if self._zuna_progress is None or self._zuna_progress_started is None:
+            return
+        now = time.time()
+        elapsed = now - self._zuna_progress_started
+        settings = self._zuna_run_settings or {}
+        paths = settings.get('paths') or {}
+        value = self._zuna_progress_value(paths)
+        pt_input_count = self._count_files(
+            os.path.join(paths.get('work_dir', ''), '2_pt_input'), '.pt')
+        pt_output_count = self._count_files(
+            os.path.join(paths.get('work_dir', ''), '3_pt_output'), '.pt')
+        artifact_note = 'artifact-based'
+        if pt_input_count:
+            artifact_note = '{} / {} ZUNA output tensors'.format(
+                pt_output_count, pt_input_count)
+        label = (
+            '{}\n\n'
+            'Progress: {}% ({})\n'
+            'Elapsed: {}\n'
+            'EDF duration: {}\n'
+            'Settings: {} diffusion steps, tokens/batch {}, GPU {}\n'
+            'Log: {}\n'
+            'Output: {}'
+        ).format(
+            self._zuna_stage,
+            value,
+            artifact_note,
+            self._format_seconds(elapsed),
+            self._format_seconds(self._duration_s),
+            settings.get('diffusion_steps', '?'),
+            settings.get('tokens_per_batch', '?'),
+            settings.get('gpu_device', '?'),
+            paths.get('log', 'pending'),
+            paths.get('root', 'pending'),
+        )
+        self._zuna_progress.setValue(value)
+        self._zuna_progress.setLabelText(label)
+
+    def _close_zuna_progress(self):
+        self._zuna_progress_timer.stop()
+        if self._zuna_progress is not None:
+            self._zuna_progress.close()
+            self._zuna_progress = None
+        self._zuna_progress_started = None
+        self._zuna_stage_started = None
+        self._zuna_stage = 'Idle'
+        self._zuna_run_settings = {}
+        self.a_run_zuna.setEnabled(bool(self._edf_path))
+
+    def _on_zuna_failed(self, edf_path, message):
+        if os.path.abspath(edf_path) != os.path.abspath(self._edf_path or ''):
+            return
+        self._close_zuna_progress()
+        if 'cancelled' in message.lower():
+            self.statusBar().showMessage('Full ZUNA cancelled.', 7000)
+            return
+        QtWidgets.QMessageBox.critical(
+            self, 'ZUNA failed',
+            'Full ZUNA did not complete:\n\n{}\n\nCheck the ZUNA log under '
+            'artifacts/gui_zuna for details if a log was created.'
+            .format(message))
+        self.statusBar().showMessage('Full ZUNA failed.', 7000)
+
+    def _on_zuna_finished(self, edf_path, paths):
+        if os.path.abspath(edf_path) != os.path.abspath(self._edf_path or ''):
+            return
+        self._close_zuna_progress()
+        self._score_zuna_output(paths, source_edf=edf_path)
+
+    def _score_zuna_output(self, paths, source_edf=None):
+        from gui.io.infer import compute_probs_from_data, load_signal_npz
+
+        source_edf = os.path.abspath(source_edf or self._edf_path or '')
+        if source_edf != os.path.abspath(self._edf_path or ''):
+            self.statusBar().showMessage(
+                'Ignoring ZUNA output from a different EDF session.', 7000)
+            return
+        try:
+            data, fs, duration_s = load_signal_npz(paths['npz'])
+        except Exception as ex:
+            QtWidgets.QMessageBox.critical(
+                self, 'Could not load ZUNA output',
+                'ZUNA finished but the exported NPZ could not be loaded:\n\n{}'
+                .format(ex))
+            return
+        if abs(float(duration_s) - float(self._duration_s)) > 2.0:
+            QtWidgets.QMessageBox.critical(
+                self, 'ZUNA output mismatch',
+                'The ZUNA output duration does not match the open EDF.')
+            return
+        if int(fs) != int(self._fs):
+            QtWidgets.QMessageBox.critical(
+                self, 'ZUNA output mismatch',
+                'The ZUNA output sampling rate does not match the open EDF.')
+            return
+
+        dlg = QtWidgets.QProgressDialog(
+            'Scoring ZUNA output…', 'Cancel', 0, 100, self)
+        dlg.setWindowTitle('Detecting seizures on ZUNA output')
+        dlg.setWindowModality(QtCore.Qt.WindowModal)
+        dlg.setMinimumDuration(0)
+        dlg.setAutoClose(False)
+        dlg.setAutoReset(False)
+        dlg.setValue(0)
+        dlg.show()
+        QtWidgets.QApplication.processEvents()
+
+        class _Cancelled(Exception):
+            pass
+
+        def progress_cb(i, n):
+            if dlg.maximum() != n:
+                dlg.setMaximum(n)
+            dlg.setValue(i)
+            dlg.setLabelText('Scoring ZUNA window {}/{}…'.format(i, n))
+            QtWidgets.QApplication.processEvents()
+            if dlg.wasCanceled():
+                raise _Cancelled()
+
+        try:
+            starts, probs = compute_probs_from_data(
+                data, fs, progress_cb=progress_cb)
+        except _Cancelled:
+            self.statusBar().showMessage('ZUNA scoring cancelled.', 5000)
+            return
+        except Exception as ex:
+            QtWidgets.QMessageBox.critical(
+                self, 'ZUNA scoring failed',
+                'Could not run seizure detection on ZUNA output:\n\n{}'
+                .format(ex))
+            return
+        finally:
+            dlg.close()
+
+        meta = {
+            'step_s': 6,
+            'segment_s': 12,
+            'use_ica': True,
+            'fs': int(fs),
+            'weights': 'convlstm_ICA_12_train.h5',
+            'source': 'full_zuna',
+            'source_npz': paths['npz'],
+            'source_edf': source_edf,
+        }
+        try:
+            edf_st = os.stat(source_edf)
+            meta['source_edf_size'] = int(edf_st.st_size)
+            meta['source_edf_mtime'] = float(edf_st.st_mtime)
+        except OSError:
+            pass
+        try:
+            npz_st = os.stat(paths['npz'])
+            meta['source_npz_size'] = int(npz_st.st_size)
+            meta['source_npz_mtime'] = float(npz_st.st_mtime)
+        except OSError:
+            pass
+        try:
+            save_probability_file(paths['probs'], starts, probs, meta)
+        except Exception as ex:
+            self.statusBar().showMessage(
+                'ZUNA probabilities computed but cache write failed: {}'
+                .format(ex), 7000)
+
+        self._zuna_data = data
+        self._set_source_cache(
+            'zuna',
+            {'window_starts': starts, 'probs': probs, 'meta': meta})
+        self._activate_prob_source('zuna', preserve_view=True)
+        self.statusBar().showMessage(
+            'Full ZUNA ready — switched to ZUNA source. '
+            'Output: {}'.format(os.path.basename(paths['npz'])), 9000)
 
     # ==================================================================
     # Display pipeline
@@ -275,6 +856,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self._raw_data, self._fs,
             hp=self._hp, lp=self._lp, notch=self._notch)
         montaged, labels = apply_montage(filtered, self._montage)
+        if self._prob_source == 'zuna':
+            labels = ['{} (ZUNA)'.format(label) for label in labels]
         # Cache unclipped version for channel-inspector popups.
         self._display_data = montaged.copy()
         self._display_labels = list(labels)
@@ -295,34 +878,19 @@ class MainWindow(QtWidgets.QMainWindow):
     # ==================================================================
     # Events from probs
     # ==================================================================
-    def _rebuild_events_from_probs(self):
-        self._events = []
+    def _rebuild_events_from_probs(self, preserve_review=True):
         self.prob_strip.set_threshold(self._threshold)
         if self._probs is None:
+            self._events = []
             self.signal_view.set_events([])
             self.event_list.set_events([])
             return
         starts, probs = self._probs
-        in_ev, s0, peak = False, 0, 0.0
-        eid = 1
-        for t, p in zip(starts, probs):
-            if not in_ev and p >= self._threshold:
-                in_ev, s0, peak = True, int(t), float(p)
-            elif in_ev and p >= self._threshold:
-                peak = max(peak, float(p))
-            elif in_ev and p < self._threshold:
-                self._events.append({
-                    'id': eid, 'start': float(s0), 'stop': float(t),
-                    'prob': peak, 'status': 'proposed',
-                })
-                eid += 1
-                in_ev = False
-        if in_ev:
-            self._events.append({
-                'id': eid, 'start': float(s0),
-                'stop': float(starts[-1] + self._segment_s),
-                'prob': peak, 'status': 'proposed',
-            })
+        self._events = rebuild_events(
+            starts, probs, self._threshold, self._segment_s,
+            duration_s=self._duration_s,
+            previous_events=self._events,
+            preserve_review=preserve_review)
         self.signal_view.set_events(self._events)
         self.event_list.set_events(self._events)
 
@@ -362,8 +930,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_region_edited(self, event_id, s, e):
         ev = self._find(event_id)
         if ev:
+            s, e = clamp_interval(s, e, self._duration_s)
             ev['start'] = float(s)
             ev['stop'] = float(e)
+            self.signal_view.update_event_region(event_id, s, e)
             if ev['status'] == 'proposed':
                 ev['status'] = 'edited'
                 self.signal_view.update_event_status(event_id, 'edited')
@@ -371,8 +941,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.event_list._refresh_summary(self._events)
 
     def _on_selection_change(self, event_id):
-        # no-op for now; shortcuts act on the current selection
-        pass
+        if event_id > 0:
+            self._on_jump(event_id)
 
     # ==================================================================
     # Toolbar handlers
@@ -424,7 +994,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_thr_changed(self, v):
         self._threshold = v / 100.0
         self.thr_lbl.setText(' {:.2f} '.format(self._threshold))
-        self._rebuild_events_from_probs()
+        self._rebuild_events_from_probs(preserve_review=True)
 
     def _on_refs_toggled(self, checked):
         self.signal_view.set_references_visible(checked)
@@ -512,9 +1082,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self._on_jump(eid)
 
     def _cycle_selection(self, delta):
-        eid = self.event_list.cycle_selection(delta)
-        if eid > 0:
-            self._on_jump(eid)
+        self.event_list.cycle_selection(delta)
 
     def _bump_sens(self, delta):
         try:
@@ -538,21 +1106,50 @@ class MainWindow(QtWidgets.QMainWindow):
     def _export_reviewed(self):
         if not self._edf_path:
             return
-        default = os.path.splitext(self._edf_path)[0] + '.reviewed.csv_bi'
+        suffix = (
+            '.zuna.reviewed.csv_bi'
+            if self._prob_source == 'zuna' else '.reviewed.csv_bi')
+        default = os.path.splitext(self._edf_path)[0] + suffix
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Export reviewed annotations', default,
             'TUSZ csv_bi (*.csv_bi)')
         if not path:
             return
-        events = [
-            {'start': ev['start'], 'stop': ev['stop'],
-             'label': 'seiz', 'confidence': ev['prob']}
-            for ev in self._events if ev['status'] in ('accepted', 'edited')
-        ]
+        events = []
+        for ev in self._events:
+            if ev['status'] not in ('accepted', 'edited'):
+                continue
+            s, e = clamp_interval(ev['start'], ev['stop'], self._duration_s)
+            events.append({
+                'start': s, 'stop': e,
+                'label': 'seiz', 'confidence': ev['prob'],
+            })
         write_csv_bi(path,
                      bname=os.path.splitext(os.path.basename(self._edf_path))[0],
                      duration_s=self._duration_s,
                      events=events)
+        if self._prob_source == 'zuna':
+            self._write_zuna_export_provenance(path, len(events))
         self.statusBar().showMessage(
             'Exported {} reviewed events → {}'.format(
                 len(events), os.path.basename(path)), 5000)
+
+    def _write_zuna_export_provenance(self, csv_bi_path, n_events):
+        meta_path = csv_bi_path + '.provenance.json'
+        payload = {
+            'annotation_file': csv_bi_path,
+            'active_ai_source': 'zuna',
+            'n_exported_events': int(n_events),
+            'threshold': float(self._threshold),
+            'edf': self._edf_path,
+            'zuna_npz': self._zuna_paths.get('npz') if self._zuna_paths else None,
+            'zuna_probs': (
+                self._zuna_paths.get('probs') if self._zuna_paths else None),
+            'note': (
+                'Events were reviewed while full-ZUNA reconstructed signal and '
+                'ZUNA-derived ConvLSTM probabilities were active. ZUNA signal '
+                'is reconstructed/imputed data, not original clinical EEG.'),
+        }
+        with open(meta_path, 'w') as f:
+            json.dump(payload, f, indent=2, sort_keys=True)
+            f.write('\n')
