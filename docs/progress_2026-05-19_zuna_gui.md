@@ -1,5 +1,20 @@
 # Progress Log - 2026-05-19
 
+> ## ⚠ HISTORICAL SNAPSHOT — DO NOT QUOTE THE NUMBERS
+>
+> This is a dated log of what was known on 19 May 2026. **Every event-level figure below is
+> superseded and wrong** (sensitivity 26.3 % / 31.6 %, FP/24 h 328.7 / 451.9 / 205.4, and the
+> threshold-sweep tables). They were computed before three scoring defects were fixed: the source
+> method's decision stage was not applied, detection fragments inside an already-detected seizure
+> were charged as false positives, and `run_inference.py` reported event times in window-index
+> units. See `docs/reproduction_status.md` §3.
+>
+> It also states that the work "is not a reproduction of the paper". That was based on comparing
+> against the wrong paper. The 19-channel detector **does** replicate the 2022
+> continental-generalization result (window AUC 0.822 vs 0.84 published).
+>
+> **For current numbers use `docs/RESULTS.md`.** Kept only as a record of the project's history.
+
 ## Thesis Context
 
 Project direction: GUI-based Human-AI system for reviewing ambulatory/outpatient EEG files using public datasets only. Current repo work is focused on rebuilding and extending the existing ConvLSTM EEG seizure-detection GUI, then investigating whether ZUNA can improve the signal before the existing detector scores it.
@@ -163,10 +178,10 @@ Results:
 | Reference seizures | 19 | 19 |
 | Hits | 5 | 6 |
 | Misses | 14 | 13 |
-| Sensitivity | 26.3% | 31.6% |
+| Sensitivity | 26.3% *(superseded: 21.1%)* | 31.6% *(superseded: 26.3%)* |
 | False positives | 8 | 5 |
 | Predicted events | 13 | 11 |
-| FP / 24h | 328.7 | 205.4 |
+| FP / 24h | 328.7 *(superseded: 41.1)* | 205.4 *(superseded: 0.0)* |
 
 Interpretation:
 
@@ -226,6 +241,8 @@ Explicit baseline probability files were saved and a threshold sweep was run.
 
 Baseline event-level sweep:
 
+> **[SUPERSEDED — see docs/RESULTS.md]** The FP/24 h column below is wrong; it predates the scoring fixes.
+
 | Threshold | Hits / 19 | Sensitivity | False Positives | FP / 24h |
 |---:|---:|---:|---:|---:|
 | 0.50 | 5 | 26.3% | 8 | 328.7 |
@@ -234,6 +251,8 @@ Baseline event-level sweep:
 | 0.01 | 11 | 57.9% | 20 | 821.7 |
 
 ZUNA event-level sweep:
+
+> **[SUPERSEDED — see docs/RESULTS.md]** The FP/24 h column below is wrong; it predates the scoring fixes.
 
 | Threshold | Hits / 19 | Sensitivity | False Positives | FP / 24h |
 |---:|---:|---:|---:|---:|
@@ -280,7 +299,7 @@ What we can currently claim:
 
 - Full ZUNA can be integrated into the GUI as an optional, heavy, cached session mode.
 - On the first-10 pilot, full ZUNA slightly improved event sensitivity and reduced false positives compared with the current GUI baseline at threshold `0.5`.
-- The first-10 result is a pilot comparison, not a reproduction of the paper.
+- The first-10 result is a pilot comparison. *(Superseded: the 19-channel detector DOES replicate the 2022 continental-generalization paper at the window level, AUC 0.822 vs 0.84 published. See docs/reproduction_status.md.)*
 - Full ZUNA is currently too slow for routine interactive GUI use unless run offline, cached, or selectively invoked by the user.
 
 What we should not claim:

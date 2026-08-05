@@ -5,8 +5,8 @@
 weights were retrained or modified.*
 
 This document answers one question directly: **does the code in this repository reproduce the
-source paper's result?** It supersedes the framing in `methodology_statements.md` §1, which
-compared the implementation against the wrong paper.
+source paper's result?** It records the evidence; **`docs/RESULTS.md` holds the current value of
+every number** and is the single source of truth. If the two ever disagree, `RESULTS.md` wins.
 
 ---
 

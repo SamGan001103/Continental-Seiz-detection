@@ -1,5 +1,12 @@
 # ROADMAP — from "code that works on Sam's laptop" to "prototype a clinician can be shown"
 
+> **Note on the numbers quoted below.** This roadmap was written from an audit run *before* the
+> scoring fixes landed, so figures such as "26.3 % event sensitivity", "257.6 fp/24h", "171.7",
+> and "window AUC of 0.723" are the pre-fix values. Findings **R1** and **R2** in §3 are now
+> **fixed** (commit `35c3d3f`); the AUC is **0.822** under the source paper's window protocol.
+> The engineering recommendations and the priority ordering are unaffected — only the illustrative
+> numbers. Current values: `docs/RESULTS.md`.
+
 Five audits ran; roughly a third of the raised findings collapsed into six root causes, and several headline claims were refuted under verification. What follows is deduplicated, sequenced by dependency, and pruned to items that are either *a clinician cannot use it without this* or *a thesis number depends on this*.
 
 The good news up front, because it changes the plan: **the review loop works.** `merge_review_state` (gui/events.py:102-144), the cache round-trip, source switching, and threshold-rebuild state preservation were all traced and found correct. The GUI is not architecturally broken. What stands between today and a clinician session is roughly two weeks of small, specific changes — not a rewrite, not a port, and definitely not C++.
