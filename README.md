@@ -78,6 +78,7 @@ is stale. Supporting documents:
 | file | what it is |
 |---|---|
 | `docs/RESULTS.md` | every current number, with the command that regenerates it |
+| `docs/paper_comparison.md` | **side-by-side tables: this work vs the source paper** |
 | `docs/reproduction_status.md` | what matches the source paper, what does not, and why |
 | `docs/methodology_statements.md` | the claims the thesis will and will not make |
 | `docs/deployment_roadmap.md` | path to a clinician-ready prototype; C/C++ scope |
