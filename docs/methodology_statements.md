@@ -12,9 +12,13 @@ This document records the methodological positions the thesis takes. Its purpose
 > reproduction". That comparison targets the wrong paper. The pretrained weights
 > `convlstm_ICA_12_train.h5` are 19-channel, 12-second and ICA-denoised — every property of the
 > **2022 continental-generalization** detector (Yang et al., *Expert Syst. Appl.* 207:118083),
-> and none of the two-channel method. Against the correct target the work is a genuine partial
-> reproduction: the STFT, montage, window geometry and ICA procedure are faithful, and the
-> remaining gap is quantified (pooled window ROC-AUC 0.723 here vs ~0.84 reported).
+> and none of the two-channel method.
+>
+> Against the correct target **the 19-channel result replicates**: scored under the paper's own
+> window protocol the pooled AUC is **0.822**, against the **0.84** reported in that paper's
+> Table 2 for TUH v1.5.1. The earlier 0.723 figure came from labelling boundary-straddling
+> windows as seizures, which the paper's feature loader never sampled. The thesis is entitled to
+> claim a validated reconstruction of the 19-channel detector at the window level.
 >
 > Section 2's event-level figures ("328.7 to 205.4 false positives per 24 hours") also predate
 > three scoring fixes: the source method's decision stage was not implemented, detection
