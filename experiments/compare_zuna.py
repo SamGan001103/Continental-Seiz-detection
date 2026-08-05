@@ -19,11 +19,12 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
+import eval_config as cfg  # noqa: E402
 from gui.events import rebuild_events  # noqa: E402
 from gui.io.cache import load_probs  # noqa: E402
 from gui.io.csv_bi import read_csv_bi  # noqa: E402
 
-SEGMENT_S = 12
+SEGMENT_S = cfg.SEGMENT_S
 
 
 def ref_path_for_edf(edf_path):
@@ -122,10 +123,35 @@ def _within_tolerance(pred, ref, tolerance_s):
 
 
 def match_events(pred_events, ref_events, tolerance_s=5.0):
-    """Greedily match predictions to references, one prediction per ref."""
+    """Greedily match predictions to references, one prediction per ref.
+
+    Returns ``(matches, false_positive_indexes, missed_ref_indexes,
+    duplicate_indexes)``.
+
+    A prediction falls into exactly one of three classes:
+
+    * **match** — the best prediction for a reference that is still unclaimed.
+    * **duplicate** — overlaps a reference that an earlier prediction already
+      claimed. It sits inside a true seizure, so it is NOT a false alarm; it is
+      the same seizure detected in fragments.
+    * **false positive** — within tolerance of no reference at all. This is the
+      only class a clinician would experience as a spurious alarm, and the only
+      one that may enter FP/24 h.
+
+    Separating duplicates from false positives matters because the detector
+    routinely fragments one seizure: a single sub-threshold window in the middle
+    of an event splits it in two, and the second half used to be charged as a
+    false alarm against a seizure that was in fact correctly detected. Every
+    previously reported FP/24 h figure carries that inflation.
+
+    Duplicates are still reported, because a reviewer does have to dismiss them
+    and they are a real cost in alarm burden — but they are counted as
+    fragmentation, not as false detection.
+    """
     unmatched_refs = set(range(len(ref_events)))
     matches = []
     false_positive_indexes = []
+    duplicate_indexes = []
 
     for pred_idx, pred in enumerate(pred_events):
         best_ref_idx = None
@@ -142,7 +168,14 @@ def match_events(pred_events, ref_events, tolerance_s=5.0):
                 best_key = key
                 best_ref_idx = ref_idx
         if best_ref_idx is None:
-            false_positive_indexes.append(pred_idx)
+            # No unclaimed reference. Before charging a false alarm, check the
+            # references that were already claimed — if this prediction lands on
+            # one of those, it is a fragment of a detected seizure.
+            if any(_within_tolerance(pred, ref, tolerance_s)
+                   for ref in ref_events):
+                duplicate_indexes.append(pred_idx)
+            else:
+                false_positive_indexes.append(pred_idx)
             continue
         unmatched_refs.remove(best_ref_idx)
         matches.append({
@@ -157,7 +190,8 @@ def match_events(pred_events, ref_events, tolerance_s=5.0):
                 float(ref_events[best_ref_idx]['stop'])),
         })
 
-    return matches, false_positive_indexes, sorted(unmatched_refs)
+    return (matches, false_positive_indexes, sorted(unmatched_refs),
+            duplicate_indexes)
 
 
 def _mean_or_none(values):
@@ -179,10 +213,23 @@ def probability_stats(probs):
 
 def summarize_run(name, window_starts, probs, ref_events, threshold,
                   duration_s=None, tolerance_s=5.0, segment_s=SEGMENT_S,
-                  source=None):
-    pred_events = rebuild_events(
-        window_starts, probs, threshold, segment_s,
-        duration_s=duration_s, preserve_review=False)
+                  source=None, postprocess=None, average=None):
+    """Score one probability series against the reference events.
+
+    postprocess : apply the source method's event shaping — concatenate events
+        closer than MAX_MERGE_GAP_S, then discard events shorter than
+        MIN_EVENT_DURATION_S. None reads ``eval_config``. False reproduces the
+        pre-fix behaviour so the two can be compared directly.
+    average : collapse overlapping windows to a per-second mean before
+        thresholding. None reads ``eval_config.USE_PER_SECOND_AVERAGING``, which
+        is False — see that module for why averaging is incompatible with the
+        single 12-second model.
+    """
+    if postprocess is None:
+        postprocess = getattr(cfg, 'USE_SOURCE_POSTPROCESSING', False)
+    if average is None:
+        average = getattr(cfg, 'USE_PER_SECOND_AVERAGING', False)
+
     if duration_s is None:
         if len(window_starts):
             duration_s = float(np.max(window_starts)) + float(segment_s)
@@ -191,7 +238,28 @@ def summarize_run(name, window_starts, probs, ref_events, threshold,
         else:
             duration_s = 0.0
 
-    matches, fp_indexes, miss_indexes = match_events(
+    if postprocess or average:
+        # Either rule alone still goes through the source-method decision stage;
+        # the flags independently enable per-second averaging and event shaping,
+        # so all four combinations are measurable.
+        from gui.postprocess import events_from_probs
+        pred_events = [
+            {'start': s, 'stop': e, 'prob': p, 'status': 'proposed'}
+            for s, e, p in events_from_probs(
+                window_starts, probs, threshold, segment_s,
+                duration_s=duration_s, average=average,
+                min_duration_s=(getattr(cfg, 'MIN_EVENT_DURATION_S', 5.0)
+                                if postprocess else 0.0),
+                max_gap_s=(getattr(cfg, 'MAX_MERGE_GAP_S', 10.0)
+                           if postprocess else 0.0))]
+    else:
+        # postprocess=False explicitly: this branch is the pre-fix raw-window
+        # baseline, so it must not pick up the eval_config default.
+        pred_events = rebuild_events(
+            window_starts, probs, threshold, segment_s,
+            duration_s=duration_s, preserve_review=False, postprocess=False)
+
+    matches, fp_indexes, miss_indexes, dup_indexes = match_events(
         pred_events, ref_events, tolerance_s=tolerance_s)
     duration_days = float(duration_s) / 86400.0 if duration_s else 0.0
     false_alarm_rate = (
@@ -202,11 +270,17 @@ def summarize_run(name, window_starts, probs, ref_events, threshold,
         'source': source,
         'threshold': float(threshold),
         'duration_s': float(duration_s),
+        'postprocessed': bool(postprocess),
+        'per_second_averaged': bool(average),
         'n_refs': len(ref_events),
         'n_pred': len(pred_events),
         'hits': len(matches),
         'misses': len(miss_indexes),
         'false_positives': len(fp_indexes),
+        # Fragments landing inside an already-detected seizure. Real alarm
+        # burden for the reviewer, but not false detections, so they are
+        # reported separately and excluded from FP/24 h.
+        'duplicate_detections': len(dup_indexes),
         'sensitivity': (
             float(len(matches)) / float(len(ref_events))
             if ref_events else None),
@@ -219,6 +293,7 @@ def summarize_run(name, window_starts, probs, ref_events, threshold,
         'reference_events': list(ref_events),
         'matches': matches,
         'false_positive_indexes': fp_indexes,
+        'duplicate_indexes': dup_indexes,
         'missed_reference_indexes': miss_indexes,
     }
     out.update(probability_stats(probs))

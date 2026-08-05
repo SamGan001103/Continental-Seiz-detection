@@ -47,13 +47,45 @@ def _match_score(new_ev, old_ev):
 
 
 def build_proposed_events(window_starts, probs, threshold, segment_s,
-                          duration_s=None):
+                          duration_s=None, postprocess=None):
     """Build proposed events from overlapping probability windows.
 
     Each positive probability covers [window_start, window_start + segment_s].
     Consecutive positive windows merge, and the stop time is the end of the
     last positive window rather than the next negative window start.
+
+    postprocess : route through the source method's decision stage
+        (gui/postprocess.py) so the candidates a reviewer steps through are the
+        same events experiments/evaluate_baseline.py scores. None reads
+        eval_config. Without this the interface and the results chapter
+        disagree about what counts as an event, which is exactly the kind of
+        drift that made the offline scripts and the GUI incomparable before.
     """
+    if postprocess is None:
+        try:
+            import eval_config as _cfg
+            postprocess = (_cfg.USE_SOURCE_POSTPROCESSING or
+                           _cfg.USE_PER_SECOND_AVERAGING)
+        except Exception:
+            postprocess = False
+
+    if postprocess:
+        import eval_config as _cfg
+        from gui.postprocess import events_from_probs
+        shaped = events_from_probs(
+            window_starts, probs, threshold, segment_s,
+            duration_s=duration_s,
+            average=_cfg.USE_PER_SECOND_AVERAGING,
+            min_duration_s=(_cfg.MIN_EVENT_DURATION_S
+                            if _cfg.USE_SOURCE_POSTPROCESSING else 0.0),
+            max_gap_s=(_cfg.MAX_MERGE_GAP_S
+                       if _cfg.USE_SOURCE_POSTPROCESSING else 0.0))
+        return [{
+            'start': s, 'stop': e,
+            'source_start': s, 'source_stop': e,
+            'prob': p, 'status': 'proposed',
+        } for s, e, p in shaped]
+
     events = []
     in_event = False
     start = 0.0
@@ -162,9 +194,11 @@ def assign_event_ids(events):
 
 
 def rebuild_events(window_starts, probs, threshold, segment_s, duration_s=None,
-                   previous_events=None, preserve_review=True):
+                   previous_events=None, preserve_review=True,
+                   postprocess=None):
     proposals = build_proposed_events(
-        window_starts, probs, threshold, segment_s, duration_s=duration_s)
+        window_starts, probs, threshold, segment_s, duration_s=duration_s,
+        postprocess=postprocess)
     if preserve_review:
         return merge_review_state(proposals, previous_events, duration_s)
     return assign_event_ids(proposals)

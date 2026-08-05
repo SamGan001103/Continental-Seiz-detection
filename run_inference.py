@@ -21,6 +21,9 @@ import numpy as np
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, REPO_ROOT)
 
+import eval_config as cfg  # canonical operating point (threshold/step)  # noqa: E402
+
+from gui.postprocess import events_from_probs  # noqa: E402
 from utils.pyst import read_edf_elec
 from utils.preprocessing import detect_interupted_data, ica_arti_remove
 from models.deep_conv_lstm import ConvLstmNet
@@ -49,8 +52,8 @@ def calc_stft(s_):
 CHS_19 = ['Fp1', 'Fp2', 'F7', 'F3', 'Fz', 'F4', 'F8',
           'T3', 'C3', 'Cz', 'C4', 'T4',
           'T5', 'P3', 'Pz', 'P4', 'T6', 'O1', 'O2']
-SEGMENT_S = 12
-FS = 250
+SEGMENT_S = cfg.SEGMENT_S
+FS = cfg.FS
 WINDOW = FS * SEGMENT_S  # 3000 samples
 WEIGHTS = os.path.join(REPO_ROOT, 'convlstm_ICA_12_train.h5')
 
@@ -147,13 +150,21 @@ def run_file(model, edf_path, threshold=0.95, step_s=1, verbose=True):
         probs[i] = p
         if verbose and p >= threshold:
             print('    t={}s  p={:.3f}'.format(i * step_s, p))
-    per_sec_pred = (probs >= threshold).astype(int)
-    events = merge_events(per_sec_pred)
+    # Window index i starts at second i*step_s and covers SEGMENT_S seconds.
+    # Building events straight off the index array (as this script used to do)
+    # reports every time in window-index units, so with the canonical stride of
+    # 6 s all printed event times came out 6x compressed and were then compared
+    # against reference times in seconds. Share the one event builder instead,
+    # so this CLI, the GUI and evaluate_baseline.py cannot drift apart again.
+    starts = np.arange(n_windows, dtype=np.int32) * int(step_s)
+    events = [(s, e) for s, e, _p in events_from_probs(
+        starts, probs, threshold, SEGMENT_S, duration_s=float(total_s))]
     refs = parse_ref(ref_path(edf_path))
     dt = time.time() - t_start
     return {'edf': edf_path, 'probs': probs, 'events': events,
             'refs': refs, 'skipped': skipped, 'elapsed_s': dt,
-            'n_windows': n_windows}
+            'n_windows': n_windows, 'step_s': int(step_s),
+            'window_starts': starts}
 
 
 def summarize(result):
@@ -166,8 +177,11 @@ def summarize(result):
     if len(probs):
         print('  prob stats: max={:.3f} p90={:.3f} mean={:.3f}'.format(
             float(np.max(probs)), float(np.percentile(probs, 90)), float(np.mean(probs))))
+        step_s = result.get('step_s', 1)
         top = np.argsort(-probs)[:8]
-        top_str = ', '.join('t{}s={:.2f}'.format(int(i), float(probs[i])) for i in top)
+        top_str = ', '.join('t{}s={:.2f}'.format(int(i) * step_s,
+                                                 float(probs[i]))
+                            for i in top)
         print('  top probs: {}'.format(top_str))
     print('  preds ({} events):'.format(len(events)))
     hits = 0
@@ -176,7 +190,7 @@ def summarize(result):
         tag = '[HIT {:.1f}-{:.1f}]'.format(*match) if match else '[FP]'
         if match:
             hits += 1
-        print('    {:>7d} - {:>7d}s  {}'.format(p0, p1, tag))
+        print('    {:>7.1f} - {:>7.1f}s  {}'.format(p0, p1, tag))
     if refs:
         covered = sum(1 for g in refs if any_overlap(g, events))
         print('  detected {}/{} reference seizures; {} false-positive events'
@@ -190,10 +204,16 @@ def main():
     ap.add_argument('--file', default=None)
     ap.add_argument('--n', type=int, default=3,
                     help='number of seizure-containing files to run')
-    ap.add_argument('--threshold', type=float, default=0.95)
-    ap.add_argument('--step', type=int, default=1,
-                    help='stride between windows in seconds')
+    ap.add_argument('--threshold', type=float, default=cfg.THRESHOLD,
+                    help='detection threshold (default: canonical eval_config)')
+    ap.add_argument('--step', type=int, default=cfg.STEP_S,
+                    help='stride between windows in seconds (default: canonical)')
     args = ap.parse_args()
+
+    # Resolve --file against the invocation directory BEFORE the chdir below,
+    # otherwise a relative path is silently reinterpreted under utils/ and the
+    # run fails with a confusing "failed to open" on a path the user never gave.
+    explicit = os.path.abspath(args.file) if args.file else None
 
     os.chdir(os.path.join(REPO_ROOT, 'utils'))  # params file resolution
 
@@ -202,8 +222,10 @@ def main():
     model.model.load_weights(WEIGHTS)
     print('OK\n')
 
-    if args.file:
-        targets = [os.path.abspath(args.file)]
+    if explicit:
+        if not os.path.exists(explicit):
+            raise SystemExit('No such EDF: {}'.format(explicit))
+        targets = [explicit]
     else:
         all_edfs = find_sample_edfs()
         targets = []
