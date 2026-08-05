@@ -103,6 +103,43 @@ def _auc(labels, scores):
     return float(roc_auc_score(labels, np.asarray(scores, dtype=np.float64)))
 
 
+def bootstrap_ci(per_file_arrays, n_boot=2000, seed=13, target=None):
+    """File-level (cluster) bootstrap CI for a pooled AUC.
+
+    Resamples whole FILES, not windows. Windows inside one recording are highly
+    correlated — same patient, same montage, same artifact regime — so a
+    window-level bootstrap treats them as independent evidence and reports an
+    interval far too narrow. The file-level interval is the honest one, and it
+    is what should be quoted next to any AUC from a small file set.
+
+    per_file_arrays : list of (labels, scores) per file
+    target          : optional reference value; returns P(bootstrap AUC >= it)
+    """
+    from sklearn.metrics import roc_auc_score
+    files = [(np.asarray(a), np.asarray(b, dtype=np.float64))
+             for a, b in per_file_arrays if len(a)]
+    if len(files) < 2:
+        return None
+    rng = np.random.RandomState(seed)
+    boots = []
+    for _ in range(n_boot):
+        idx = rng.randint(0, len(files), len(files))
+        lab = np.concatenate([files[i][0] for i in idx])
+        sc = np.concatenate([files[i][1] for i in idx])
+        if 0 < lab.sum() < lab.size:
+            boots.append(roc_auc_score(lab, sc))
+    if not boots:
+        return None
+    boots = np.array(boots)
+    out = {'n_boot': int(boots.size),
+           'ci_lo': float(np.percentile(boots, 2.5)),
+           'ci_hi': float(np.percentile(boots, 97.5))}
+    if target is not None:
+        out['p_ge_target'] = float((boots >= target).mean())
+        out['target'] = float(target)
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(
         description=__doc__,
@@ -111,6 +148,10 @@ def main(argv=None):
     ap.add_argument('--out', default=None)
     ap.add_argument('--keep-zero', action='store_true',
                     help='Keep prob==0 (preprocessing-skipped) windows.')
+    ap.add_argument('--n-boot', type=int, default=2000,
+                    help='Bootstrap resamples for the confidence interval.')
+    ap.add_argument('--target-auc', type=float, default=0.84,
+                    help="The source paper's published TUH AUC (Table 2).")
     args = ap.parse_args(argv)
 
     records = []
@@ -168,9 +209,9 @@ def main(argv=None):
                'n_boundary_windows': n_straddle, 'per_file': per_file,
                'pooled': {}}
 
-    print('{:<30} {:>9} {:>9} {:>7}  {}'.format(
-        'protocol', 'pooled AUC', 'windows', 'pos', 'mean per-file AUC'))
-    print('-' * 82)
+    print('{:<30} {:>10} {:>18} {:>8} {:>6}'.format(
+        'protocol', 'pooled AUC', '95% CI (by file)', 'windows', 'pos'))
+    print('-' * 78)
     for name in ('project_any_overlap', 'paper_pure_windows',
                  'paper_pure_nonoverlapping'):
         labs = np.concatenate(variants[name][0]) if variants[name][0] else np.array([])
@@ -178,20 +219,30 @@ def main(argv=None):
         pooled = _auc(labs, scs)
         per = [row[name] for row in per_file if row[name] is not None]
         mean_pf = float(np.mean(per)) if per else None
+        ci = bootstrap_ci(list(zip(variants[name][0], variants[name][1])),
+                          n_boot=args.n_boot, target=args.target_auc)
         payload['pooled'][name] = {
             'pooled_auc': pooled, 'n_windows': int(labs.size),
             'n_positive': int(labs.sum()) if labs.size else 0,
-            'mean_per_file_auc': mean_pf, 'n_files_with_auc': len(per)}
-        print('{:<30} {:>9} {:>9} {:>7}  {} (n={})'.format(
+            'mean_per_file_auc': mean_pf, 'n_files_with_auc': len(per),
+            'bootstrap': ci}
+        print('{:<30} {:>10} {:>18} {:>8} {:>6}'.format(
             name,
             'n/a' if pooled is None else '{:.4f}'.format(pooled),
-            int(labs.size), int(labs.sum()) if labs.size else 0,
-            'n/a' if mean_pf is None else '{:.4f}'.format(mean_pf), len(per)))
+            'n/a' if ci is None else '[{:.3f}, {:.3f}]'.format(ci['ci_lo'],
+                                                               ci['ci_hi']),
+            int(labs.size), int(labs.sum()) if labs.size else 0))
+        if ci and 'p_ge_target' in ci:
+            print('{:<30} {:>10} P(AUC >= {:.2f}) = {:.2f}'.format(
+                '', '', ci['target'], ci['p_ge_target']))
 
-    print('\nSource paper (Table 2): AUC 0.84 — TUH EEG Corpus v1.5.1, '
+    print('\nSource paper (Table 2): AUC {:.2f} — TUH EEG Corpus v1.5.1, '
           '19 ch, 12 s window, ICA,\n'
           'measured on the TUH *development* split (Fig. 5 "TUH-TUH"), '
-          'before the PWA/PEI lens.')
+          'before the PWA/PEI lens.'.format(args.target_auc))
+    print('The CI resamples whole FILES, not windows: windows within a '
+          'recording are highly\ncorrelated, so a window-level interval would '
+          'be far too narrow to be honest.')
 
     if args.out:
         out = os.path.abspath(args.out)
