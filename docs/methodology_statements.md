@@ -35,14 +35,15 @@ the SPMB method needs are absent. That method is genuinely not runnable here —
 the right target.
 
 **Against the correct target, the detector replicates.** Scored under the source paper's own
-window protocol, the pooled window-level AUC on the 26-file public manifest is **0.822**, against
-the **0.84** that paper reports for TUH v1.5.1 in its Table 2. The thesis is therefore entitled to
+window protocol, the pooled window-level AUC over all 305 locally available TUSZ files (42 h) is
+**0.881**, 95 % CI [0.820, 0.932], against the **0.84** that paper reports for TUH v1.5.1 in its
+Table 2. The thesis is therefore entitled to
 claim a validated reconstruction of the 19-channel detector at the window level — the only level
 at which that paper makes a checkable public-data claim.
 
 Two limits on that claim, both of which must be stated wherever it is made. First, the comparison
-is TUSZ v2.0.0 `eval` here against v1.5.1 `dev` there, on a seizure-enriched 26-file subset with
-55 positive windows under the paper protocol. Second, the paper's **RPAH** figures (76.68 %
+is TUSZ v2.0.0 `eval` here against v1.5.1 `dev` there — the same corpus family and detector
+configuration, but not the same files. Second, the paper's **RPAH** figures (76.68 %
 sensitivity, 56.55 false alarms per 24 h, 92.19 % with a human arbiter) are **not reproducible
 here and never will be**: they require private clinical data under hospital ethics approval and,
 per `utils/ICA_load_data_elec.py:285`, a 20-channel model (19 EEG + ECG).
@@ -84,7 +85,7 @@ The figure is defensible and consistent with the inference-only policy. It requi
 
 - The reviewer GUI is the contribution: a working minimum viable product for human-AI teamed review of ambulatory and outpatient EEG, evaluated for usability on public TUSZ data.
 - The live detector is a single 12-second, 19-channel ICA ConvLSTM (`convlstm_ICA_12_train.h5`) that loads and runs correctly as trained, with the STFT input shape `(23, 19, 125)` matching the saved model.
-- **The 19-channel detector of the 2022 continental-generalization paper is validly reconstructed**, and replicates that paper's one publicly checkable claim: pooled window AUC 0.822 here against 0.84 published for TUH, when scored under the paper's own window protocol.
+- **The 19-channel detector of the 2022 continental-generalization paper is validly reconstructed**, and replicates that paper's one publicly checkable claim: pooled window AUC 0.881 (95 % CI [0.820, 0.932], 305 files, 42 h) against 0.84 published for TUH, when scored under the paper's own window protocol.
 - Reproducing the source method's *decision stage* rather than its model lowers the reported false-alarm rate 4.5×; two of the three contributing defects were scoring bugs. A scoring convention moved a headline number by more than most methodological differences do, which is a result in its own right.
 - All reported detector numbers describe this model's behaviour on a public TUSZ subset.
 - A human reviewer, working through the GUI, recovers true seizure events that the AI alone misses, as evidenced by the exported reviewed `.csv_bi`; this reviewer-in-the-loop recovery is the primary result.
@@ -95,7 +96,7 @@ The figure is defensible and consistent with the inference-only policy. It requi
 - That the implemented system reproduces the **two-channel** SPMB 2020 blended multi-time 3s/5s/7s voting method, or its published performance — that method was never run, and its two-channel weights are not in the repository.
 - That the 2022 paper's **RPAH** figures (76.68 % sensitivity, 56.55 false alarms per 24 h, 92.19 % with a human arbiter) are reproduced or reproducible. They require private clinical data under hospital ethics approval and a 20-channel model (19 EEG + ECG).
 - That **any event-level number here has a published counterpart**. The 2022 paper's Table 2 reports an AUC for TUH and leaves the sensitivity and false-alarm columns blank, so there is no published TUH false-positive or sensitivity figure to compare against. In particular, the resemblance between this project's FP/24 h and the paper's RPAH figure of 56.55 is **coincidence**, across different data, model, metric, and four orders of magnitude of recording time.
-- That 0.822 and 0.84 are measured on the same data — it is TUSZ v2.0.0 `eval` versus v1.5.1 `dev`, on a 26-file seizure-enriched subset.
+- That 0.881 and 0.84 are measured on the same data — it is TUSZ v2.0.0 `eval` versus v1.5.1 `dev`.
 - That ZUNA is a validated seizure-detection front-end, or that its event-level improvement establishes that it helps, given the contradicting window-level AUC.
 - That the reported false-positive rate of roughly 328 per 24 hours is a clinical false-alarm rate; it is derived from ten short TUSZ seizure clips and is not a deployment figure.
 - That the displayed seizure probabilities are calibrated; the probability strip currently shows raw, uncalibrated softmax with no temperature, Platt, or isotonic calibration, even though the literature review argues calibration is a trust requirement, and this is acknowledged as a stated limitation rather than glossed over.

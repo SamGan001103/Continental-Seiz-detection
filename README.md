@@ -37,21 +37,33 @@ The detector environment is `seiz36` (Python 3.6 / TF 1.15 / PyQt5); see
 **Reproducible evaluation** (no GUI, no TensorFlow — scores the cached probs):
 
 ```
+# 0. build the evaluation manifest over every local TUSZ EDF (305 files, 42 h)
+python experiments/build_full_manifest.py --out artifacts/zuna_thesis/manifest_full.csv
+
+# score any files that lack a cache — shard across cores, e.g. 8 processes:
+#   for i in 0 1 2 3 4 5 6 7; do
+#     python precompute_probs.py "sample_data/**/*.edf" --shard $i/8 &
+#   done
+
 # all three views: window AUC, event threshold sweep, reviewer-triage simulation
 python experiments/evaluate_baseline.py \
-  --manifest artifacts/zuna_thesis/manifest.csv \
-  --name baseline26 --out artifacts/zuna_thesis/baseline_eval/baseline26.json
+  --manifest artifacts/zuna_thesis/manifest_full.csv \
+  --name full303 --out artifacts/zuna_thesis/baseline_eval/full303.json
 
 # window AUC under the source paper's own protocol (the replication result)
-python experiments/replicate_paper_auc.py --manifest artifacts/zuna_thesis/manifest.csv
+python experiments/replicate_paper_auc.py --manifest artifacts/zuna_thesis/manifest_full.csv
 
 # what the source method's decision stage is worth (4-way ablation)
-python experiments/ablate_postprocessing.py --manifest artifacts/zuna_thesis/manifest.csv
+python experiments/ablate_postprocessing.py --manifest artifacts/zuna_thesis/manifest_full.csv
 
 # ICA on vs off (needs TensorFlow)     # baseline vs ZUNA, re-scored from caches
 python experiments/diag_ica.py         # python experiments/rescore_zuna_compare.py \
                                        #     --dir artifacts/zuna_thesis/compare_first10
 ```
+
+Use `manifest_full.csv`, not the older 26-file `manifest.csv` — that subset is
+seizure-enriched and misleads in both directions (it understates sensitivity and
+overstates specificity, because it contains almost no background recording).
 
 The canonical operating point (threshold, stride, ICA, weights, post-processing)
 lives in `eval_config.py`; `run_inference.py`, `precompute_probs.py`, the GUI and
@@ -75,8 +87,8 @@ is stale. Supporting documents:
 The detector is the 19-channel / 12-second / ICA ConvLSTM of Yang et al.,
 *Continental generalization of a human-in-the-loop AI system for clinical seizure
 recognition* (Expert Syst. Appl. 207:118083, 2022). Scored under that paper's own
-window protocol this reconstruction reaches **AUC 0.822** against the **0.84** it
-reports for TUH — a replication. Its RPAH figures are not reproducible here (private
+window protocol this reconstruction reaches **AUC 0.881** (95 % CI [0.820, 0.932],
+305 files, 42 h) against the **0.84** it reports for TUH — a replication. Its RPAH figures are not reproducible here (private
 clinical data, 20-channel model), and it publishes no TUH sensitivity or
 false-alarm rate, so no event-level number here has a published counterpart.
 

@@ -11,7 +11,7 @@
 >
 > It also states that the work "is not a reproduction of the paper". That was based on comparing
 > against the wrong paper. The 19-channel detector **does** replicate the 2022
-> continental-generalization result (window AUC 0.822 vs 0.84 published).
+> continental-generalization result (window AUC 0.881 vs 0.84 published).
 >
 > **For current numbers use `docs/RESULTS.md`.** Kept only as a record of the project's history.
 
@@ -299,7 +299,7 @@ What we can currently claim:
 
 - Full ZUNA can be integrated into the GUI as an optional, heavy, cached session mode.
 - On the first-10 pilot, full ZUNA slightly improved event sensitivity and reduced false positives compared with the current GUI baseline at threshold `0.5`.
-- The first-10 result is a pilot comparison. *(Superseded: the 19-channel detector DOES replicate the 2022 continental-generalization paper at the window level, AUC 0.822 vs 0.84 published. See docs/reproduction_status.md.)*
+- The first-10 result is a pilot comparison. *(Superseded: the 19-channel detector DOES replicate the 2022 continental-generalization paper at the window level, AUC 0.881 vs 0.84 published. See docs/reproduction_status.md.)*
 - Full ZUNA is currently too slow for routine interactive GUI use unless run offline, cached, or selectively invoked by the user.
 
 What we should not claim:

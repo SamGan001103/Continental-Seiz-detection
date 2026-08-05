@@ -151,7 +151,7 @@ change to `STEP_S` must re-run the ablation.
 
 ---
 
-## 4. Do we replicate the 19-channel result? Yes — 0.822 against 0.84
+## 4. Do we replicate the 19-channel result? Yes — 0.881 against 0.84
 
 The apparent gap was an **evaluation-protocol mismatch, not a modelling failure.**
 
@@ -174,26 +174,36 @@ windows are included and called seizures even when they are mostly background �
 noisier task. On this manifest 8.4 % of windows straddle a boundary, and **every one of them is
 labelled positive** by the project protocol.
 
-Rescoring the *same cached probabilities* under both protocols
-(`python experiments/replicate_paper_auc.py --manifest artifacts/zuna_thesis/manifest.csv`):
+Rescoring the *same cached probabilities* under both protocols, across **all 305 locally
+available TUSZ EDFs** (44 seizure-bearing / 261 background-only, 42.24 h, background:seizure
+35.4 : 1 — a more background-heavy mix than the paper's own 9.5 : 1 dev split):
 
-| protocol | pooled AUC | windows | positive | mean per-file AUC |
-|---|---|---|---|---|
-| project — any-overlap, 6 s stride | 0.7226 | 857 | 134 | 0.7590 |
-| **paper — pure windows only** | **0.8220** | 778 | 55 | 0.7849 |
-| paper — pure + non-overlapping | 0.8174 | 391 | 27 | 0.7866 |
-| *source paper, TUH v1.5.1 dev* | *0.84* | — | — | — |
+```
+python experiments/build_full_manifest.py --out artifacts/zuna_thesis/manifest_full.csv
+python experiments/replicate_paper_auc.py --manifest artifacts/zuna_thesis/manifest_full.csv
+```
 
-**0.822 against a reported 0.84 is a replication**, not a shortfall — the residual 0.018 is
-comfortably inside the noise of a 26-file, 55-positive-window subset. The reconstruction of the
-19-channel detector is therefore validated at the window level, which is the only level at which
-the paper's public-data claim can be checked.
+| protocol | pooled AUC | 95 % CI (by file) | windows | positive | P(AUC ≥ 0.84) |
+|---|---|---|---|---|---|
+| project — any-overlap, 6 s stride | 0.7941 | [0.738, 0.843] | 23,088 | 788 | 0.03 |
+| **paper — pure windows only** | **0.8811** | **[0.820, 0.932]** | 22,803 | 503 | **0.92** |
+| paper — pure + non-overlapping | 0.8776 | [0.814, 0.930] | 11,507 | 249 | 0.90 |
+| *source paper, TUH v1.5.1 dev* | *0.84* | — | — | — | — |
 
-Caveats that keep this honest: the comparison uses TUSZ **v2.0.0 eval** where the paper used
-**v1.5.1 dev** (different annotations, different patients, and a seizure-enriched rather than
-realistic mix), and 55 positive windows is a small sample. The direction of any residual bias is
-not established. But the protocol correction accounts for essentially the whole apparent gap, so
-corpus version is no longer needed as an explanation.
+**0.881 against a published 0.84 is a replication**, with the published value inside the
+interval. The reconstruction of the 19-channel detector is validated at the window level — the
+only level at which that paper's public-data claim can be checked.
+
+Two things had to be right to see this. The **protocol correction** (above) is worth ~0.09 AUC.
+And **sample size**: on the original 26-file seizure-enriched manifest the same measurement gave
+0.822 with a 95 % CI of [0.673, 0.925] — an interval so wide it could not distinguish 0.822 from
+0.84 (P = 0.39). Scoring the other 266 files narrowed the interval by more than half and moved
+the point estimate up. Confidence intervals resample whole **files**, not windows, because
+windows inside a recording are strongly correlated.
+
+Caveat that keeps this honest: the comparison uses TUSZ **v2.0.0 eval** where the paper used
+**v1.5.1 dev** — the same corpus family and the same detector configuration, but not the same
+files.
 
 **What this does *not* replicate:** the RPAH figures (76.68 % sensitivity, 56.55 FA/24 h). Those
 require private clinical data and a 20-channel model, and are permanently out of scope here.
@@ -234,13 +244,13 @@ guaranteed misses at the event level. The skip rate should be reported alongside
 - The inference pipeline is a **faithful reconstruction** of the 2022 continental-generalization
   detector: identical STFT, montage, window geometry, and ICA procedure, with the pretrained
   weights loading and running as trained.
-- **The 19-channel window-level result replicates: AUC 0.822 here against 0.84 published**, when
-  the paper's own window protocol is applied. This is the only one of the paper's 19-channel
-  claims checkable from public data, and it holds.
-- The apparent 0.72-vs-0.84 shortfall was an **evaluation-protocol artefact**: labelling
-  boundary-straddling windows as seizures, which the paper's loader never sampled. Worth
-  reporting in its own right — it is a concrete example of how a scoring convention moves a
-  headline number by more than most methodological differences do.
+- **The 19-channel window-level result replicates: AUC 0.881 (95 % CI [0.820, 0.932]) against
+  0.84 published**, across 305 files and 42 h, when the paper's own window protocol is applied.
+  This is the only one of the paper's 19-channel claims checkable from public data, and it holds.
+- The apparent shortfall was an **evaluation-protocol artefact** plus a **sample-size artefact**:
+  labelling boundary-straddling windows as seizures (worth ~0.09 AUC), measured on a 26-file
+  seizure-enriched subset whose CI was [0.673, 0.925]. Both are worth reporting — a scoring
+  convention moved the headline number by more than most methodological differences do.
 - Reproducing the paper's **decision stage** — not the model — accounts for a **4.5× reduction**
   in the reported false-alarm rate (257.6 → 57.2 FP/24 h at threshold 0.5). Two of the three
   contributing defects were scoring bugs, not modelling choices.
@@ -255,8 +265,8 @@ guaranteed misses at the event level. The skip rate should be reported alongside
 - That the **RPAH** figures (76.68 % / 56.55 FA/24 h / 92.19 % with arbiter) are reproduced or
   reproducible. They need private clinical data under a hospital ethics approval and a
   20-channel model.
-- That 0.822 is measured on the same data as 0.84. It is TUSZ v2.0.0 eval versus v1.5.1 dev, on
-  a 26-file seizure-enriched subset. State this whenever the comparison is made.
+- That 0.881 is measured on the same data as 0.84. It is TUSZ v2.0.0 eval versus v1.5.1 dev.
+  State this whenever the comparison is made.
 - That the displayed probabilities are calibrated. They remain raw softmax.
 - That 57.2 FP/24 h is a clinical false-alarm rate. It comes from 26 short, seizure-enriched
   TUSZ clips totalling ~1.7 h and is not a deployment figure.

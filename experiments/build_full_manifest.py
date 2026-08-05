@@ -25,9 +25,28 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
-from gui.io.cache import cache_path_for  # noqa: E402
+import eval_config as cfg  # noqa: E402
+from gui.io.cache import cache_path_for, load_probability_file  # noqa: E402
 from gui.io.csv_bi import read_csv_bi  # noqa: E402
 from experiments.compare_zuna import read_reference_duration  # noqa: E402
+
+
+def duration_for(edf, ref):
+    """Recording duration in seconds, matching evaluate_baseline.load_file.
+
+    Prefer the `.csv_bi` duration field; fall back to the probability cache's
+    last window start plus one segment. Without the fallback the totals here
+    undercount badly — a `.csv_bi` missing that field silently contributed
+    zero, which made the manifest report 28.2 h for a corpus the evaluation
+    scored as 41.9 h.
+    """
+    d = read_reference_duration(ref)
+    if d:
+        return float(d)
+    cache = load_probability_file(cache_path_for(edf))
+    if cache is not None and len(cache['window_starts']):
+        return float(max(cache['window_starts'])) + float(cfg.SEGMENT_S)
+    return 0.0
 
 
 def main(argv=None):
@@ -53,7 +72,7 @@ def main(argv=None):
             continue
         ref = os.path.splitext(edf)[0] + '.csv_bi'
         events = [e for e in read_csv_bi(ref) if e.get('label') == 'seiz']
-        duration = read_reference_duration(ref) or 0.0
+        duration = duration_for(edf, ref)
         s_dur = sum(float(e['stop']) - float(e['start']) for e in events)
 
         cohort = 'seizure' if events else 'nonseizure'
