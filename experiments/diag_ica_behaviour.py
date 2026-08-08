@@ -13,7 +13,7 @@ import sys
 import warnings
 import numpy as np
 
-REPO = r'c:\Users\User\Continental-Seiz-detection'
+REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, REPO)
 os.chdir(REPO)
 os.environ.setdefault('TF_CPP_MIN_LOG_LEVEL', '3')
