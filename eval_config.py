@@ -16,6 +16,11 @@ STEP_S = 6              # stride between window starts (seconds)
 FS = 250               # model sampling rate (Hz)
 USE_ICA = True         # per-window ICA EOG removal before STFT
 WEIGHTS = 'convlstm_ICA_12_train.h5'   # 19-channel single-scale ConvLSTM weights
+# Content hash of the weights every reported number was produced with. Stamped into
+# export provenance so a reviewed annotation is traceable to the exact model file,
+# and checkable with gui.io.cache.sha256_file() if results ever fail to reproduce.
+WEIGHTS_SHA256 = ('90c046ee80b504998e14aff8a612734d'
+                  'f635c03c5f37fe14854f62d6578598c3')
 
 # --- event scoring ---
 THRESHOLD = 0.5         # canonical operating threshold for event-level reporting

@@ -1,0 +1,60 @@
+# Detector environment for the seizure-review GUI.
+#
+#   conda env create -f environment-seiz36.yml
+#   conda activate seiz36
+#   python -m gui.main
+#
+# Windows-only MSVC runtime pins and the machine-specific 'prefix:' line have been
+# removed so this resolves on Linux and Intel macOS too. On non-conda setups use
+# requirements-seiz36.txt, which is the same 35-package set via pip.
+#
+# Python 3.6 + TF 1.15 is not a modern stack and is not a preference: the pretrained
+# weights load under it, and MNE 0.19's ICA is numerically load-bearing for the
+# operating point (see docs/deployment_roadmap.md 'On the Python-3.10 port').
+
+name: seiz36
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pip=21.3.1
+  - python=3.6.15
+  - python_abi=3.6
+  - setuptools=58.0.4
+  - wheel=0.37.1
+  - pip:
+      - absl-py==1.4.0
+      - astor==0.8.1
+      - dataclasses==0.8
+      - gast==0.2.2
+      - google-pasta==0.2.0
+      - grpcio==1.48.2
+      - h5py==2.10.0
+      - importlib-metadata==4.8.3
+      - joblib==1.1.1
+      - keras==2.2.5
+      - keras-applications==1.0.8
+      - keras-preprocessing==1.1.2
+      - markdown==3.3.7
+      - mne==0.19.2
+      - numpy==1.16.4
+      - opt-einsum==3.3.0
+      - protobuf==3.19.6
+      - pyedflib==0.1.22
+      - pyqt5==5.15.6
+      - pyqt5-qt5==5.15.2
+      - pyqt5-sip==12.9.1
+      - pyqtgraph==0.11.1
+      - pyyaml==6.0.1
+      - scikit-learn==0.22.2
+      - scipy==1.2.3
+      - six==1.17.0
+      - stft==0.5.2
+      - tensorboard==1.15.0
+      - tensorflow==1.15.0
+      - tensorflow-estimator==1.15.1
+      - termcolor==1.1.0
+      - typing-extensions==4.1.1
+      - werkzeug==2.0.3
+      - wrapt==1.16.0
+      - zipp==3.6.0

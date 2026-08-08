@@ -136,6 +136,19 @@ sample_data/
 *.h5
 *.zip
 
+# ...but the pretrained detector weights ARE the runtime dependency: gui/io/infer.py,
+# run_inference.py, precompute_probs.py and eval_config.py all resolve this exact
+# filename, so a clone without it cannot score anything. 4.46 MiB, well within limits.
+# Shipped unmodified (optimizer state and all) so its sha256 still matches the hash
+# recorded in eval_config.WEIGHTS_SHA256 and stamped into every export's provenance.
+!convlstm_ICA_12_train.h5
+
+# The evaluation manifests are small text indices, not data — they name which public
+# TUSZ files a reported number came from, so results cannot be regenerated without them.
+!artifacts/zuna_thesis/manifest.csv
+!artifacts/zuna_thesis/manifest_full.csv
+!artifacts/zuna_thesis/baseline_eval/*.json
+
 # IDE / OS
 .idea/
 .vscode/

@@ -17,13 +17,34 @@ ConvLSTM detector, shows per-window seizure probability, and lets a reviewer ste
 through proposed events and accept / reject / edit them, exporting a reviewed
 `.csv_bi` plus a `.provenance.json` sidecar.
 
-**Launch** (Windows): double-click `launch_gui.bat`, or from the repo root:
+**Install** (once):
 
 ```
-C:\Users\User\miniconda3\envs\seiz36\python.exe -m gui.main
-# optionally auto-open a file:
-C:\Users\User\miniconda3\envs\seiz36\python.exe -m gui.main path\to\file.edf
+conda env create -f environment-seiz36.yml
+conda activate seiz36
 ```
+
+No conda? `requirements-seiz36.txt` is the same package set via pip, into a
+Python 3.6 virtualenv.
+
+**Launch:**
+
+```
+python -m gui.main                    # or: python -m gui.main path/to/file.edf
+```
+
+On Windows you can instead double-click **`launch_gui.bat`**, which finds the
+interpreter itself — it checks `%SEIZ36_PYTHON%`, then an activated
+`%CONDA_PREFIX%`, then the usual miniconda/anaconda locations, then `PATH`. Set
+`SEIZ36_PYTHON` to override:
+
+```
+set SEIZ36_PYTHON=C:\path\to\envs\seiz36\python.exe
+```
+
+The pretrained weights (`convlstm_ICA_12_train.h5`, 4.5 MiB) are committed, so a
+clone is runnable without any extra download. Its sha256 is pinned in
+`eval_config.WEIGHTS_SHA256` and stamped into export provenance.
 
 **Reviewer loop:** open an EDF → wait for inference (cancellable; the first open
 also loads the model) → adjust the **threshold** slider → step through events with
