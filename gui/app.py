@@ -126,6 +126,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._zuna_stage = 'Idle'
         self._zuna_run_settings = {}
         self._segment_s = 12
+        self._nothing_assessed_warned = set()
         self._events = []
         self._threshold = 0.5
 
@@ -394,8 +395,13 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self._set_source_cache('baseline', cached)
             self._activate_prob_source('baseline', preserve_view=True)
-            msg = '{} — {:.1f}s, {} prob windows, {} reference seizures'.format(
-                os.path.basename(path), dur, len(cached['probs']), len(self._refs))
+            unscored = int(np.count_nonzero(
+                np.asarray(cached.get('skip_code', []))))
+            msg = '{} — {:.1f}s, {} score windows, {} reference seizures'.format(
+                os.path.basename(path), dur, len(cached['probs']),
+                len(self._refs))
+            if unscored:
+                msg += '  |  {} NOT ASSESSED'.format(unscored)
 
         if self._load_cached_zuna_source():
             msg += ' — cached ZUNA available'
@@ -438,7 +444,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 raise _Cancelled()
 
         try:
-            starts, probs = compute_probs(edf_path, progress_cb=progress_cb)
+            starts, probs, skip_code = compute_probs(
+                edf_path, progress_cb=progress_cb,
+                data=self._original_data, fs=self._fs)
         except _Cancelled:
             return None
         except Exception as ex:
@@ -452,11 +460,13 @@ class MainWindow(QtWidgets.QMainWindow):
         meta = {'step_s': 6, 'segment_s': 12, 'use_ica': True,
                 'fs': 250, 'weights': 'convlstm_ICA_12_train.h5'}
         try:
-            save_probs(edf_path, starts, probs, meta=meta)
+            save_probs(edf_path, starts, probs, meta=meta,
+                       skip_code=skip_code)
         except Exception as ex:
             self.statusBar().showMessage(
                 'Inference done but failed to write cache: {}'.format(ex), 5000)
-        return {'window_starts': starts, 'probs': probs, 'meta': meta}
+        return {'window_starts': starts, 'probs': probs, 'meta': meta,
+                'skip_code': skip_code, 'skip_code_is_exact': True}
 
     def _reset_source_combo(self):
         self.cb_source.blockSignals(True)
@@ -506,7 +516,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._segment_s = int(cache.get('meta', {}).get('segment_s', 12))
         self.prob_strip.set_probs(
             cache['window_starts'], cache['probs'],
-            segment_s=self._segment_s)
+            segment_s=self._segment_s,
+            skip_code=cache.get('skip_code'))
         self._events = list(self._events_by_source.get(key, []))
         self._refresh_signal_view(preserve_view=preserve_view)
         self._rebuild_events_from_probs(
@@ -522,6 +533,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 break
         self.cb_source.blockSignals(False)
 
+    def _unscored_count(self):
+        """How many windows of the active source carry no model score."""
+        cache = self._prob_sources.get(self._prob_source) or {}
+        skip = cache.get('skip_code')
+        if skip is None:
+            return 0
+        return int(np.count_nonzero(np.asarray(skip)))
+
     def _update_source_status(self):
         if not self._edf_path:
             return
@@ -530,8 +549,35 @@ class MainWindow(QtWidgets.QMainWindow):
         extra = ''
         if self._prob_source == 'zuna':
             extra = ' — reconstructed signal displayed'
+        # Surface the not-assessed count: a file where most windows were refused
+        # looks identical to a quiet recording unless the reviewer is told.
+        unscored = self._unscored_count()
+        if unscored:
+            extra += (' — {} of {} windows NOT ASSESSED (grey bands)'
+                      .format(unscored, n))
         self.statusBar().showMessage(
-            '{} source active — {} prob windows{}'.format(label, n, extra))
+            '{} source active — {} score windows{}'.format(label, n, extra))
+        self._warn_if_nothing_assessed(unscored, n)
+
+    def _warn_if_nothing_assessed(self, unscored, n):
+        """Warn once per file+source when the detector assessed nothing.
+
+        Guarded so switching between baseline and ZUNA on such a file does not
+        re-prompt, which would train the reviewer to dismiss it unread.
+        """
+        if not (n and unscored == n):
+            return
+        key = (self._edf_path, self._prob_source)
+        if key in self._nothing_assessed_warned:
+            return
+        self._nothing_assessed_warned.add(key)
+        QtWidgets.QMessageBox.warning(
+            self, 'No windows could be assessed',
+            'The detector could not assess ANY window in this recording '
+            '({} of {} were rejected by the artifact check or failed ICA).\n\n'
+            'The score strip is empty because nothing was scored. This is NOT '
+            'evidence that the recording is free of seizures.'
+            .format(unscored, n))
 
     def _load_cached_zuna_source(self):
         if not self._edf_path:
@@ -832,7 +878,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 raise _Cancelled()
 
         try:
-            starts, probs = compute_probs_from_data(
+            starts, probs, skip_code = compute_probs_from_data(
                 data, fs, progress_cb=progress_cb)
         except _Cancelled:
             self.statusBar().showMessage('ZUNA scoring cancelled.', 5000)
@@ -869,7 +915,8 @@ class MainWindow(QtWidgets.QMainWindow):
         except OSError:
             pass
         try:
-            save_probability_file(paths['probs'], starts, probs, meta)
+            save_probability_file(paths['probs'], starts, probs, meta,
+                                  skip_code=skip_code)
         except Exception as ex:
             self.statusBar().showMessage(
                 'ZUNA probabilities computed but cache write failed: {}'
@@ -878,7 +925,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._zuna_data = data
         self._set_source_cache(
             'zuna',
-            {'window_starts': starts, 'probs': probs, 'meta': meta})
+            {'window_starts': starts, 'probs': probs, 'meta': meta,
+             'skip_code': skip_code, 'skip_code_is_exact': True})
         self._activate_prob_source('zuna', preserve_view=True)
         self.statusBar().showMessage(
             'Full ZUNA ready — switched to ZUNA source. '
@@ -1159,25 +1207,39 @@ class MainWindow(QtWidgets.QMainWindow):
         if not path:
             return
         events = []
+        exported_scores = []
         for ev in self._events:
             if ev['status'] not in ('accepted', 'edited'):
                 continue
             s, e = clamp_interval(ev['start'], ev['stop'], self._duration_s)
+            # confidence = 1.0, not the model score. Only human-confirmed events
+            # are exported, so this column describes the REVIEWER's confidence,
+            # and TUSZ references carry 1.0000 in it. Writing the network's
+            # uncalibrated score here made a human-confirmed annotation look
+            # like a low-confidence one. The score is kept in the provenance
+            # sidecar instead, where it is unambiguously the model's.
             events.append({
                 'start': s, 'stop': e,
-                'label': 'seiz', 'confidence': ev['prob'],
+                'label': 'seiz', 'confidence': 1.0,
+            })
+            exported_scores.append({
+                'start': round(float(s), 4), 'stop': round(float(e), 4),
+                'status': ev['status'],
+                'model_score_uncalibrated': round(float(ev['prob']), 6),
             })
         write_csv_bi(path,
                      bname=os.path.splitext(os.path.basename(self._edf_path))[0],
                      duration_s=self._duration_s,
                      events=events,
                      ai_source=self._prob_source)
-        self._write_export_provenance(path, len(events))
+        self._write_export_provenance(path, len(events),
+                                      exported_scores=exported_scores)
         self.statusBar().showMessage(
             'Exported {} reviewed events → {}'.format(
                 len(events), os.path.basename(path)), 5000)
 
-    def _write_export_provenance(self, csv_bi_path, n_events):
+    def _write_export_provenance(self, csv_bi_path, n_events,
+                                 exported_scores=None):
         """Write a provenance sidecar for ANY reviewed export (baseline or
         ZUNA), so a reviewed .csv_bi is always traceable to the exact source,
         detector settings, and display state that produced it."""
@@ -1208,6 +1270,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 'lowpass_hz': self._lp,
                 'notch_hz': self._notch,
             },
+            'scores_are_calibrated': False,
+            'score_note': (
+                'model_score_uncalibrated values are raw softmax outputs with '
+                'no post-hoc calibration. The csv_bi confidence column is 1.0 '
+                'for every exported event because each was human-confirmed.'),
+            'exported_events': exported_scores or [],
+            'windows_not_assessed': self._unscored_count(),
         }
         if self._prob_source == 'zuna':
             payload['zuna_npz'] = (

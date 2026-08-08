@@ -82,16 +82,22 @@ def load_probability_file(path):
     return starts, probs, meta
 
 
-def save_probability_file(path, window_starts, probs, meta):
+def save_probability_file(path, window_starts, probs, meta, skip_code=None):
     parent = os.path.dirname(os.path.abspath(path))
     if parent and not os.path.exists(parent):
         os.makedirs(parent)
-    np.savez_compressed(
-        path,
-        window_starts=np.asarray(window_starts, dtype=np.int32),
-        probs=np.asarray(probs, dtype=np.float32),
-        meta=np.array(json.dumps(dict(meta or {}))),
-    )
+    meta = dict(meta or {})
+    arrays = {
+        'window_starts': np.asarray(window_starts, dtype=np.int32),
+        'probs': np.asarray(probs, dtype=np.float32),
+    }
+    if skip_code is not None:
+        # Same not-assessed mask the GUI cache stores, so a window the pipeline
+        # refused to score is never mistaken for a confident negative.
+        arrays['skip_code'] = np.asarray(skip_code, dtype=np.int8)
+        meta['has_skip_code'] = True
+        meta['n_unscored_windows'] = int(np.count_nonzero(arrays['skip_code']))
+    np.savez_compressed(path, meta=np.array(json.dumps(meta)), **arrays)
 
 
 def infer_step_s(window_starts):
@@ -321,7 +327,7 @@ def load_baseline_probs(args):
 
     t0 = time.time()
     from gui.io.infer import compute_probs  # noqa: E402
-    starts, probs = compute_probs(
+    starts, probs, _skip = compute_probs(
         args.edf, step_s=args.step, use_ica=not args.baseline_no_ica)
     return starts, probs, 'computed in {:.1f}s'.format(time.time() - t0), (
         args.edf), {
@@ -353,7 +359,7 @@ def load_zuna_probs(args):
     from gui.io.infer import compute_probs_from_data, load_signal_npz  # noqa: E402
     data, fs, duration_s = load_signal_npz(args.zuna_npz)
     t0 = time.time()
-    starts, probs = compute_probs_from_data(
+    starts, probs, skip_code = compute_probs_from_data(
         data, fs, step_s=args.step, use_ica=not args.zuna_no_ica)
     meta = {
         'step_s': args.step,
@@ -364,7 +370,8 @@ def load_zuna_probs(args):
         'source_npz': args.zuna_npz,
     }
     if args.zuna_probs_out:
-        save_probability_file(args.zuna_probs_out, starts, probs, meta)
+        save_probability_file(args.zuna_probs_out, starts, probs, meta,
+                              skip_code=skip_code)
     return starts, probs, 'computed in {:.1f}s'.format(time.time() - t0), (
         args.zuna_npz), meta
 

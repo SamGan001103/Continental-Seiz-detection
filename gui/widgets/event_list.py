@@ -6,7 +6,11 @@ keyboard shortcuts and the view auto-centers on the selected event.
 from PyQt5 import QtCore, QtWidgets
 
 
-HEADERS = ['#', 'start (s)', 'stop (s)', 'p', 'status', '']
+# 'score', not 'p': the value is a raw uncalibrated softmax output, not a
+# calibrated probability. See gui/widgets/prob_strip.py for the same reasoning.
+HEADERS = ['#', 'start (s)', 'stop (s)', 'score', 'status', '']
+SCORE_TOOLTIP = ('Peak model score over the event — a raw, UNCALIBRATED '
+                 'network output, not a probability of seizure.')
 
 
 class EventList(QtWidgets.QWidget):
@@ -27,6 +31,8 @@ class EventList(QtWidgets.QWidget):
 
         self.table = QtWidgets.QTableWidget(0, len(HEADERS))
         self.table.setHorizontalHeaderLabels(HEADERS)
+        self.table.horizontalHeaderItem(
+            HEADERS.index('score')).setToolTip(SCORE_TOOLTIP)
         self.table.horizontalHeader().setSectionResizeMode(
             QtWidgets.QHeaderView.ResizeToContents)
         self.table.horizontalHeader().setStretchLastSection(True)

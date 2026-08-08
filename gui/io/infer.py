@@ -100,9 +100,34 @@ def load_signal_npz(npz_path):
     return data.astype(np.float32, copy=False), fs, data.shape[1] / float(fs)
 
 
+# Why a window carries no model score. Persisted alongside the probabilities so
+# the GUI can distinguish "the model saw this and said no" from "the pipeline
+# never scored this", which previously looked identical (both were 0.0).
+SKIP_NONE = 0        # scored normally
+SKIP_INTERRUPTED = 1  # detect_interupted_data rejected the raw segment
+SKIP_ICA_FAILED = 2   # ica_arti_remove returned None
+SKIP_SHORT = 3        # not a full window's worth of samples
+
+SKIP_LABELS = {
+    SKIP_NONE: 'scored',
+    SKIP_INTERRUPTED: 'not assessed — interrupted or flat signal',
+    SKIP_ICA_FAILED: 'not assessed — ICA decomposition failed',
+    SKIP_SHORT: 'not assessed — incomplete window',
+}
+
+
 def compute_probs_from_data(data, fs, step_s=6, use_ica=True,
                             progress_cb=None, model=None):
-    """Run inference on a 19-channel array. Return (window_starts, probs).
+    """Run inference on a 19-channel array.
+
+    Returns ``(window_starts, probs, skip_code)``.
+
+    ``skip_code`` is one of the SKIP_* constants per window. Windows the
+    pipeline declined to score still carry ``probs == 0.0`` for backward
+    compatibility, but the code array is what callers should test: a real
+    softmax output is effectively never exactly 0.0, yet inferring the skip set
+    from that coincidence is how a refused window came to be displayed as a
+    confident negative.
 
     step_s       : stride in seconds between window starts
     use_ica      : apply ICA EOG removal per window (slow)
@@ -127,12 +152,17 @@ def compute_probs_from_data(data, fs, step_s=6, use_ica=True,
     total_s = int(duration_s)
     starts = list(range(0, total_s - SEGMENT_S + 1, step_s))
     probs = np.zeros(len(starts), dtype=np.float32)
+    skip_code = np.zeros(len(starts), dtype=np.int8)
     for i, t in enumerate(starts):
         seg = data[:, t * fs:t * fs + window_len]
         if seg.shape[1] != window_len:
+            # Trailing partial windows were never scored; mark the tail rather
+            # than leaving it looking like a run of confident negatives.
+            skip_code[i:] = SKIP_SHORT
             break
         if detect_interupted_data(seg.transpose(), fs):
             probs[i] = 0.0
+            skip_code[i] = SKIP_INTERRUPTED
             if progress_cb is not None:
                 progress_cb(i + 1, len(starts))
             continue
@@ -140,6 +170,7 @@ def compute_probs_from_data(data, fs, step_s=6, use_ica=True,
             proc = ica_arti_remove(seg, fs, CHANNELS_19)
             if proc is None:
                 probs[i] = 0.0
+                skip_code[i] = SKIP_ICA_FAILED
                 if progress_cb is not None:
                     progress_cb(i + 1, len(starts))
                 continue
@@ -150,13 +181,20 @@ def compute_probs_from_data(data, fs, step_s=6, use_ica=True,
         probs[i] = float(model.predict(x, verbose=0)[0, 1])
         if progress_cb is not None:
             progress_cb(i + 1, len(starts))
-    return np.array(starts, dtype=np.int32), probs
+    return np.array(starts, dtype=np.int32), probs, skip_code
 
 
 def compute_probs(edf_path, step_s=6, use_ica=True, progress_cb=None,
-                  model=None):
-    """Run inference on a single EDF. Return (window_starts, probs)."""
-    data, fs, _duration_s = load_edf_19ch(edf_path)
+                  model=None, data=None, fs=None):
+    """Run inference on a single EDF.
+
+    Returns ``(window_starts, probs, skip_code)``.
+
+    ``data``/``fs`` let a caller that has already read the EDF pass the array in
+    rather than paying for a second full read of the same file.
+    """
+    if data is None or fs is None:
+        data, fs, _duration_s = load_edf_19ch(edf_path)
     return compute_probs_from_data(
         data, fs, step_s=step_s, use_ica=use_ica,
         progress_cb=progress_cb, model=model)

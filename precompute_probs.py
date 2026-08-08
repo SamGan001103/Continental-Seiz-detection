@@ -23,12 +23,12 @@ def run(edf_path, step_s=cfg.STEP_S, use_ica=cfg.USE_ICA, overwrite=False,
         return
     t0 = time.time()
     print('  computing...')
-    starts, probs = compute_probs(edf_path, step_s=step_s, use_ica=use_ica,
-                                  model=model)
+    starts, probs, skip_code = compute_probs(
+        edf_path, step_s=step_s, use_ica=use_ica, model=model)
     # Stamp the ACTUAL settings used, not the canonical ones, so a cache built
     # with --no-ica or a non-default stride is self-describing and the
     # evaluation scripts can detect the mismatch.
-    save_probs(edf_path, starts, probs, meta={
+    save_probs(edf_path, starts, probs, skip_code=skip_code, meta={
         'step_s': step_s,
         'segment_s': cfg.SEGMENT_S,
         'use_ica': use_ica,

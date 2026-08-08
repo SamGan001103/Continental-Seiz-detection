@@ -59,7 +59,8 @@ def main():
         s_on = np.asarray(cache['window_starts'])
         p_on = np.asarray(cache['probs'])
 
-        s_off, p_off = compute_probs(edf, step_s=6, use_ica=False, model=model)
+        s_off, p_off, _skip = compute_probs(
+            edf, step_s=6, use_ica=False, model=model)
 
         auc_on, npos, z_on, lab_on, sc_on = auc_for(s_on, p_on, refs)
         auc_off, _, z_off, lab_off, sc_off = auc_for(s_off, p_off, refs)
