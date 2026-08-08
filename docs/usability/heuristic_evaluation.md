@@ -65,6 +65,14 @@ is to overcome), and persistence (whether it recurs or is a one-off). The *Obser
 confirmed, amended, or replaced by each evaluator during the actual inspection; the *What to check*
 column is the fixed instrument.
 
+> **Do not carry the example rows forward as findings.** They are seeds written before the
+> current code, and several are now factually wrong: the threshold value **is** shown as text
+> beside the slider (`gui/app.py`, `thr_lbl`), export **does** report the written path and
+> shows a pre-flight dialog, and the probability strip **is** labelled as an uncalibrated
+> model score. The first cognitive-walkthrough pass
+> ([`cognitive_walkthrough_results.md`](cognitive_walkthrough_results.md)) checked these
+> against the running application; start from its issue list.
+
 | # | Heuristic (and definition) | What to check in THIS EEG-reviewer GUI | Observed issue (example) | Severity | Screen/control |
 |---|---|---|---|---|---|
 | **1** | **Visibility of system status** — the system should keep users informed about what is going on, through timely feedback. | On opening an EDF, is the on-demand inference progress clearly shown (cancellable progress dialog, and the extra "first open also loads the model" delay called out)? Does the **ProbStrip** update live and stay visibly aligned to the **SignalView** as you scroll/zoom? Does moving the **detection THRESHOLD slider** give immediate, visible feedback (events appearing/disappearing on the ProbStrip and **EventList**)? Does switching the **AI-source selector** (Baseline vs ZUNA full) clearly indicate which source is currently active and shown? | First-open model-load latency is not distinguished from per-window inference, so the user cannot tell whether the app has stalled; AI-source label does not persist in view after selection. | 3 | Open/progress dialog; AI-source selector |

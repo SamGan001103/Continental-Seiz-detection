@@ -2,7 +2,8 @@
 
 **Project:** BMET4111 Thesis (Sam Gan, University of Sydney) — A GUI-based Human-AI teaming system for reviewing ambulatory/outpatient EEG.
 **Supervisor:** Prof. Omid Kavehei.
-**System under evaluation:** The reviewer GUI (PyQt5 desktop application), launched with `C:\Users\User\miniconda3\envs\seiz36\python.exe -m gui.main`.
+**System under evaluation:** The reviewer GUI (PyQt5 desktop application), launched with `python -m gui.main` in the `seiz36` environment.
+**Results of the first pass:** [`cognitive_walkthrough_results.md`](cognitive_walkthrough_results.md).
 **Validation data:** Public TUH/TUSZ EEG only. No patient or RPAH data is used in this instrument.
 
 ---
@@ -26,8 +27,9 @@ A "fail" on any question is a candidate usability issue. The evaluator should wr
 
 ### How to run this instrument
 
-- Launch the app: `C:\Users\User\miniconda3\envs\seiz36\python.exe -m gui.main`.
-- Work through the tasks in order. Each task names a **demo EDF** via a placeholder (e.g. `<DEMO_SEIZURE_FILE_1>`); fill these from the 39 cached sample EDFs that already have `.probs.npz` files so they load instantly and warning-free. Suggested candidates from the cached set are listed under each task.
+- Launch the app: `conda activate seiz36 && python -m gui.main` (or double-click
+  `launch_gui.bat`, which finds the interpreter itself).
+- Work through the tasks in order. Each task names a **demo EDF** via a placeholder (e.g. `<DEMO_SEIZURE_FILE_1>`); fill these from the cached sample EDFs that already have `.probs.npz` files so they load instantly and warning-free. **305 recordings now have a validated cache and 25 are demo-ready** (validated, seizure-bearing, and producing at least one event at threshold 0.5); an earlier draft of this instrument said 39, of which only 6 actually validated. Suggested candidates from the cached set are listed under each task.
 - For each action, tick Q1–Q4 (pass `P` / fail `F`) and write a short note. One row of the table is one action.
 - A single evaluator can complete the whole instrument; two evaluators scoring independently and then reconciling will produce stronger evidence.
 
