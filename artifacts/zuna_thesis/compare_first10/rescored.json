@@ -1,0 +1,201 @@
+{
+  "config": {
+    "event_tolerance_s": 5.0,
+    "fs": 250,
+    "max_merge_gap_s": 10.0,
+    "min_event_duration_s": 5.0,
+    "segment_s": 12,
+    "step_s": 6,
+    "threshold": 0.5,
+    "use_ica": true,
+    "use_per_second_averaging": true,
+    "use_source_postprocessing": true,
+    "weights": "convlstm_ICA_12_train.h5"
+  },
+  "n_files": 10,
+  "per_file": [
+    {
+      "baseline": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 0,
+        "max_prob": 0.0345708392560482
+      },
+      "n_refs": 3,
+      "stem": "aaaaaarq_s016_t002",
+      "zuna": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 0,
+        "max_prob": 0.05403485521674156
+      }
+    },
+    {
+      "baseline": {
+        "duplicates": 0,
+        "fp": 1,
+        "hits": 0,
+        "max_prob": 0.9571300148963928
+      },
+      "n_refs": 3,
+      "stem": "aaaaaarq_s016_t003",
+      "zuna": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 0,
+        "max_prob": 0.5617927312850952
+      }
+    },
+    {
+      "baseline": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 0,
+        "max_prob": 0.005817438010126352
+      },
+      "n_refs": 3,
+      "stem": "aaaaaarq_s016_t007",
+      "zuna": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 1,
+        "max_prob": 0.6784189343452454
+      }
+    },
+    {
+      "baseline": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 0,
+        "max_prob": 0.0594959631562233
+      },
+      "n_refs": 4,
+      "stem": "aaaaaarq_s017_t000",
+      "zuna": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 0,
+        "max_prob": 0.4704318940639496
+      }
+    },
+    {
+      "baseline": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 0,
+        "max_prob": 0.00578346149995923
+      },
+      "n_refs": 1,
+      "stem": "aaaaaghb_s010_t000",
+      "zuna": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 0,
+        "max_prob": 0.004045913927257061
+      }
+    },
+    {
+      "baseline": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 1,
+        "max_prob": 0.9438929557800293
+      },
+      "n_refs": 1,
+      "stem": "aaaaahsi_s014_t000",
+      "zuna": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 1,
+        "max_prob": 0.9486855864524841
+      }
+    },
+    {
+      "baseline": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 1,
+        "max_prob": 0.9933626651763916
+      },
+      "n_refs": 1,
+      "stem": "aaaaaqtw_s002_t001",
+      "zuna": {
+        "duplicates": 1,
+        "fp": 0,
+        "hits": 1,
+        "max_prob": 0.9909275770187378
+      }
+    },
+    {
+      "baseline": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 1,
+        "max_prob": 0.9247717261314392
+      },
+      "n_refs": 1,
+      "stem": "aaaaaraf_s004_t000",
+      "zuna": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 1,
+        "max_prob": 0.934306263923645
+      }
+    },
+    {
+      "baseline": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 1,
+        "max_prob": 0.9779213070869446
+      },
+      "n_refs": 1,
+      "stem": "aaaaatao_s003_t000",
+      "zuna": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 1,
+        "max_prob": 0.9793034791946411
+      }
+    },
+    {
+      "baseline": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 0,
+        "max_prob": 0.7440235614776611
+      },
+      "n_refs": 1,
+      "stem": "aaaaatao_s003_t001",
+      "zuna": {
+        "duplicates": 0,
+        "fp": 0,
+        "hits": 0,
+        "max_prob": 0.09153302758932114
+      }
+    }
+  ],
+  "summary": {
+    "baseline": {
+      "duplicate_detections": 0,
+      "false_alarms_per_24h": 41.08416547788873,
+      "false_positives": 1,
+      "hits": 4,
+      "n_refs": 19,
+      "sensitivity": 0.21052631578947367,
+      "total_duration_s": 2103.0,
+      "window_auc": 0.6877866972477065
+    },
+    "zuna": {
+      "duplicate_detections": 1,
+      "false_alarms_per_24h": 0.0,
+      "false_positives": 0,
+      "hits": 5,
+      "n_refs": 19,
+      "sensitivity": 0.2631578947368421,
+      "total_duration_s": 2103.0,
+      "window_auc": 0.646612960831779
+    }
+  },
+  "threshold": 0.5
+}

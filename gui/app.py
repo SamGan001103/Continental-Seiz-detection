@@ -517,7 +517,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.prob_strip.set_probs(
             cache['window_starts'], cache['probs'],
             segment_s=self._segment_s,
-            skip_code=cache.get('skip_code'))
+            skip_code=cache.get('skip_code'),
+            duration_s=self._duration_s)
         self._events = list(self._events_by_source.get(key, []))
         self._refresh_signal_view(preserve_view=preserve_view)
         self._rebuild_events_from_probs(
@@ -984,6 +985,27 @@ class MainWindow(QtWidgets.QMainWindow):
             preserve_review=preserve_review)
         self.signal_view.set_events(self._events)
         self.event_list.set_events(self._events)
+        self._mark_discarded_runs()
+
+    def _mark_discarded_runs(self):
+        """Show threshold crossings that event shaping rejected as too short."""
+        cache = self._prob_sources.get(self._prob_source) or {}
+        if self._probs is None or not len(self._probs[0]):
+            self.prob_strip.set_discarded_runs([])
+            return
+        try:
+            import eval_config as cfg
+            from gui.postprocess import runs_discarded_by_shaping
+            spans = runs_discarded_by_shaping(
+                self._probs[0], self._probs[1], self._threshold,
+                self._segment_s, duration_s=self._duration_s,
+                min_duration_s=cfg.MIN_EVENT_DURATION_S,
+                max_gap_s=cfg.MAX_MERGE_GAP_S,
+                average=cfg.USE_PER_SECOND_AVERAGING,
+                skip_code=cache.get('skip_code'))
+        except Exception:
+            spans = []
+        self.prob_strip.set_discarded_runs(spans)
 
     # ==================================================================
     # Reviewer actions

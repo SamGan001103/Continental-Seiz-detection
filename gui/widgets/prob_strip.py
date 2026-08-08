@@ -9,6 +9,22 @@ import pyqtgraph as pg
 import numpy as np
 
 
+def _as_steps(seconds, values):
+    """Render a per-second series as a stepped polyline: (t, v), (t+1, v)."""
+    seconds = np.asarray(seconds, dtype=np.float32)
+    values = np.asarray(values, dtype=np.float32)
+    n = min(seconds.size, values.size)
+    if n == 0:
+        return [], []
+    xs = np.empty(2 * n, dtype=np.float32)
+    ys = np.empty(2 * n, dtype=np.float32)
+    xs[0::2] = seconds[:n]
+    xs[1::2] = seconds[:n] + 1.0
+    ys[0::2] = values[:n]
+    ys[1::2] = values[:n]
+    return xs, ys
+
+
 def _unscored_spans(window_starts, skip_code, segment_s):
     """Merge windows the pipeline declined to score into [start, stop] spans.
 
@@ -82,10 +98,16 @@ class ProbStrip(QtWidgets.QWidget):
         # misleads exactly the reviewer it is meant to help.
         pi.setLabel('left', 'model score')
         self.setToolTip(
-            'Model score per 12 s window — a raw, UNCALIBRATED network output, '
-            'not a calibrated probability of seizure. Grey bands are windows '
-            'the pipeline could not assess (interrupted signal or failed ICA); '
-            'they carry no score and must not be read as "no seizure".')
+            'Solid red = the DECISION curve: the per-second series the '
+            'threshold line is compared against, so a crossing always '
+            'corresponds to an event in the list.\n'
+            'Dotted blue = peak evidence (strongest single window covering '
+            'each second). Informative, but NOT what the threshold decides on.\n'
+            'Grey bands = windows the pipeline could not assess (interrupted '
+            'signal or failed ICA). They carry no score and must not be read '
+            'as "no seizure".\n'
+            'All values are raw, UNCALIBRATED network outputs, not calibrated '
+            'probabilities of seizure.')
         pi.getAxis('left').setWidth(64)
         pi.setYRange(0, 1)
         pi.setMouseEnabled(x=True, y=False)
@@ -93,13 +115,23 @@ class ProbStrip(QtWidgets.QWidget):
         self._pw.setMaximumHeight(140)
         v.addWidget(self._pw)
 
-        # Filled area under the probability curve → reads at a glance.
+        # The FILLED curve is the decision series — the one the threshold line
+        # below is actually compared against, so that a visible crossing always
+        # corresponds to an event in the worklist.
         self._curve = pi.plot(
             [], [],
-            pen=pg.mkPen((180, 40, 40), width=1.2),
+            pen=pg.mkPen((180, 40, 40), width=1.4),
             fillLevel=0.0,
             brush=pg.mkBrush(180, 40, 40, 70),
         )
+        # Peak per-second evidence, drawn faintly behind it. Informative — it is
+        # the strongest single window covering each second — but it is NOT what
+        # the threshold decides on, so it must never be the curve under the line.
+        self._peak_curve = pi.plot(
+            [], [],
+            pen=pg.mkPen((150, 150, 190), width=1.0,
+                         style=QtCore.Qt.DotLine))
+        self._peak_curve.setZValue(-1)
         self._thr_line = pg.InfiniteLine(
             pos=0.5, angle=0,
             pen=pg.mkPen((30, 120, 30), width=1, style=QtCore.Qt.DashLine))
@@ -107,15 +139,69 @@ class ProbStrip(QtWidgets.QWidget):
         self._ref_items = []
         self._refs_visible = True
         self._unscored_items = []
+        self._discarded_items = []
+        try:
+            import eval_config as cfg
+            self._min_duration_s = float(cfg.MIN_EVENT_DURATION_S)
+        except Exception:
+            self._min_duration_s = 5.0
 
     def plot_item(self):
         return self._pw.getPlotItem()
 
-    def set_probs(self, window_starts, probs, segment_s=12, skip_code=None):
-        xs, ys = _instant_max_probs(window_starts, probs, segment_s)
-        self._curve.setData(xs, ys)
+    def set_probs(self, window_starts, probs, segment_s=12, skip_code=None,
+                  duration_s=None, average=None):
+        """Draw the decision curve, with peak evidence behind it.
+
+        average : whether events are built from per-second averaging. Defaults
+            to eval_config.USE_PER_SECOND_AVERAGING so the drawn curve tracks
+            the configured decision stage rather than a fixed choice.
+        """
+        from gui.postprocess import decision_curve
+        if average is None:
+            try:
+                import eval_config as cfg
+                average = bool(cfg.USE_PER_SECOND_AVERAGING)
+            except Exception:
+                average = True
+
+        secs, values = decision_curve(
+            window_starts, probs, segment_s, duration_s=duration_s,
+            average=average, skip_code=skip_code)
+        self._curve.setData(*_as_steps(secs, values))
+
+        # Peak trace only adds information when it differs from the decision.
+        px, py = _instant_max_probs(window_starts, probs, segment_s)
+        self._peak_curve.setData(px if average else [], py if average else [])
+
         self._set_unscored(
             _unscored_spans(window_starts, skip_code, segment_s))
+
+    def set_discarded_runs(self, spans):
+        """Mark threshold crossings that event shaping rejected as too short.
+
+        Without this the reviewer sees the curve cross the line with nothing in
+        the worklist and no reason given.
+        """
+        pi = self._pw.getPlotItem()
+        for item in self._discarded_items:
+            pi.removeItem(item)
+        self._discarded_items = []
+        for s, e in spans or []:
+            band = pg.LinearRegionItem(
+                values=(float(s), float(e)),
+                brush=pg.mkBrush(230, 160, 30, 70),
+                pen=pg.mkPen(200, 130, 0, 170, width=1,
+                             style=QtCore.Qt.DashLine),
+                movable=False,
+            )
+            band.setZValue(-6)
+            band.setToolTip(
+                'Above threshold but shorter than the {:g} s minimum event '
+                'duration — not proposed as an event.'.format(
+                    self._min_duration_s))
+            pi.addItem(band)
+            self._discarded_items.append(band)
 
     def _set_unscored(self, spans):
         """Draw windows with no model score as grey 'not assessed' bands."""

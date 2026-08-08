@@ -227,9 +227,11 @@ def summarize_run(name, window_starts, probs, ref_events, threshold,
         MIN_EVENT_DURATION_S. None reads ``eval_config``. False reproduces the
         pre-fix behaviour so the two can be compared directly.
     average : collapse overlapping windows to a per-second mean before
-        thresholding. None reads ``eval_config.USE_PER_SECOND_AVERAGING``, which
-        is False — see that module for why averaging is incompatible with the
-        single 12-second model.
+        thresholding. None reads ``eval_config.USE_PER_SECOND_AVERAGING``.
+        That flag is stride-dependent: valid at the canonical 6 s stride, but
+        at finer strides the mean is dominated by windows that merely clip a
+        seizure edge and can erase the event. See eval_config for the
+        measurement.
     """
     if postprocess is None:
         postprocess = getattr(cfg, 'USE_SOURCE_POSTPROCESSING', False)

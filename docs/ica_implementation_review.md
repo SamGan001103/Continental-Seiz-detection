@@ -6,15 +6,17 @@ Short answer: **it faithfully reproduces the original authors' code, and that co
 methodological defects.** Those two facts are both true and they pull in opposite directions,
 which is what makes this stage delicate to touch.
 
-Measured on **98 real TUSZ windows** from two recordings
-(`scratchpad/diag_ica_behaviour.py`):
+Measured on real TUSZ windows with `experiments/diag_ica_behaviour.py`. The convergence figure
+is pooled over **8 recordings / 243 windows**; the return-path and component-count figures come
+from a closer pass over **98 windows from 2 recordings**.
 
 | observation | measured |
 |---|---|
-| FastICA **did not converge** | **75 / 98 windows (77 %)** |
+| FastICA **did not converge** | **142 / 243 windows (58 % pooled; 20–100 % per file)** |
 | No EOG component found → returns **raw, unfiltered** data | 10 / 98 (10 %) |
 | Components flagged by `find_bads_eog` | 212 |
 | Components actually removed | 106 — **half the flagged components are discarded** |
+| Per-window peak difference between the two return paths | median **36.6 µV**, max 73 µV |
 | Samples per window / per component | 3000 / 158 |
 | Samples needed for a stable 19-component decomposition (kN², k≥20) | **≥ 7220 — we have 3000, 2.4× short** |
 
@@ -62,9 +64,10 @@ When at least one EOG component is found, the function returns data that has bee
 high-passed and ICA-cleaned**. When none is found, it returns `data` — the **original,
 unfiltered input**. The high-pass is silently confounded with the artifact removal.
 
-This fires on **10 % of windows**, and it is not cosmetic: on those windows the filtered and raw
-versions differ by a **median of 36.6 µV and up to 73 µV**, which is the scale of the EEG signal
-itself. So one in ten windows reaches the STFT having had a materially different preprocessing
+This fires on **10 % of windows**, and it is not cosmetic. On those windows the *largest
+sample-wise* difference between the filtered and raw versions has a median of **36.6 µV** across
+windows and a maximum of 73 µV — the scale of the EEG signal itself. (That is a peak statistic,
+not a typical sample difference; the typical difference is smaller. Quote it as a peak.) So one in ten windows reaches the STFT having had a materially different preprocessing
 from its neighbours, determined by whether an eye-blink happened to be detected.
 
 Nothing in the paper justifies this. It reads as an oversight in the original code.
@@ -84,7 +87,8 @@ documentation explains.
 
 Two separate problems.
 
-**It is not physically realisable.** A 0.1 Hz high-pass needs a filter of ~8251 samples (33 s);
+**It is not physically realisable.** A 0.1 Hz high-pass needs a filter of 8251 samples (33 s at
+250 Hz);
 the window is 3000 samples (12 s). MNE says so out loud on every call:
 
 ```
@@ -108,17 +112,22 @@ The standard heuristic is that resolving N components from N channels needs **mo
 samples per channel, with k ≥ 20**. For N = 19 that is **≥ 7220 samples**. A 12-second window at
 250 Hz gives **3000** — a factor of 2.4 short, or 158 samples per component.
 
-This is the root cause of §3.5, and it is structural: it cannot be fixed without either
+This is the most likely driver of §3.5 — the relationship is a strong correlation, not a
+demonstrated cause — and it is structural: it cannot be fixed without either
 lengthening the window (which changes the model input) or reducing the component count via PCA
 (which the paper does not do).
 
-### 3.5 FastICA does not converge on 77 % of windows
+### 3.5 FastICA does not converge on most windows
 
-A direct consequence of §3.3 and §3.4. On 75 of 98 windows the fixed-point iteration hits
-`max_iter` without converging, so the returned unmixing matrix is wherever the iteration
-happened to stop. Combined with `random_state=13` this is at least *deterministic* — the same
-window always yields the same non-converged answer — but it is not a solution to the stated
-problem.
+Plausibly a consequence of §3.3 and §3.4, though that link is a correlation rather than a
+demonstrated cause. On 142 of 243 windows (58 % pooled, 20–100 % depending on the recording)
+the fixed-point iteration hits `max_iter` without converging, so the returned unmixing matrix is
+wherever the iteration happened to stop.
+
+**And it is not even deterministic.** `random_state=13` is insufficient: re-running
+`compute_probs` on an unchanged EDF reproduces the cache for some windows and then diverges, one
+measured window moving by 0.107. An earlier version of this document claimed the non-convergence
+was "at least deterministic"; that was wrong. See `docs/RESULTS.md` §8.
 
 ### 3.6 `except:` swallows every failure
 
@@ -139,7 +148,7 @@ Two different questions, two different answers.
 | Is it methodologically sound as ICA? | **No** — §3.1 through §3.5. |
 
 **The critical constraint: the model was trained on the output of this exact function.** The
-77 % non-convergence, the top-1 truncation and the inconsistent return paths are all baked into
+58 % non-convergence, the top-1 truncation and the inconsistent return paths are all baked into
 the operating point the weights expect. This is why "fixing" the ICA is not a free improvement —
 it changes the input distribution at inference time relative to training.
 
@@ -161,7 +170,8 @@ That is not speculation. Measured effects of plausible "fixes":
 > The ICA stage was reproduced faithfully from the source implementation, and auditing it
 > revealed that per-window ICA on 12-second segments is statistically under-determined: the
 > decomposition needs ≥7220 samples for 19 components and receives 3000, FastICA fails to
-> converge on 77 % of windows, the 0.1 Hz pre-filter is both unrealisable at this window length
+> converge on 58 % of windows (20-100 % per recording), the 0.1 Hz pre-filter is both
+> unrealisable at this window length
 > and below the 1–2 Hz recommended for ICA, and half the components flagged as ocular are
 > discarded before removal. Because the pretrained weights were fitted to the output of this same
 > procedure, these properties are part of the operating point rather than removable defects, and

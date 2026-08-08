@@ -9,14 +9,22 @@ is stale. Each figure below names the command that regenerates it.
 All measurements: public TUSZ **v2.0.0** `eval` data, 19 channels, 12-second windows, 6-second
 stride, per-window ICA, pretrained `convlstm_ICA_12_train.h5`. Inference only — no retraining.
 
-**Headline: the 19-channel detector replicates its source paper.** Window-level AUC **0.881**
-(95 % CI [0.820, 0.932]) across 305 files / 42 h, against the **0.84** published for TUH.
+**Headline: the 19-channel detector reproduces its source paper.** Window-level AUC **0.89**
+(95 % CI [0.83, 0.94]) over 206 annotated recordings / 27.8 h, against the **0.84** published for
+TUH. The published value lies inside the interval: this is a result **statistically
+indistinguishable from the published one**, not a demonstration of improvement.
 
-Use **`artifacts/zuna_thesis/manifest_full.csv`** (305 files, 42.24 h) for anything reported.
+**Quote two significant figures.** The interval is ±0.06 wide; four decimal places imply a
+precision this evidence does not carry, and invite a reproducibility challenge that will fail
+(see §8).
+
+Use **`artifacts/zuna_thesis/manifest_full.csv`** for anything reported, and note that
+**99 of the 305 cached recordings have no `.csv_bi` annotation and are excluded** — an absent
+annotation is not evidence of a seizure-free recording. The scorable set is **206 files**.
 The older `manifest.csv` is 26 seizure-enriched files and is misleading in both directions —
 see the box in §2.
 
-Last regenerated: after the scoring fixes in `docs/reproduction_status.md` §3, on the full corpus.
+Last regenerated: 2026-08-08, in a single quiesced pass with no cache writers running.
 
 ---
 
@@ -44,111 +52,132 @@ the TUH **development** split, measured before the PWA/PEI lens.
 > coincidence and the two are not comparable.** Theirs is RPAH: 14,590 hours, 1,006 sessions,
 > **private** clinical data under hospital ethics, a **20-channel** model (19 EEG + ECG, see
 > `utils/ICA_load_data_elec.py:285`), the PWA/PEI lens, and the **SDR** metric, which by the
-> paper's own footnote "combines the false alarms within 30 seconds into one". Ours is 1.7 hours
-> of public TUSZ across 26 files, 19 channels, concatenate/discard shaping, and per-event
-> matching with a 5 s tolerance. Different data, different model, different metric, different
-> scale, four orders of magnitude apart in recording hours.
+> paper's own footnote "combines the false alarms within 30 seconds into one". Ours is 27.8 hours
+> of public TUSZ across 206 files, 19 channels, concatenate/discard shaping, and per-event
+> matching with a 5 s tolerance. Different data, different model, different metric, and about
+> two and a half orders of magnitude apart in recording hours.
 
 The two-channel SPMB 2020 paper asserts performance "improves dramatically when all 19
 electrodes" but publishes **no 19-channel number**, so there is nothing to replicate there either.
 
 ---
 
-## 2. Window level — the replication result
+## 2. Window level — the reproduction result
 
-**Evaluation set: all 305 locally available TUSZ v2.0.0 EDFs with a probability cache** —
-44 seizure-bearing (85 seizures, 1.16 h ictal), 261 background-only, **42.24 h**, background to
-seizure duration **35.4 : 1**. For scale, the paper's TUH dev split is 170.3 h at 9.5 : 1, so
-this set is about a quarter the size and considerably *more* background-heavy — a harder
-specificity venue, not an easier one.
+**Evaluation set: the 206 locally cached TUSZ v2.0.0 recordings that have a `.csv_bi`
+annotation** — 44 seizure-bearing (85 seizures, 1.16 h ictal) and 162 background-only,
+**27.8 h**. A further **99 cached recordings carry no annotation at all and are excluded**:
+`read_csv_bi` returns `[]` for a missing file and for a seizure-free one alike, so scoring them
+as background would assert a ground truth nobody has — and at least 6 of them do contain
+seizures according to their per-channel `.csv`. For scale, the paper's TUH dev split is 170.3 h.
 
 ```
 python experiments/build_full_manifest.py --out artifacts/zuna_thesis/manifest_full.csv
 python experiments/replicate_paper_auc.py --manifest artifacts/zuna_thesis/manifest_full.csv
 ```
 
-| protocol | pooled AUC | 95 % CI (by file) | windows | positive | P(AUC ≥ 0.84) |
-|---|---|---|---|---|---|
-| project — any-overlap labelling, 6 s stride | 0.7941 | [0.738, 0.843] | 23,088 | 788 | 0.03 |
-| **paper — pure windows only** | **0.8811** | **[0.820, 0.932]** | 22,803 | 503 | **0.92** |
-| paper — pure + non-overlapping | 0.8776 | [0.814, 0.930] | 11,507 | 249 | 0.90 |
-| *source paper, TUH v1.5.1 dev* | *0.84* | — | — | — | — |
+| protocol | pooled AUC | 95 % CI (by file) | windows | positive |
+|---|---|---|---|---|
+| project — any-overlap labelling, 6 s stride | 0.80 | [0.74, 0.85] | 15,496 | 788 |
+| **paper — pure windows only** | **0.89** | **[0.83, 0.94]** | 15,211 | 503 |
+| paper — pure + non-overlapping | 0.89 | [0.82, 0.94] | 7,678 | 249 |
+| *source paper, TUH v1.5.1 dev* | *0.84* | — | — | — |
 
-**The 19-channel detector replicates and then some: 0.881 against a published 0.84**, with 0.84
-inside the confidence interval. This is the headline reproduction result.
+**The reproduction is statistically indistinguishable from the published result.** 0.84 lies
+inside the interval; a one-sided file-level bootstrap gives p ≈ 0.06 against the null that the
+true value is 0.84, which does not reject at α = 0.05. **Do not phrase this as beating the
+paper.** The defensible claim is reproduction, not improvement.
 
 The confidence interval resamples whole **files**, not windows — windows within one recording
 share patient, montage and artifact regime, so a window-level interval treats correlated windows
 as independent evidence and comes out far too narrow to quote honestly.
 
-The gap between the first two rows is labelling alone: the paper's feature loader only emitted
-windows lying entirely inside one annotated interval, while this project slides a window every
-6 s and calls it a seizure on any overlap. **Always state which protocol a window-level number
-uses** — the choice is worth ~0.09 AUC here, more than most methodological differences.
+### Why the two protocols differ, and the disclosure that must accompany it
 
-PR-AUC under the project protocol is **0.201** on this realistic mix (it was 0.430 on the
-seizure-enriched 26-file subset — the inflation there is exactly what a 35:1 background ratio
-corrects).
+The paper's feature loader (`utils/ICA_load_data_elec.py:115`) tiles each labelled interval with
+windows that fit **entirely inside** it, so a window straddling a seizure boundary is never
+generated. This project instead slides a window every 6 s and calls it a seizure on **any**
+overlap.
+
+The exclusion removes **1.8 % of all windows — but 36.2 % of the positive class** (285 of 788),
+and those are the hardest positives, being mostly background by duration. Quoting only the 1.8 %
+makes a 0.09 AUC difference look like rounding. **State the 36 % figure whenever the paper
+protocol is used.**
+
+It is nonetheless *faithful rather than selective*, and the evidence for that is checkable:
+`txt_file/ref_dev.txt` tiles all 1,013 dev recordings with contiguous `bckg`/`seiz` intervals —
+every recording starts at 0.0, with zero gaps and zero overlaps — so the source loop could not
+physically have emitted a boundary window. Cite this when the protocol is challenged.
+
+PR-AUC under the project protocol is **0.39**.
 
 **Caveat to state whenever the comparison is made:** TUSZ v2.0.0 `eval` here versus v1.5.1 `dev`
-there. Same corpus family and same detector configuration, but not the same files.
+there. Same corpus family and same detector configuration, but not the same files. The paper's
+0.84 is a *development-split* number and ours is *eval*, which makes the comparison conservative.
 
 > ### The 26-file subset was misleading in both directions
 >
-> The earlier `manifest.csv` (26 seizure-enriched files, 1.7 h) gave 0.822 [0.673, 0.925] under
-> the paper protocol — a much wider interval that could not distinguish 0.822 from 0.84
-> (P = 0.39). It was also **pessimistic on sensitivity and optimistic on false alarms**: 25.0 %
-> and 57.2 FP/24 h, against 48.2 % and 223.5 FP/24 h on the full corpus. A seizure-enriched
-> subset has almost no background time in which to raise a false alarm, so its false-alarm rate
-> is not interpretable. **Use `manifest_full.csv` for every reported number.**
+> The earlier `manifest.csv` (26 seizure-enriched files, 1.7 h) gave 0.82 [0.67, 0.93] under the
+> paper protocol — an interval too wide to distinguish anything. It was also **pessimistic on
+> sensitivity and optimistic on false alarms**: 25.0 % and 57.2 FP/24 h, against 49.4 % and
+> 204.4 FP/24 h on the annotated corpus. A seizure-enriched subset has almost no background time
+> in which to raise a false alarm, so its false-alarm rate is not interpretable.
+> **Use `manifest_full.csv` for every reported number.**
 
 ---
 
 ## 3. Event level
 
 ```
-python experiments/evaluate_baseline.py --manifest artifacts/zuna_thesis/manifest_full.csv --name full303
+python experiments/evaluate_baseline.py --manifest artifacts/zuna_thesis/manifest_full.csv --name full_scorable
 python experiments/ablate_postprocessing.py --manifest artifacts/zuna_thesis/manifest_full.csv
 ```
 
 **No published counterpart exists** (see §1) — these characterise this system, they do not
-reproduce anything. 305 files, 85 reference seizures, 42.24 h.
+reproduce anything. 206 annotated files, 85 reference seizures, 27.8 h.
 
-### Decision-stage ablation, full corpus, threshold 0.5
+### Decision-stage ablation, threshold 0.5
 
 | configuration | sensitivity | hits | FP/24 h | duplicates |
 |---|---|---|---|---|
-| raw windows | 0.553 | 47/85 | 485.4 | 33 |
-| \+ event shaping (concatenate <10 s, discard <5 s) | 0.541 | 46/85 | 319.8 | 11 |
-| per-second averaging only | 0.482 | 41/85 | 237.8 | 12 |
-| **source method (averaging + shaping)** | **0.482** | **41/85** | **223.5** | **9** |
+| raw windows | 0.565 | 48/85 | 478.0 | 32 |
+| \+ event shaping (concatenate <10 s, discard <5 s) | 0.553 | 47/85 | 314.6 | 11 |
+| per-second averaging only | 0.494 | 42/85 | 237.8 | 13 |
+| **source method (averaging + shaping)** | **0.494** | **42/85** | **222.9** | **10** |
 
-The decision stage more than halves the false-alarm rate (485.4 → 223.5) for 7 percentage points
-of sensitivity. With the larger sample, **shaping alone now looks like the better operating point
-for a triage tool**: it keeps 54.1 % sensitivity at 319.8 FP/24 h, where averaging buys a further
-FP reduction at the cost of 6 more missed seizures. Switch with
-`USE_PER_SECOND_AVERAGING` in `eval_config.py`.
+Reproducing the source method's decision stage — not its model — cuts the false-alarm rate
+**2.1×** (478.0 → 222.9) for 7 percentage points of sensitivity. Note this is the *decision
+stage* alone; the separate FP-counting bug fix is described in `reproduction_status.md` §3 and
+must not be folded into the same multiplier.
 
-### Threshold sweep, source method, full corpus
+With this sample, **shaping alone is arguably the better triage operating point**: 55.3 % at
+314.6 FP/24 h against 49.4 % at 222.9 — five more seizures caught for an alarm burden a reviewer
+can dismiss. Switch with `USE_PER_SECOND_AVERAGING` in `eval_config.py`.
+
+### Threshold sweep, source method
 
 | threshold | sensitivity | hits | FP | FP/24 h | duplicates |
 |---|---|---|---|---|---|
-| 0.50 | 0.482 | 41/85 | 390 | 223.5 | 9 |
-| 0.30 | 0.565 | 48/85 | 570 | 326.7 | 10 |
-| 0.10 | 0.588 | 50/85 | 695 | 398.3 | 8 |
-| 0.05 | 0.635 | 54/85 | 781 | 447.6 | 9 |
-| 0.01 | 0.741 | 63/85 | 967 | 554.2 | 6 |
+| 0.50 | 0.494 | 42/85 | 237 | 204.4 | 10 |
+| 0.30 | 0.565 | 48/85 | 352 | 303.6 | 10 |
+| 0.10 | 0.588 | 50/85 | 457 | 394.2 | 10 |
+| 0.05 | 0.647 | 55/85 | 522 | 450.2 | 9 |
+| 0.01 | 0.718 | 61/85 | 650 | 560.6 | 5 |
 
-### Reviewer-triage simulation, threshold 0.5
+(The sweep runs at the configured operating point, so its 0.50 row differs slightly from the
+ablation table above, which re-scores each configuration independently.)
 
-**Seizure-file recall 0.750 (33/44)** · background false-flag rate 0.487 (127/261) · 1,985
-candidate windows over 41.9 h.
+### Reviewer-triage view, threshold 0.5
 
-Read this as the triage claim the thesis can actually make: at the default threshold the system
-routes **three quarters of seizure-bearing recordings** to a reviewer, while also flagging about
-half the background recordings — so it reduces, but does not remove, the reading burden. The
-data-reduction framing (how much raw EEG a reviewer can safely skip) is the honest figure of
-merit here, not sensitivity alone.
+**Seizure-file recall 0.750 (33/44)** · background false-flag rate 0.451 (73/162) · 1,235
+candidate windows over 27.8 h · window ROC-AUC 0.80, PR-AUC 0.39.
+
+At the default threshold the system routes **three quarters of seizure-bearing recordings** to a
+reviewer while also flagging about **45 % of background recordings** — it reduces the reading
+burden without removing it. Data reduction, not sensitivity alone, is the honest figure of merit.
+
+**Event matching is 5 s proximity, not overlap** (`compare_zuna.py:126-128`), and greedy, so a
+"detected" seizure can be a prediction landing just outside it and sensitivity is a lower bound.
 
 ---
 
@@ -224,14 +253,41 @@ target is the ICA/preprocessing front end. See `docs/deployment_roadmap.md` §5.
 
 ## 7. Known limitations that bound all of the above
 
-- **One file scores nothing.** `aaaaaqtw_s002_t012` has all 49 windows rejected by
-  `detect_interupted_data` and scores 0.0 throughout, despite containing a 27-second reference
-  seizure. Those windows are excluded from the AUC (they measure preprocessing drop-out, not
-  model quality) but are guaranteed misses at event level. Report the skip rate beside
-  sensitivity.
+- **99 of 305 cached recordings have no `.csv_bi`** and are excluded from every number here.
+  At least 6 of them contain seizures per their per-channel `.csv`. They are not evidence of
+  anything and must not be counted as background.
+- **6.3 % of all windows (1,560 of 24,770) were never assessed** by the pipeline — rejected by
+  the artifact check or by a failed ICA. They are excluded from the window AUC (which measures
+  model quality, not preprocessing drop-out) and count as non-detections at event level. One
+  recording, `aaaaaqtw_s002_t012`, has all 49 windows rejected and contains a real 27-second
+  seizure.
 - **Probabilities are uncalibrated raw softmax.** No temperature, Platt, or isotonic scaling.
   The `temp = 1.0` Lambda in `models/deep_conv_lstm.py:84` is the identity.
-- **The manifest is seizure-enriched**, so it is not a realistic specificity test. The paper
-  makes the same point about TUH generally ("TUH dataset do not provide a realistic specificity
-  test venue").
-- **Corpus version mismatch** with the weights' training data throughout (v2.0.0 vs v1.5.1).
+- **Corpus version mismatch** throughout: weights trained on v1.5.1, evaluated on v2.0.0.
+- **Train/test disjointness is assumed, not verified.** v1.5.1 IDs are numeric
+  (`00000258_s001_t000`) and v2.0.0 stems are anonymised (`aaaaaaaq_s006_t000`), so the two
+  schemes cannot be cross-referenced locally. TUSZ maintains patient-disjoint splits by
+  construction; state that this is taken on the corpus documentation's word.
+- **Event matching uses 5 s proximity, greedily** — sensitivity is a lower bound.
+
+---
+
+## 8. Inference is not bit-reproducible
+
+`random_state=13` at `utils/preprocessing.py:71` is **not sufficient** to make the pipeline
+deterministic. Re-running `compute_probs` on an unchanged EDF reproduces its own cache for some
+windows and then diverges — one measured window moved by 0.107. Regenerating the caches
+therefore moves per-file AUCs slightly and shifts pooled figures in the third decimal.
+
+Consequences to respect:
+
+1. **Quote two significant figures** for every derived number. The digits beyond that are not
+   stable across regenerations.
+2. **Regenerate all artefacts in one pass** with no cache writers running, and commit them
+   together. Numbers from different passes must never be mixed in one table.
+3. This also corrects `docs/ica_implementation_review.md`, which described the non-converged ICA
+   as "at least deterministic". It is not.
+
+The cause is not established. FastICA fails to converge on most windows (§4 and the ICA review),
+so the returned unmixing matrix is wherever the iteration stopped, and that appears sensitive to
+floating-point details that `random_state` does not control.

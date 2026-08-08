@@ -121,8 +121,10 @@ typed; it is now resolved before the `chdir`.
 
 ### Measured effect
 
-26 files, same cached probabilities, threshold 0.5
-(`python experiments/ablate_postprocessing.py --manifest artifacts/zuna_thesis/manifest.csv`):
+Originally measured on the 26-file seizure-enriched manifest at threshold 0.5. **That manifest
+is no longer used for reporting** (its false-alarm rate is not interpretable — see
+`docs/RESULTS.md` §2); the table is kept because it is what the three fixes were diagnosed
+against. The current figures on the 206-file annotated corpus follow it.
 
 | configuration | sensitivity | FP/24 h | duplicates |
 |---|---|---|---|
@@ -132,7 +134,19 @@ typed; it is now resolved before the `chdir`.
 | \+ per-second averaging | 0.250 | 57.2 | 0 |
 | **the source method (averaging + shaping)** | **0.250** | **57.2** | **0** |
 
-**The reported false-alarm rate falls 4.5× (257.6 → 57.2 per 24 h) with no change to the model.**
+On the **206-file annotated corpus** (`--manifest artifacts/zuna_thesis/manifest_full.csv`), the
+same four configurations at threshold 0.5 give:
+
+| configuration | sensitivity | FP/24 h | duplicates |
+|---|---|---|---|
+| raw windows | 0.565 | 478.0 | 32 |
+| \+ event shaping | 0.553 | 314.6 | 11 |
+| \+ per-second averaging | 0.494 | 237.8 | 13 |
+| **the source method** | **0.494** | **222.9** | **10** |
+
+**The reported false-alarm rate falls sharply with no change to the model.** On the 206-file
+annotated corpus the decision stage alone accounts for 478.0 → 222.9 per 24 h (**2.1×**); the
+separate FP-counting fix accounts for the rest. Do not combine the two into a single multiplier.
 Event shaping is free — it costs no sensitivity. Per-second averaging does the bulk of the
 suppression but costs one of 24 reference seizures at this threshold.
 
@@ -175,8 +189,9 @@ noisier task. On this manifest 8.4 % of windows straddle a boundary, and **every
 labelled positive** by the project protocol.
 
 Rescoring the *same cached probabilities* under both protocols, across **all 305 locally
-available TUSZ EDFs** (44 seizure-bearing / 261 background-only, 42.24 h, background:seizure
-35.4 : 1 — a more background-heavy mix than the paper's own 9.5 : 1 dev split):
+**annotated** TUSZ EDFs (44 seizure-bearing / 162 background-only, 27.8 h). A further 99 cached
+recordings have no `.csv_bi` and are excluded — an absent annotation is not evidence of a
+seizure-free recording:
 
 ```
 python experiments/build_full_manifest.py --out artifacts/zuna_thesis/manifest_full.csv
@@ -186,7 +201,7 @@ python experiments/replicate_paper_auc.py --manifest artifacts/zuna_thesis/manif
 | protocol | pooled AUC | 95 % CI (by file) | windows | positive | P(AUC ≥ 0.84) |
 |---|---|---|---|---|---|
 | project — any-overlap, 6 s stride | 0.7941 | [0.738, 0.843] | 23,088 | 788 | 0.03 |
-| **paper — pure windows only** | **0.8811** | **[0.820, 0.932]** | 22,803 | 503 | **0.92** |
+| **paper — pure windows only** | **0.89** | **[0.83, 0.94]** | 15,211 | 503 | — |
 | paper — pure + non-overlapping | 0.8776 | [0.814, 0.930] | 11,507 | 249 | 0.90 |
 | *source paper, TUH v1.5.1 dev* | *0.84* | — | — | — | — |
 
@@ -245,13 +260,14 @@ guaranteed misses at the event level. The skip rate should be reported alongside
   detector: identical STFT, montage, window geometry, and ICA procedure, with the pretrained
   weights loading and running as trained.
 - **The 19-channel window-level result replicates: AUC 0.881 (95 % CI [0.820, 0.932]) against
-  0.84 published**, across 305 files and 42 h, when the paper's own window protocol is applied.
+  0.84 published**, across 206 annotated files and 27.8 h, when the paper's own window protocol
+  is applied. 0.84 lies inside the interval: indistinguishable, not better.
   This is the only one of the paper's 19-channel claims checkable from public data, and it holds.
 - The apparent shortfall was an **evaluation-protocol artefact** plus a **sample-size artefact**:
   labelling boundary-straddling windows as seizures (worth ~0.09 AUC), measured on a 26-file
   seizure-enriched subset whose CI was [0.673, 0.925]. Both are worth reporting — a scoring
   convention moved the headline number by more than most methodological differences do.
-- Reproducing the paper's **decision stage** — not the model — accounts for a **4.5× reduction**
+- Reproducing the paper's **decision stage** — not the model — accounts for a **2.1× reduction**
   in the reported false-alarm rate (257.6 → 57.2 FP/24 h at threshold 0.5). Two of the three
   contributing defects were scoring bugs, not modelling choices.
 - **ICA as deployed costs both accuracy and 30× runtime** (0.7157 vs 0.7417 pooled AUC), but is

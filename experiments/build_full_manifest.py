@@ -63,7 +63,7 @@ def main(argv=None):
     edfs = sorted(glob.glob(os.path.join(root, '**', '*.edf'), recursive=True))
 
     rows = []
-    n_seiz_files = n_bg_files = 0
+    n_seiz_files = n_bg_files = n_unannotated = 0
     total_dur = seiz_dur = 0.0
     n_seizures = 0
     for edf in edfs:
@@ -71,22 +71,34 @@ def main(argv=None):
         if args.cached_only and not cached:
             continue
         ref = os.path.splitext(edf)[0] + '.csv_bi'
+        has_reference = os.path.exists(ref)
         events = [e for e in read_csv_bi(ref) if e.get('label') == 'seiz']
         duration = duration_for(edf, ref)
         s_dur = sum(float(e['stop']) - float(e['start']) for e in events)
 
-        cohort = 'seizure' if events else 'nonseizure'
-        if events:
+        # A missing .csv_bi is NOT a seizure-free recording. read_csv_bi returns
+        # [] for both, so calling an unannotated file "nonseizure" asserts a
+        # ground truth nobody has — and at least 6 such files here do contain
+        # seizures according to their per-channel .csv. Give them their own
+        # cohort so they can be excluded rather than silently counted.
+        if not has_reference:
+            cohort = 'unannotated'
+            n_unannotated += 1
+        elif events:
+            cohort = 'seizure'
             n_seiz_files += 1
             n_seizures += len(events)
             seiz_dur += s_dur
+            total_dur += duration
         else:
+            cohort = 'nonseizure'
             n_bg_files += 1
-        total_dur += duration
+            total_dur += duration
 
         rows.append({
             'stem': os.path.splitext(os.path.basename(edf))[0],
             'cohort': cohort,
+            'has_reference': int(has_reference),
             'duration_s': round(duration, 1),
             'seiz_count': len(events),
             'seiz_total_s': round(s_dur, 2),
@@ -100,8 +112,8 @@ def main(argv=None):
         os.makedirs(parent)
     with open(out, 'w') as f:
         w = csv.DictWriter(f, fieldnames=[
-            'stem', 'cohort', 'duration_s', 'seiz_count', 'seiz_total_s',
-            'cached', 'edf'], lineterminator='\n')
+            'stem', 'cohort', 'has_reference', 'duration_s', 'seiz_count',
+            'seiz_total_s', 'cached', 'edf'], lineterminator='\n')
         w.writeheader()
         w.writerows(rows)
 
@@ -110,7 +122,10 @@ def main(argv=None):
     print('  seizure-bearing : {:>4}  ({} seizures, {:.2f} h ictal)'.format(
         n_seiz_files, n_seizures, seiz_dur / 3600.0))
     print('  background-only : {:>4}'.format(n_bg_files))
-    print('  total duration  : {:.2f} h'.format(total_dur / 3600.0))
+    print('  UNANNOTATED     : {:>4}  (no .csv_bi — excluded from scoring;'
+          ' not evidence of absence)'.format(n_unannotated))
+    print('  scorable total  : {:>4}'.format(n_seiz_files + n_bg_files))
+    print('  scorable duration: {:.2f} h'.format(total_dur / 3600.0))
     print('  with probs cache: {:>4} / {}'.format(n_cached, len(rows)))
     if total_dur > 0 and seiz_dur > 0:
         print('  background:seizure duration ratio = {:.1f}:1'.format(

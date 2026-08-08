@@ -123,7 +123,16 @@ def _safe_auc(labels, scores, kind):
 # per-file load + score
 # --------------------------------------------------------------------------
 def load_file(edf_abs, cohort, exclude_zero=True):
-    """Load one file's cached probs + refs; return a record or None if no cache."""
+    """Load one file's cached probs + refs; return a record or None if no cache.
+
+    A file with NO `.csv_bi` at all is returned with ``has_reference=False`` and
+    must not be scored: an absent annotation file is indistinguishable from a
+    seizure-free one once `read_csv_bi` returns `[]`, so counting it as
+    background silently asserts ground truth nobody verified. 99 of the 305
+    locally cached recordings are in this state, and at least 6 of them do
+    contain seizures according to their per-channel `.csv`. Callers decide what
+    to do; `main()` excludes them and says how many.
+    """
     cache = cache_path_for(edf_abs)
     loaded = load_probability_file(cache)
     if loaded is None:
@@ -131,6 +140,7 @@ def load_file(edf_abs, cohort, exclude_zero=True):
     starts = np.asarray(loaded['window_starts'], dtype=np.int32)
     probs = np.asarray(loaded['probs'], dtype=np.float32)
     ref_path = os.path.splitext(edf_abs)[0] + '.csv_bi'
+    has_reference = os.path.exists(ref_path)
     refs = read_reference_events(ref_path)
     duration_s = read_reference_duration(ref_path)
     if duration_s is None and starts.size:
@@ -142,6 +152,7 @@ def load_file(edf_abs, cohort, exclude_zero=True):
 
     inferred_cohort = cohort or ('seizure' if refs else 'nonseizure')
     return {
+        'has_reference': has_reference,
         'edf': edf_abs,
         'stem': os.path.splitext(os.path.basename(edf_abs))[0],
         'cohort': inferred_cohort,
@@ -311,6 +322,10 @@ def build_arg_parser():
     ap.add_argument('--review-threshold', type=float, default=cfg.THRESHOLD,
                     help='Operating threshold for the review simulation.')
     ap.add_argument('--tolerance', type=float, default=cfg.EVENT_TOLERANCE_S)
+    ap.add_argument('--score-unannotated', action='store_true',
+                    help='Score files with no .csv_bi as if they were '
+                         'seizure-free. Off by default: an absent annotation '
+                         'is not evidence of absence.')
     ap.add_argument('--keep-zero', action='store_true',
                     help='Keep prob==0 (skipped) windows in the AUC (default: exclude).')
     pp = ap.add_mutually_exclusive_group()
@@ -338,19 +353,27 @@ def main(argv=None):
     else:
         sources = list(iter_edf_args(args.edfs))
 
-    records, missing = [], []
+    records, missing, unannotated = [], [], []
     for edf_abs, cohort in sources:
         rec = load_file(edf_abs, cohort, exclude_zero=not args.keep_zero)
-        (records if rec is not None else missing).append(
-            rec if rec is not None else edf_abs)
+        if rec is None:
+            missing.append(edf_abs)
+        elif not rec['has_reference'] and not args.score_unannotated:
+            # No .csv_bi: scoring it would assert a ground truth nobody has.
+            unannotated.append(edf_abs)
+        else:
+            records.append(rec)
 
     if not records:
         raise SystemExit(
-            'No probability caches found. Run precompute_probs.py first.\n'
-            'Looked for <edf>.probs.npz next to {} EDF(s).'.format(len(sources)))
+            'No scorable files. Run precompute_probs.py first.\n'
+            'Looked for <edf>.probs.npz next to {} EDF(s); {} had no cache, '
+            '{} had no .csv_bi reference.'.format(
+                len(sources), len(missing), len(unannotated)))
 
     postprocess = (cfg.USE_SOURCE_POSTPROCESSING if args.postprocess is None
                    else args.postprocess)
+    average = getattr(cfg, 'USE_PER_SECOND_AVERAGING', True)
     win = window_level(records)
     sweep = event_sweep(records, args.thresholds, args.tolerance,
                         postprocess=postprocess)
@@ -362,6 +385,8 @@ def main(argv=None):
         'exclude_zero_prob_windows': not args.keep_zero,
         'n_files_scored': len(records),
         'n_files_missing_cache': len(missing),
+        'n_files_unannotated_excluded': len(unannotated),
+        'unannotated_excluded': [os.path.basename(u) for u in unannotated],
         'missing_caches': [os.path.basename(m) for m in missing],
         'window_level': win,
         'event_sweep': sweep,
@@ -375,10 +400,14 @@ def main(argv=None):
           '({} windows, {} positive)'.format(
               _fmt(win['pooled_window_auc']), _fmt(win['pooled_window_pr_auc']),
               win['n_windows'], win['n_pos_windows']))
-    print('\nEvent sweep (pooled) — source post-processing {}:'.format(
-        'ON (avg + concat <{:g}s + discard <{:g}s)'.format(
+    # Two INDEPENDENT switches. --no-postprocess turns off event shaping only;
+    # per-second averaging is governed separately by eval_config, so this must
+    # not be described as raw-window thresholding.
+    print('\nEvent sweep (pooled) — averaging {}, event shaping {}:'.format(
+        'ON' if average else 'OFF',
+        'ON (concat <{:g}s + discard <{:g}s)'.format(
             cfg.MAX_MERGE_GAP_S, cfg.MIN_EVENT_DURATION_S)
-        if postprocess else 'OFF (raw window threshold)'))
+        if postprocess else 'OFF'))
     print('  {:>6}  {:>5}  {:>7}  {:>5}  {:>9}  {:>5}'.format(
         'thr', 'sens', 'hits', 'fp', 'fp/24h', 'dup'))
     for s in sweep:

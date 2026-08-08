@@ -58,7 +58,7 @@ The detector environment is `seiz36` (Python 3.6 / TF 1.15 / PyQt5); see
 **Reproducible evaluation** (no GUI, no TensorFlow — scores the cached probs):
 
 ```
-# 0. build the evaluation manifest over every local TUSZ EDF (305 files, 42 h)
+# 0. build the evaluation manifest (206 annotated files scorable; 99 unannotated excluded)
 python experiments/build_full_manifest.py --out artifacts/zuna_thesis/manifest_full.csv
 
 # score any files that lack a cache — shard across cores, e.g. 8 processes:
@@ -69,7 +69,7 @@ python experiments/build_full_manifest.py --out artifacts/zuna_thesis/manifest_f
 # all three views: window AUC, event threshold sweep, reviewer-triage simulation
 python experiments/evaluate_baseline.py \
   --manifest artifacts/zuna_thesis/manifest_full.csv \
-  --name full303 --out artifacts/zuna_thesis/baseline_eval/full303.json
+  --name full_scorable --out artifacts/zuna_thesis/baseline_eval/full_scorable.json
 
 # window AUC under the source paper's own protocol (the replication result)
 python experiments/replicate_paper_auc.py --manifest artifacts/zuna_thesis/manifest_full.csv
@@ -109,8 +109,9 @@ is stale. Supporting documents:
 The detector is the 19-channel / 12-second / ICA ConvLSTM of Yang et al.,
 *Continental generalization of a human-in-the-loop AI system for clinical seizure
 recognition* (Expert Syst. Appl. 207:118083, 2022). Scored under that paper's own
-window protocol this reconstruction reaches **AUC 0.881** (95 % CI [0.820, 0.932],
-305 files, 42 h) against the **0.84** it reports for TUH — a replication. Its RPAH figures are not reproducible here (private
+window protocol this reconstruction reaches **AUC 0.89** (95 % CI [0.83, 0.94],
+206 annotated files, 27.8 h) against the **0.84** it reports for TUH — statistically
+indistinguishable from the published value. Its RPAH figures are not reproducible here (private
 clinical data, 20-channel model), and it publishes no TUH sensitivity or
 false-alarm rate, so no event-level number here has a published counterpart.
 

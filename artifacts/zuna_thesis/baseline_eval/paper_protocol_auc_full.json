@@ -1,13 +1,13 @@
 {
   "n_boundary_windows": 302,
-  "n_files": 303,
-  "n_windows": 24590,
+  "n_files": 206,
+  "n_windows": 16439,
   "per_file": [
     {
       "cohort": "seizure",
-      "paper_pure_nonoverlapping": 0.541338807161592,
-      "paper_pure_windows": 0.5492457083405583,
-      "project_any_overlap": 0.5637599624941396,
+      "paper_pure_nonoverlapping": 0.5443849021435229,
+      "paper_pure_windows": 0.5503608778907055,
+      "project_any_overlap": 0.5600955794504181,
       "stem": "aaaaaaaq_s006_t000"
     },
     {
@@ -50,42 +50,7 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaaamc_s012_t002"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaaamc_s013_t001"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaarq_s014_t002"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaarq_s014_t003"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaarq_s014_t009"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaarq_s014_t011"
     },
     {
       "cohort": "nonseizure",
@@ -96,16 +61,16 @@
     },
     {
       "cohort": "seizure",
-      "paper_pure_nonoverlapping": 0.4444444444444444,
-      "paper_pure_windows": 0.6666666666666667,
-      "project_any_overlap": 0.6260683760683761,
+      "paper_pure_nonoverlapping": 0.5,
+      "paper_pure_windows": 0.6527777777777778,
+      "project_any_overlap": 0.6816239316239316,
       "stem": "aaaaaarq_s016_t002"
     },
     {
       "cohort": "seizure",
-      "paper_pure_nonoverlapping": 0.359375,
-      "paper_pure_windows": 0.23484848484848483,
-      "project_any_overlap": 0.22727272727272727,
+      "paper_pure_nonoverlapping": 0.328125,
+      "paper_pure_windows": 0.2803030303030303,
+      "project_any_overlap": 0.24242424242424243,
       "stem": "aaaaaarq_s016_t003"
     },
     {
@@ -124,16 +89,16 @@
     },
     {
       "cohort": "seizure",
-      "paper_pure_nonoverlapping": 0.25,
-      "paper_pure_windows": 0.33333333333333326,
-      "project_any_overlap": 0.5733333333333333,
+      "paper_pure_nonoverlapping": 0.0,
+      "paper_pure_windows": 0.2666666666666666,
+      "project_any_overlap": 0.5733333333333334,
       "stem": "aaaaaarq_s016_t007"
     },
     {
       "cohort": "seizure",
-      "paper_pure_nonoverlapping": 1.0,
-      "paper_pure_windows": 0.8823529411764706,
-      "project_any_overlap": 0.7352941176470589,
+      "paper_pure_nonoverlapping": 0.9411764705882353,
+      "paper_pure_windows": 0.9117647058823529,
+      "project_any_overlap": 0.7274509803921568,
       "stem": "aaaaaarq_s017_t000"
     },
     {
@@ -193,67 +158,11 @@
       "stem": "aaaaaarq_s018_t000"
     },
     {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaarq_s018_t002"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaarq_s018_t003"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaghb_s009_t002"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaghb_s009_t003"
-    },
-    {
       "cohort": "seizure",
       "paper_pure_nonoverlapping": 1.0,
       "paper_pure_windows": 1.0,
-      "project_any_overlap": 0.8846153846153846,
+      "project_any_overlap": 0.8653846153846154,
       "stem": "aaaaaghb_s010_t000"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaghb_s010_t005"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaahlk_s004_t000"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaahlk_s004_t001"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaahlk_s004_t002"
     },
     {
       "cohort": "nonseizure",
@@ -289,34 +198,6 @@
       "paper_pure_windows": null,
       "project_any_overlap": null,
       "stem": "aaaaahlk_s007_t002"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaahlk_s007_t004"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaahlk_s007_t007"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaahlk_s007_t008"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaahlk_s007_t009"
     },
     {
       "cohort": "nonseizure",
@@ -372,13 +253,6 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaahsi_s011_t000"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaahsi_s013_t003"
     },
     {
@@ -391,8 +265,8 @@
     {
       "cohort": "seizure",
       "paper_pure_nonoverlapping": 1.0,
-      "paper_pure_windows": 0.9515151515151515,
-      "project_any_overlap": 0.9696969696969697,
+      "paper_pure_windows": 0.9575757575757575,
+      "project_any_overlap": 0.9696969696969696,
       "stem": "aaaaahsi_s014_t000"
     },
     {
@@ -411,9 +285,9 @@
     },
     {
       "cohort": "seizure",
-      "paper_pure_nonoverlapping": 0.991869918699187,
-      "paper_pure_windows": 0.9678571428571429,
-      "project_any_overlap": 0.7715909090909091,
+      "paper_pure_nonoverlapping": 1.0,
+      "paper_pure_windows": 1.0,
+      "project_any_overlap": 0.8395721925133691,
       "stem": "aaaaaijh_s006_t000"
     },
     {
@@ -428,21 +302,7 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaajdj_s005_t000"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaajdj_s005_t001"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaajdj_s005_t003"
     },
     {
       "cohort": "nonseizure",
@@ -476,7 +336,7 @@
       "cohort": "seizure",
       "paper_pure_nonoverlapping": 1.0,
       "paper_pure_windows": 0.974074074074074,
-      "project_any_overlap": 0.763157894736842,
+      "project_any_overlap": 0.7649122807017544,
       "stem": "aaaaajru_s031_t002"
     },
     {
@@ -505,49 +365,7 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaajru_s032_t001"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaajru_s032_t002"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaajru_s032_t003"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaajru_s032_t004"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaajru_s036_t000"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaajru_s036_t002"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaajru_s036_t007"
     },
     {
       "cohort": "nonseizure",
@@ -561,35 +379,7 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaajru_s037_t004"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaajru_s037_t005"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaajru_s038_t000"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaajru_s038_t001"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaajru_s038_t006"
     },
     {
       "cohort": "seizure",
@@ -599,60 +389,11 @@
       "stem": "aaaaajru_s038_t008"
     },
     {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaajru_s038_t009"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaajru_s038_t010"
-    },
-    {
       "cohort": "seizure",
       "paper_pure_nonoverlapping": 0.9463414634146341,
       "paper_pure_windows": 0.9204545454545454,
       "project_any_overlap": 0.7611842105263158,
       "stem": "aaaaajru_s038_t011"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaapsl_s005_t002"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaapsl_s005_t003"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaapsl_s005_t004"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaapsl_s005_t006"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaapsl_s005_t007"
     },
     {
       "cohort": "nonseizure",
@@ -855,48 +596,20 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaaqld_s003_t006"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaqld_s003_t007"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaqld_s004_t008"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaaqtq_s003_t001"
     },
     {
       "cohort": "seizure",
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": 1.0,
-      "project_any_overlap": 0.6129629629629629,
+      "project_any_overlap": 0.611111111111111,
       "stem": "aaaaaqtq_s006_t005"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaqtw_s001_t000"
     },
     {
       "cohort": "seizure",
       "paper_pure_nonoverlapping": 0.875,
       "paper_pure_windows": 0.8888888888888888,
-      "project_any_overlap": 0.8333333333333333,
+      "project_any_overlap": 0.8541666666666666,
       "stem": "aaaaaqtw_s002_t001"
     },
     {
@@ -936,9 +649,9 @@
     },
     {
       "cohort": "seizure",
-      "paper_pure_nonoverlapping": 0.911764705882353,
-      "paper_pure_windows": 0.9162393162393163,
-      "project_any_overlap": 0.923076923076923,
+      "paper_pure_nonoverlapping": 0.9434389140271493,
+      "paper_pure_windows": 0.9247863247863247,
+      "project_any_overlap": 0.9270471464019852,
       "stem": "aaaaaqtw_s002_t007"
     },
     {
@@ -981,13 +694,6 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaaqvx_s003_t004"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaaqvx_s003_t005"
     },
     {
@@ -1017,34 +723,6 @@
       "paper_pure_windows": null,
       "project_any_overlap": null,
       "stem": "aaaaaqvx_s010_t000"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaqvx_s010_t003"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaqvx_s010_t004"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaqvx_s010_t005"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaqvx_s010_t006"
     },
     {
       "cohort": "nonseizure",
@@ -1100,27 +778,6 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaaraf_s001_t000"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaraf_s001_t001"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaraf_s001_t002"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaaraf_s002_t000"
     },
     {
@@ -1159,17 +816,10 @@
       "stem": "aaaaaraf_s003_t007"
     },
     {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaaraf_s003_t009"
-    },
-    {
       "cohort": "seizure",
       "paper_pure_nonoverlapping": 0.8235294117647058,
-      "paper_pure_windows": 0.8352941176470587,
-      "project_any_overlap": 0.7752100840336135,
+      "paper_pure_windows": 0.838235294117647,
+      "project_any_overlap": 0.773109243697479,
       "stem": "aaaaaraf_s004_t000"
     },
     {
@@ -1278,13 +928,6 @@
       "stem": "aaaaardf_s003_t000"
     },
     {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaardf_s004_t000"
-    },
-    {
       "cohort": "seizure",
       "paper_pure_nonoverlapping": 1.0,
       "paper_pure_windows": 1.0,
@@ -1296,49 +939,7 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaardf_s004_t004"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaardf_s004_t005"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaardf_s004_t006"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaardf_s004_t007"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaardf_s004_t009"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaardf_s004_t010"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaardf_s004_t013"
     },
     {
       "cohort": "seizure",
@@ -1365,7 +966,7 @@
       "cohort": "seizure",
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
-      "project_any_overlap": 0.8768115942028986,
+      "project_any_overlap": 0.8985507246376812,
       "stem": "aaaaardf_s005_t002"
     },
     {
@@ -1450,13 +1051,6 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaardf_s006_t002"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaardf_s006_t003"
     },
     {
@@ -1465,13 +1059,6 @@
       "paper_pure_windows": null,
       "project_any_overlap": null,
       "stem": "aaaaardf_s006_t004"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaardf_s006_t008"
     },
     {
       "cohort": "nonseizure",
@@ -1492,20 +1079,6 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaarei_s008_t005"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarei_s008_t008"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaarei_s008_t009"
     },
     {
@@ -1513,42 +1086,7 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaarei_s014_t006"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarei_s014_t008"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarei_s014_t011"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarei_s014_t013"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaarei_s014_t022"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarjc_s007_t000"
     },
     {
       "cohort": "nonseizure",
@@ -1570,13 +1108,6 @@
       "paper_pure_windows": null,
       "project_any_overlap": null,
       "stem": "aaaaarjc_s010_t000"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarjc_s010_t002"
     },
     {
       "cohort": "seizure",
@@ -1604,28 +1135,7 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaarjc_s010_t007"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaarjc_s010_t008"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarml_s007_t000"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarml_s007_t001"
     },
     {
       "cohort": "nonseizure",
@@ -1639,42 +1149,7 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaarml_s007_t004"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarml_s007_t008"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarml_s007_t009"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarml_s007_t010"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaarpu_s003_t000"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarpu_s003_t001"
     },
     {
       "cohort": "seizure",
@@ -1688,41 +1163,6 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaarpu_s003_t008"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarpu_s004_t000"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarpu_s004_t001"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarpu_s004_t003"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarpu_s004_t004"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaarpu_s004_t005"
     },
     {
@@ -1730,42 +1170,7 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaarpu_s004_t007"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarpu_s004_t009"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaarpu_s004_t011"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarpv_s002_t003"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarpv_s002_t005"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaarpv_s002_t007"
     },
     {
       "cohort": "nonseizure",
@@ -1800,27 +1205,6 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaasip_s003_t003"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaasip_s008_t001"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaasip_s008_t003"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaasip_s008_t004"
     },
     {
@@ -1835,21 +1219,7 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaasjz_s003_t000"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaasjz_s003_t003"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaasjz_s003_t004"
     },
     {
       "cohort": "nonseizure",
@@ -1870,27 +1240,6 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaasjz_s003_t009"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaasjz_s003_t010"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaasnu_s004_t000"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaasnu_s004_t002"
     },
     {
@@ -1905,21 +1254,7 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaasnu_s004_t004"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
       "stem": "aaaaasnu_s004_t006"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaasnu_s004_t008"
     },
     {
       "cohort": "nonseizure",
@@ -2059,21 +1394,14 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
+      "stem": "aaaaasnu_s007_t006"
+    },
+    {
+      "cohort": "nonseizure",
+      "paper_pure_nonoverlapping": null,
+      "paper_pure_windows": null,
+      "project_any_overlap": null,
       "stem": "aaaaasvq_s003_t000"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaatao_s002_t000"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaatao_s002_t002"
     },
     {
       "cohort": "seizure",
@@ -2081,13 +1409,6 @@
       "paper_pure_windows": 0.9814814814814815,
       "project_any_overlap": 0.9259259259259259,
       "stem": "aaaaatao_s002_t003"
-    },
-    {
-      "cohort": "nonseizure",
-      "paper_pure_nonoverlapping": null,
-      "paper_pure_windows": null,
-      "project_any_overlap": null,
-      "stem": "aaaaatao_s002_t004"
     },
     {
       "cohort": "seizure",
@@ -2101,7 +1422,7 @@
       "paper_pure_nonoverlapping": null,
       "paper_pure_windows": null,
       "project_any_overlap": null,
-      "stem": "aaaaatao_s002_t006"
+      "stem": "aaaaatao_s002_t007"
     },
     {
       "cohort": "seizure",
@@ -2128,45 +1449,45 @@
   "pooled": {
     "paper_pure_nonoverlapping": {
       "bootstrap": {
-        "ci_hi": 0.929871708273129,
-        "ci_lo": 0.8138059413375943,
+        "ci_hi": 0.9378992088987008,
+        "ci_lo": 0.8191298128937231,
         "n_boot": 2000,
-        "p_ge_target": 0.9015,
+        "p_ge_target": 0.9175,
         "target": 0.84
       },
-      "mean_per_file_auc": 0.8769729222895721,
+      "mean_per_file_auc": 0.8694208101199262,
       "n_files_with_auc": 32,
       "n_positive": 249,
-      "n_windows": 11507,
-      "pooled_auc": 0.8776336470415327
+      "n_windows": 7678,
+      "pooled_auc": 0.8856054180377454
     },
     "paper_pure_windows": {
       "bootstrap": {
-        "ci_hi": 0.9316326396407119,
-        "ci_lo": 0.8198775466985021,
+        "ci_hi": 0.9409351526995894,
+        "ci_lo": 0.8260419889253982,
         "n_boot": 2000,
-        "p_ge_target": 0.9185,
+        "p_ge_target": 0.943,
         "target": 0.84
       },
-      "mean_per_file_auc": 0.8820758961596118,
+      "mean_per_file_auc": 0.8834028835824377,
       "n_files_with_auc": 34,
       "n_positive": 503,
-      "n_windows": 22803,
-      "pooled_auc": 0.8810837218839428
+      "n_windows": 15211,
+      "pooled_auc": 0.8900654409144804
     },
     "project_any_overlap": {
       "bootstrap": {
-        "ci_hi": 0.8425410754235043,
-        "ci_lo": 0.7376996131811402,
+        "ci_hi": 0.8485089231927583,
+        "ci_lo": 0.7393022562419366,
         "n_boot": 2000,
-        "p_ge_target": 0.0305,
+        "p_ge_target": 0.062,
         "target": 0.84
       },
-      "mean_per_file_auc": 0.7993766122501507,
+      "mean_per_file_auc": 0.8030026704756327,
       "n_files_with_auc": 42,
       "n_positive": 788,
-      "n_windows": 23088,
-      "pooled_auc": 0.7941150326648609
+      "n_windows": 15496,
+      "pooled_auc": 0.8007806190629362
     }
   }
 }

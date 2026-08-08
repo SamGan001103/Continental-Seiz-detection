@@ -1,4 +1,4 @@
-# Replication vs. the source paper — side-by-side
+# Reproduction vs. the source paper — side-by-side
 
 *BMET4111 Thesis — Sam Gan, University of Sydney. Supervisor: Prof. Omid Kavehei.*
 
@@ -42,16 +42,18 @@ was not separately quantified).
 | | Source paper (TUH dev) | This work | Note |
 |---|---|---|---|
 | Corpus | TUSZ **v1.5.1**, `dev` split | TUSZ **v2.0.0**, `eval` split | different version *and* split |
-| Files | 1,013 | 305 | ~30 % as many |
+| Files scored | 1,013 | 206 | 99 further cached files have no annotation and are excluded |
 | Files with seizures | 280 | 44 | |
 | Seizures | 673 | 85 | |
-| Background duration | 154.1 h | 41.1 h | |
-| Seizure duration | 16.2 h | 1.16 h | |
-| **Total duration** | **170.3 h** | **42.24 h** | ~25 % as much |
-| **Background : seizure** | **9.5 : 1** | **35.4 : 1** | **ours is harder** |
+| Total duration | 170.3 h | 27.8 h | ~16 % as much |
 
-The set used here is smaller but proportionally **much more background-heavy**, so it is a
-sterner specificity test than the paper's own development split, not a softer one.
+The paper-side column is from its Table 1 (train/dev summary); cite that table directly if the
+figures are reproduced in the thesis.
+
+**On excluded files.** 99 of the 305 locally cached recordings have no `.csv_bi`. `read_csv_bi`
+returns `[]` for a missing file and for a seizure-free one alike, so scoring them as background
+would assert ground truth nobody has — and at least 6 of them contain seizures according to
+their per-channel `.csv`. They are excluded from every number in this document.
 
 ---
 
@@ -61,28 +63,30 @@ This is **the only claim in the paper that can be checked against public data.**
 
 | Method | Dataset | Protocol | AUC | 95 % CI |
 |---|---|---|---|---|
-| **Source paper** | TUH v1.5.1 dev | — (its own feature loader) | **0.84** | not reported |
-| **This work** | TUSZ v2.0.0 eval | **paper protocol** (pure windows) | **0.8811** | **[0.820, 0.932]** |
-| This work | TUSZ v2.0.0 eval | paper protocol, non-overlapping | 0.8776 | [0.814, 0.930] |
-| This work | TUSZ v2.0.0 eval | project protocol (any-overlap) | 0.7941 | [0.738, 0.843] |
+| **Source paper** | TUH v1.5.1 dev | its own feature loader | **0.84** | not reported |
+| **This work** | TUSZ v2.0.0 eval | **paper protocol** (pure windows) | **0.89** | **[0.83, 0.94]** |
+| This work | TUSZ v2.0.0 eval | paper protocol, non-overlapping | 0.89 | [0.82, 0.94] |
+| This work | TUSZ v2.0.0 eval | project protocol (any-overlap) | 0.80 | [0.74, 0.85] |
 
-**Verdict: replicated.** 0.881 vs 0.84, with the published value inside the interval and
-P(AUC ≥ 0.84) = 0.92 under a file-level bootstrap. Measured over 22,803 windows (503 positive)
-from 303 files.
+**Verdict: reproduced.** 0.84 lies inside the interval, and a one-sided file-level bootstrap
+gives p ≈ 0.06 — which does not reject the published value. The honest claim is **statistically
+indistinguishable from the published result**, not better than it. Measured over 15,211 windows
+(503 positive) from 206 recordings.
 
 Two things had to be right to see this:
 
-1. **Window protocol.** The paper's feature loader
-   (`utils/ICA_load_data_elec.py:115-157`) tiles each annotated interval with non-overlapping
-   12-second windows that fit **entirely inside** it, so every scored window is unambiguously
-   ictal or background. Labelling boundary-straddling windows as seizures instead — as a naive
-   sliding-window evaluation does — costs **~0.09 AUC**.
+1. **Window protocol.** The paper's loader (`utils/ICA_load_data_elec.py:115`) tiles each
+   annotated interval with windows that fit **entirely inside** it. Labelling boundary-straddling
+   windows as seizures instead — as a naive sliding-window evaluation does — costs **~0.09 AUC**.
+   That exclusion drops 1.8 % of all windows but **36.2 % of the positive class** (285 of 788);
+   state that figure, because quoting only the 1.8 % understates it badly. It is nonetheless
+   faithful rather than selective: `txt_file/ref_dev.txt` tiles all 1,013 dev recordings with
+   contiguous intervals and no gaps, so the source loop could not emit a boundary window.
 2. **Sample size.** On the original 26-file seizure-enriched subset the same measurement gave
-   0.822 with CI [0.673, 0.925] — too wide to distinguish from 0.84 (P = 0.39).
+   0.82 with CI [0.67, 0.93] — too wide to distinguish anything.
 
 Confidence intervals resample whole **files**, not windows: windows within one recording share
-patient, montage and artifact regime, so a window-level interval ([0.759, 0.880] on the subset)
-treats correlated windows as independent evidence and is too narrow to quote.
+patient, montage and artifact regime.
 
 ---
 
@@ -102,9 +106,9 @@ treats correlated windows as independent evidence and is too narrow to quote.
 > Our event-level false-alarm figures land in the same numeric neighbourhood as the paper's
 > **56.55 FA/24 h**. **This is coincidence.** Theirs is 14,590 h of private RPAH data through a
 > 20-channel model with the PWA/PEI lens, scored by SDR (which merges alarms within 30 s). Ours
-> is 42 h of public TUSZ through a 19-channel model with concatenate/discard shaping, scored by
-> per-event matching at 5 s tolerance. Different data, model, post-processing, metric, and two
-> orders of magnitude of recording time. Never present them as a comparison.
+> is 27.8 h of public TUSZ through a 19-channel model with concatenate/discard shaping, scored
+> by per-event matching at 5 s tolerance. Different data, model, post-processing, metric, and
+> about two and a half orders of magnitude of recording time. Never present them as a comparison.
 
 The 2020 SPMB two-channel paper asserts performance "improves dramatically when all 19
 electrodes" but publishes **no 19-channel number**, so there is nothing to replicate there either.
@@ -114,38 +118,38 @@ electrodes" but publishes **no 19-channel number**, so there is nothing to repli
 ## 5. Our event-level results — characterisation, not replication
 
 **No published TUH counterpart exists** (§4), so these describe this system only.
-305 files, 85 reference seizures, 42.24 h, threshold 0.5.
+206 annotated files, 85 reference seizures, 27.8 h, threshold 0.5.
 
 ### Decision-stage ablation
 
 | Configuration | Sensitivity | Hits | FP/24 h | Duplicates |
 |---|---|---|---|---|
-| raw windows (no decision stage) | 0.553 | 47/85 | 485.4 | 33 |
-| \+ event shaping (concat <10 s, discard <5 s) | 0.541 | 46/85 | 319.8 | 11 |
-| per-second averaging only | 0.482 | 41/85 | 237.8 | 12 |
-| **full source method (averaging + shaping)** | **0.482** | **41/85** | **223.5** | **9** |
+| raw windows (no decision stage) | 0.565 | 48/85 | 478.0 | 32 |
+| \+ event shaping (concat <10 s, discard <5 s) | 0.553 | 47/85 | 314.6 | 11 |
+| per-second averaging only | 0.494 | 42/85 | 237.8 | 13 |
+| **full source method (averaging + shaping)** | **0.494** | **42/85** | **222.9** | **10** |
 
-Reproducing the paper's *decision stage* — not its model — more than halves the false-alarm
-rate, for 7 percentage points of sensitivity.
+Reproducing the paper's *decision stage* — not its model — cuts the false-alarm rate **2.1×**
+for 7 percentage points of sensitivity.
 
 ### Threshold sweep (source method)
 
 | Threshold | Sensitivity | Hits | FP | FP/24 h |
 |---|---|---|---|---|
-| 0.50 | 0.482 | 41/85 | 390 | 223.5 |
-| 0.30 | 0.565 | 48/85 | 570 | 326.7 |
-| 0.10 | 0.588 | 50/85 | 695 | 398.3 |
-| 0.05 | 0.635 | 54/85 | 781 | 447.6 |
-| 0.01 | 0.741 | 63/85 | 967 | 554.2 |
+| 0.50 | 0.494 | 42/85 | 237 | 204.4 |
+| 0.30 | 0.565 | 48/85 | 352 | 303.6 |
+| 0.10 | 0.588 | 50/85 | 457 | 394.2 |
+| 0.05 | 0.647 | 55/85 | 522 | 450.2 |
+| 0.01 | 0.718 | 61/85 | 650 | 560.6 |
 
 ### Reviewer-triage view (threshold 0.5)
 
 | Metric | Value |
 |---|---|
 | Seizure-file recall | **0.750** (33/44) |
-| Background false-flag rate | 0.487 (127/261) |
-| Candidate windows | 1,985 over 41.9 h |
-| Window ROC-AUC / PR-AUC | 0.794 / 0.201 |
+| Background false-flag rate | 0.451 (73/162) |
+| Candidate windows | 1,235 over 27.8 h |
+| Window ROC-AUC / PR-AUC | 0.80 / 0.39 |
 
 ---
 
@@ -154,7 +158,7 @@ rate, for 7 percentage points of sensitivity.
 | Question | Answer |
 |---|---|
 | Is the pipeline the same detector? | Yes — configuration matches on every axis except two library minor versions. |
-| Does the TUH window AUC replicate? | **Yes. 0.881 [0.820, 0.932] vs 0.84 published.** |
+| Does the TUH window AUC reproduce? | **Yes — 0.89 [0.83, 0.94] vs 0.84 published; indistinguishable, not better.** |
 | Do the false positives replicate? | **No published TUH false-positive figure exists to replicate.** |
 | Does the TUH sensitivity replicate? | **No published TUH sensitivity figure exists to replicate.** |
 | Do the RPAH headline figures replicate? | **No, and they never can** — private data, 20-channel model. |
@@ -162,8 +166,8 @@ rate, for 7 percentage points of sensitivity.
 
 **One-line claim the thesis is entitled to make:** *the 19-channel continental-generalization
 detector was reconstructed from its published description and reproduces its only publicly
-checkable result, window-level AUC 0.881 (95 % CI [0.820, 0.932]) against 0.84 reported, on
-42 hours of public TUSZ.*
+checkable result: window-level AUC 0.89 (95 % CI [0.83, 0.94]) against 0.84 reported, on
+27.8 hours of public TUSZ, a difference not statistically distinguishable from zero.*
 
 ---
 
@@ -172,6 +176,6 @@ checkable result, window-level AUC 0.881 (95 % CI [0.820, 0.932]) against 0.84 r
 ```bash
 python experiments/build_full_manifest.py  --out artifacts/zuna_thesis/manifest_full.csv
 python experiments/replicate_paper_auc.py  --manifest artifacts/zuna_thesis/manifest_full.csv
-python experiments/evaluate_baseline.py    --manifest artifacts/zuna_thesis/manifest_full.csv --name full303
+python experiments/evaluate_baseline.py    --manifest artifacts/zuna_thesis/manifest_full.csv --name full_scorable
 python experiments/ablate_postprocessing.py --manifest artifacts/zuna_thesis/manifest_full.csv
 ```

@@ -3,7 +3,8 @@
 > **Note on the numbers quoted below.** This roadmap was written from an audit run *before* the
 > scoring fixes landed, so figures such as "26.3 % event sensitivity", "257.6 fp/24h", "171.7",
 > and "window AUC of 0.723" are the pre-fix values. Findings **R1** and **R2** in §3 are now
-> **fixed** (commit `35c3d3f`); the AUC is **0.881** under the source paper's window protocol (305 files).
+> **fixed** (commit `35c3d3f`); the AUC is **0.89** under the source paper's window protocol
+> (206 annotated files). Section 2's sensitivity figures are also pre-fix.
 > The engineering recommendations and the priority ordering are unaffected — only the illustrative
 > numbers. Current values: `docs/RESULTS.md`.
 

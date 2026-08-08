@@ -31,12 +31,14 @@ Scored against that paper instead, using its own window-labelling protocol:
 
 | | AUC | 95 % CI |
 |---|---|---|
-| **This reconstruction** | **0.881** | [0.820, 0.932] |
+| **This reconstruction** | **0.89** | [0.83, 0.94] |
 | Published (Table 2, TUH v1.5.1) | 0.84 | — |
 
-Measured across all 305 locally available TUSZ v2.0.0 files — 42 hours, 85 seizures, a
-background-to-seizure ratio of 35:1 (the paper's own dev split is 9.5:1, so this is a sterner
-specificity test, not an easier one).
+Measured across the 206 annotated TUSZ v2.0.0 files available locally — 27.8 hours, 85 seizures.
+(99 further recordings have no annotation file at all and are excluded; an absent annotation is
+not evidence of a seizure-free recording.) The published value sits inside my confidence
+interval, so the honest claim is that the reproduction is **statistically indistinguishable**
+from the published result — not that it beats it.
 
 Two things had been hiding this. First, an evaluation-protocol mismatch worth ~0.09 AUC: the
 paper's feature loader only ever emitted windows lying *entirely* inside one annotated interval,
@@ -45,15 +47,15 @@ size — on my original 26-file subset the confidence interval was [0.673, 0.925
 distinguish anything.
 
 I also found and fixed three scoring defects that had inflated the reported false-alarm rate by
-4.5×, and I've since audited the ICA stage in detail (below).
+2.1× (478 to 223 per 24 h), and I've since audited the ICA stage in detail (below).
 
 ## 2. Requirements the system must meet before any external review
 
 You asked for these specifically. My list, all of which are days rather than weeks:
 
 1. **An on-screen statement of what it is** — "research prototype, not for diagnostic use", in
-   the window title, the status bar, and the header of every exported annotation. It currently
-   says nothing, at 48 % event sensitivity.
+   the window title, the status bar, and the header of every exported annotation. (Done.)
+   Event sensitivity at the default threshold is 49 %.
 2. **No screen that states something false.** Two exist today: windows the pipeline *refused* to
    score render as confident zeros (one recording is 49/49 skipped and contains a real 27-second
    seizure, but draws as a flat zero strip), and the raw softmax is labelled "p(seiz)" and written

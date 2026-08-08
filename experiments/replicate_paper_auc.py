@@ -146,6 +146,9 @@ def main(argv=None):
         formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--manifest', required=True)
     ap.add_argument('--out', default=None)
+    ap.add_argument('--score-unannotated', action='store_true',
+                    help='Also score files with no .csv_bi, treating them '
+                         'as seizure-free. Off by default.')
     ap.add_argument('--keep-zero', action='store_true',
                     help='Keep prob==0 (preprocessing-skipped) windows.')
     ap.add_argument('--n-boot', type=int, default=2000,
@@ -154,13 +157,23 @@ def main(argv=None):
                     help="The source paper's published TUH AUC (Table 2).")
     args = ap.parse_args(argv)
 
-    records = []
+    records, unannotated = [], 0
     for edf_abs, cohort in iter_manifest_rows(os.path.abspath(args.manifest)):
         rec = load_file(edf_abs, cohort, exclude_zero=not args.keep_zero)
-        if rec is not None:
-            records.append(rec)
+        if rec is None:
+            continue
+        # Same exclusion as evaluate_baseline: a recording with no .csv_bi has
+        # no ground truth, so scoring its windows as negatives asserts an
+        # absence nobody verified. The two scripts must agree on the evaluation
+        # set or their numbers cannot be quoted side by side.
+        if not rec['has_reference'] and not args.score_unannotated:
+            unannotated += 1
+            continue
+        records.append(rec)
     if not records:
-        raise SystemExit('No probability caches found.')
+        raise SystemExit('No scorable files (no cache, or no .csv_bi).')
+    if unannotated:
+        print('excluded {} file(s) with no .csv_bi reference'.format(unannotated))
 
     variants = {
         'project_any_overlap': ([], []),
