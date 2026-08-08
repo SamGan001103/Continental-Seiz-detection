@@ -127,6 +127,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._zuna_run_settings = {}
         self._segment_s = 12
         self._nothing_assessed_warned = set()
+        self._dirty = False            # reviewer decisions not yet exported
         self._events = []
         self._threshold = 0.5
 
@@ -318,6 +319,9 @@ class MainWindow(QtWidgets.QMainWindow):
         add(',', lambda: self._bump_timebase(-1))
 
     def closeEvent(self, event):
+        if not self._confirm_discard_review('close the application'):
+            event.ignore()
+            return
         if self._zuna_thread is not None and self._zuna_thread.isRunning():
             answer = QtWidgets.QMessageBox.question(
                 self, 'Cancel full ZUNA?',
@@ -344,6 +348,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.load_edf(path)
 
     def load_edf(self, path):
+        if not self._confirm_discard_review('open another recording'):
+            return
         self._cancel_zuna_for_file_change()
         self.statusBar().showMessage('Loading {}…'.format(os.path.basename(path)))
         QtWidgets.QApplication.processEvents()
@@ -368,6 +374,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._duration_s = dur
         self._events = []
         self._events_by_source = {}
+        self._dirty = False
         self._prob_sources = {}
         self._prob_source = 'baseline'
         self._zuna_paths = zuna_session_paths(path)
@@ -1023,6 +1030,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.signal_view.update_event_status(event_id, 'accepted')
             self.event_list.update_row(event_id, ev)
             self.event_list._refresh_summary(self._events)
+            self._mark_dirty()
 
     def _on_reject(self, event_id):
         ev = self._find(event_id)
@@ -1031,6 +1039,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.signal_view.update_event_status(event_id, 'rejected')
             self.event_list.update_row(event_id, ev)
             self.event_list._refresh_summary(self._events)
+            self._mark_dirty()
 
     def _on_jump(self, event_id):
         ev = self._find(event_id)
@@ -1052,10 +1061,100 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.signal_view.update_event_status(event_id, 'edited')
             self.event_list.update_row(event_id, ev)
             self.event_list._refresh_summary(self._events)
+            self._mark_dirty()
 
     def _on_selection_change(self, event_id):
         if event_id > 0:
             self._on_jump(event_id)
+
+    # ==================================================================
+    # Unsaved-review protection (B3)
+    #
+    # Nothing a reviewer does reaches disk until they choose Export, and both
+    # opening another EDF and closing the window used to discard the session
+    # without asking. A reviewer who has worked through 40 candidates and then
+    # opens the next recording should not lose that silently.
+    # ==================================================================
+    def _reviewed_events(self):
+        return [ev for ev in self._events
+                if ev.get('status') in ('accepted', 'rejected', 'edited')]
+
+    def _mark_dirty(self):
+        self._dirty = True
+        self._autosave_review()
+        self._update_title()
+
+    def _update_title(self):
+        if not self._edf_path:
+            self.setWindowTitle(APP_NAME + TITLE_SUFFIX)
+            return
+        self.setWindowTitle('{}{} — {}{}'.format(
+            '*' if self._dirty else '', APP_NAME,
+            os.path.basename(self._edf_path), TITLE_SUFFIX))
+
+    def _autosave_path(self):
+        if not self._edf_path:
+            return None
+        return os.path.splitext(self._edf_path)[0] + '.review.autosave.json'
+
+    def _autosave_review(self):
+        """Write reviewer decisions beside the EDF after every change.
+
+        A crash-recovery record, not an export: it is deliberately not a
+        `.csv_bi`, so it can never be mistaken for an annotation file.
+        """
+        path = self._autosave_path()
+        if not path:
+            return
+        try:
+            payload = {
+                'edf': self._edf_path,
+                'ai_source': self._prob_source,
+                'threshold': float(self._threshold),
+                'events': [
+                    {'start': float(ev['start']), 'stop': float(ev['stop']),
+                     'status': ev['status'],
+                     'model_score_uncalibrated': float(ev.get('prob', 0.0))}
+                    for ev in self._reviewed_events()],
+                'note': 'Autosaved reviewer decisions. Not an annotation file.',
+            }
+            with open(path, 'w') as f:
+                json.dump(payload, f, indent=2, sort_keys=True)
+                f.write('\n')
+        except OSError:
+            pass          # autosave is best-effort; never block the reviewer
+
+    def _clear_autosave(self):
+        path = self._autosave_path()
+        if path and os.path.exists(path):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
+    def _confirm_discard_review(self, action):
+        """Ask before losing unexported decisions. True = proceed."""
+        n = len(self._reviewed_events())
+        if not self._dirty or not n:
+            return True
+        box = QtWidgets.QMessageBox(self)
+        box.setIcon(QtWidgets.QMessageBox.Warning)
+        box.setWindowTitle('Unexported review')
+        box.setText('{} reviewed event(s) have not been exported.'.format(n))
+        box.setInformativeText(
+            'Export them before you {}?\n\nAutosaved decisions are kept at\n{}'
+            .format(action, os.path.basename(self._autosave_path() or '')))
+        export = box.addButton('Export now…', QtWidgets.QMessageBox.AcceptRole)
+        discard = box.addButton('Discard', QtWidgets.QMessageBox.DestructiveRole)
+        box.addButton(QtWidgets.QMessageBox.Cancel)
+        box.setDefaultButton(export)
+        box.exec_()
+
+        clicked = box.clickedButton()
+        if clicked is export:
+            self._export_reviewed()
+            return not self._dirty      # only proceed if the export happened
+        return clicked is discard
 
     # ==================================================================
     # Toolbar handlers
@@ -1216,8 +1315,53 @@ class MainWindow(QtWidgets.QMainWindow):
     # ==================================================================
     # Export
     # ==================================================================
+    def _reference_path(self):
+        if not self._edf_path:
+            return None
+        return os.path.splitext(self._edf_path)[0] + '.csv_bi'
+
+    def _export_preflight(self):
+        """Confirm what is about to be written. True = proceed.
+
+        Export emits only accepted and edited events, so a session where the
+        reviewer rejected everything writes a valid header-only file asserting
+        "no seizures" — downstream indistinguishable from a careful negative
+        read. The counts have to be shown before the write, not after.
+        """
+        n_acc = sum(1 for e in self._events if e['status'] == 'accepted')
+        n_edit = sum(1 for e in self._events if e['status'] == 'edited')
+        n_rej = sum(1 for e in self._events if e['status'] == 'rejected')
+        n_prop = sum(1 for e in self._events if e['status'] == 'proposed')
+        n_out = n_acc + n_edit
+
+        lines = ['{} event(s) will be written: {} accepted, {} edited.'
+                 .format(n_out, n_acc, n_edit)]
+        if n_rej or n_prop:
+            lines.append('{} rejected and {} still-unreviewed candidate(s) '
+                         'will be omitted.'.format(n_rej, n_prop))
+        if n_out == 0:
+            lines.append('\nThis writes an EMPTY annotation file, which asserts '
+                         'that the recording contains no seizures.')
+        if self._unscored_count():
+            lines.append('\n{} window(s) were never assessed by the detector, '
+                         'so this review does not cover the whole recording.'
+                         .format(self._unscored_count()))
+
+        box = QtWidgets.QMessageBox(self)
+        box.setIcon(QtWidgets.QMessageBox.Warning if n_out == 0
+                    else QtWidgets.QMessageBox.Question)
+        box.setWindowTitle('Export reviewed annotations')
+        box.setText('\n'.join(lines))
+        box.setStandardButtons(QtWidgets.QMessageBox.Ok |
+                               QtWidgets.QMessageBox.Cancel)
+        box.setDefaultButton(QtWidgets.QMessageBox.Cancel if n_out == 0
+                             else QtWidgets.QMessageBox.Ok)
+        return box.exec_() == QtWidgets.QMessageBox.Ok
+
     def _export_reviewed(self):
         if not self._edf_path:
+            return
+        if not self._export_preflight():
             return
         suffix = (
             '.zuna.reviewed.csv_bi'
@@ -1228,6 +1372,22 @@ class MainWindow(QtWidgets.QMainWindow):
             'TUSZ csv_bi (*.csv_bi)')
         if not path:
             return
+
+        # Hard refusal, not a warning. The reference file sits in the same
+        # directory, matches the dialog's *.csv_bi filter, and is one click
+        # away — and sample_data/ is gitignored, so overwriting it destroys the
+        # ground truth with no recovery.
+        ref = self._reference_path()
+        if ref and os.path.abspath(path) == os.path.abspath(ref):
+            QtWidgets.QMessageBox.critical(
+                self, 'Refusing to overwrite the reference',
+                'That path is the ground-truth annotation file for this '
+                'recording:\n\n{}\n\nExporting over it would destroy the '
+                'reference this review is scored against. Choose a different '
+                'filename — the default {} is safe.'
+                .format(ref, os.path.basename(default)))
+            return
+
         events = []
         exported_scores = []
         for ev in self._events:
@@ -1256,9 +1416,13 @@ class MainWindow(QtWidgets.QMainWindow):
                      ai_source=self._prob_source)
         self._write_export_provenance(path, len(events),
                                       exported_scores=exported_scores)
+        # The review is now on disk, so the session is no longer at risk.
+        self._dirty = False
+        self._clear_autosave()
+        self._update_title()
         self.statusBar().showMessage(
-            'Exported {} reviewed events → {}'.format(
-                len(events), os.path.basename(path)), 5000)
+            'Exported {} reviewed event(s) → {}'.format(len(events), path),
+            10000)
 
     def _write_export_provenance(self, csv_bi_path, n_events,
                                  exported_scores=None):

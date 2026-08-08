@@ -155,3 +155,6 @@ sample_data/
 .DS_Store
 Thumbs.db
 
+
+# Reviewer autosave (crash-recovery record, not an export)
+*.review.autosave.json
