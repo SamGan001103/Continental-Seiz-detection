@@ -2,6 +2,14 @@
 same format."""
 import os
 
+# Stamped into every exported annotation. An exported .csv_bi is
+# indistinguishable in format from a TUSZ reference file, so without this a
+# reviewed export could later be mistaken for clinical ground truth. read_csv_bi
+# skips '#' lines, so these headers are format-safe in both directions.
+TOOL_NAME = 'Continental Seizure Review (research prototype)'
+NOT_FOR_CLINICAL_USE = (
+    'research prototype, NOT for diagnostic or clinical use')
+
 
 def read_csv_bi(path):
     """Return list of dicts: {start, stop, label, confidence}.
@@ -28,17 +36,28 @@ def read_csv_bi(path):
 
 
 def write_csv_bi(path, bname, duration_s, events,
-                 montage_file='$NEDC_NFC/lib/nedc_eas_default_montage.txt'):
+                 montage_file='$NEDC_NFC/lib/nedc_eas_default_montage.txt',
+                 ai_source=None):
     """Write reviewer-confirmed events in TUSZ csv_bi format.
 
-    events : list of dicts with keys start, stop, label ('seiz'|'bckg'),
-             and optional confidence (defaults to 1.0).
+    events    : list of dicts with keys start, stop, label ('seiz'|'bckg'),
+                and optional confidence (defaults to 1.0).
+    ai_source : which probability source the reviewer worked from
+                ('baseline' or 'zuna'). Recorded because a ZUNA-derived review
+                was performed against a reconstructed signal, not original EEG.
     """
     with open(path, 'w') as f:
         f.write('# version = csv_v1.0.0\n')
         f.write('# bname = {}\n'.format(bname))
         f.write('# duration = {:.2f} secs\n'.format(duration_s))
         f.write('# montage_file = {}\n'.format(montage_file))
+        f.write('# tool = {}\n'.format(TOOL_NAME))
+        f.write('# status = {}\n'.format(NOT_FOR_CLINICAL_USE))
+        if ai_source:
+            f.write('# ai_source = {}{}\n'.format(
+                ai_source,
+                ' (RECONSTRUCTED signal, not original EEG)'
+                if ai_source == 'zuna' else ''))
         f.write('#\n')
         f.write('channel,start_time,stop_time,label,confidence\n')
         for ev in events:

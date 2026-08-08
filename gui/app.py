@@ -28,6 +28,7 @@ if REPO not in sys.path:
 from gui.io.edf import load_edf_19ch
 from gui.io.cache import (load_probs, load_probability_file,
                           save_probability_file)
+from gui.io import csv_bi as csv_bi_module
 from gui.io.csv_bi import read_csv_bi, write_csv_bi
 from gui.io.zuna import ZunaFullRunner, zuna_session_paths
 from gui.events import clamp_interval, rebuild_events
@@ -39,6 +40,29 @@ from gui.widgets.channel_inspector import ChannelInspector
 
 SENSITIVITIES = [7, 10, 15, 20, 30, 50, 70, 100, 150]   # µV / div
 TIMEBASES = [5, 10, 15, 20, 30, 60, 120, 300]           # s / screen
+
+APP_NAME = 'Seizure Review'
+# Shown permanently in the title bar and the status bar, and written into every
+# export. The detector runs at roughly 48% event sensitivity, so anyone sitting
+# in front of this — supervisor, peer reviewer, clinician — must be able to see
+# what it is without being told.
+PROTOTYPE_BANNER = 'RESEARCH PROTOTYPE — NOT FOR DIAGNOSTIC USE'
+TITLE_SUFFIX = ' — RESEARCH PROTOTYPE, NOT FOR DIAGNOSTIC USE'
+
+
+def _weights_sha256():
+    """Hash of the weights file actually on disk, for export provenance.
+
+    Compared against eval_config.WEIGHTS_SHA256 so a reviewed annotation can be
+    tied to the exact model that produced it, and so a swapped or corrupted
+    weights file is detectable after the fact rather than silently accepted.
+    """
+    try:
+        import eval_config as cfg
+        from gui.io.cache import sha256_file
+        return sha256_file(os.path.join(REPO, cfg.WEIGHTS))
+    except Exception:
+        return None
 
 
 class ZunaRunThread(QtCore.QThread):
@@ -75,7 +99,7 @@ class ZunaRunThread(QtCore.QThread):
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('Seizure Review — Continental Human-AI')
+        self.setWindowTitle(APP_NAME + TITLE_SUFFIX)
         self.resize(1600, 960)
 
         # ------------------ state
@@ -91,6 +115,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._events_by_source = {}     # source key -> reviewed event list
         self._prob_source = 'baseline'
         self._zuna_paths = None
+        self._edf_sha256 = None
         self._zuna_thread = None
         self._zuna_progress = None
         self._zuna_progress_timer = QtCore.QTimer(self)
@@ -144,6 +169,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(splitter)
 
         self._build_toolbar()
+
+        # Permanent prototype banner, left of the hover readout so it is never
+        # scrolled away or overwritten by a transient showMessage().
+        self._proto_lbl = QtWidgets.QLabel(PROTOTYPE_BANNER)
+        self._proto_lbl.setStyleSheet(
+            'QLabel { color: #fff; background: #a11; padding: 1px 8px; '
+            'font-weight: bold; border-radius: 3px; }')
+        self._proto_lbl.setToolTip(
+            'This is a research prototype built on public TUH/TUSZ data. It is '
+            'not a medical device, has not been clinically validated, and must '
+            'not be used for diagnosis or patient care.')
+        self.statusBar().addPermanentWidget(self._proto_lbl)
 
         # hover time readout in status bar
         self._hover_lbl = QtWidgets.QLabel('')
@@ -318,6 +355,11 @@ class MainWindow(QtWidgets.QMainWindow):
             self.statusBar().showMessage('EDF load failed.', 5000)
             return
         self._edf_path = path
+        try:
+            from gui.io.cache import sha256_file
+            self._edf_sha256 = sha256_file(path)
+        except Exception:
+            self._edf_sha256 = None
         self._original_data = data
         self._zuna_data = None
         self._raw_data = data
@@ -330,7 +372,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._zuna_paths = zuna_session_paths(path)
         self._reset_source_combo()
         self.a_run_zuna.setEnabled(True)
-        self.setWindowTitle('Seizure Review — {}'.format(os.path.basename(path)))
+        self.setWindowTitle('{} — {}{}'.format(
+            APP_NAME, os.path.basename(path), TITLE_SUFFIX))
 
         # references (ground truth) — optional
         ref_path = os.path.splitext(path)[0] + '.csv_bi'
@@ -1127,29 +1170,54 @@ class MainWindow(QtWidgets.QMainWindow):
         write_csv_bi(path,
                      bname=os.path.splitext(os.path.basename(self._edf_path))[0],
                      duration_s=self._duration_s,
-                     events=events)
-        if self._prob_source == 'zuna':
-            self._write_zuna_export_provenance(path, len(events))
+                     events=events,
+                     ai_source=self._prob_source)
+        self._write_export_provenance(path, len(events))
         self.statusBar().showMessage(
             'Exported {} reviewed events → {}'.format(
                 len(events), os.path.basename(path)), 5000)
 
-    def _write_zuna_export_provenance(self, csv_bi_path, n_events):
+    def _write_export_provenance(self, csv_bi_path, n_events):
+        """Write a provenance sidecar for ANY reviewed export (baseline or
+        ZUNA), so a reviewed .csv_bi is always traceable to the exact source,
+        detector settings, and display state that produced it."""
         meta_path = csv_bi_path + '.provenance.json'
+        src_meta = (self._prob_sources.get(self._prob_source) or {}).get(
+            'meta') or {}
         payload = {
             'annotation_file': csv_bi_path,
-            'active_ai_source': 'zuna',
+            'tool': csv_bi_module.TOOL_NAME,
+            'not_for_clinical_use': True,
+            'status': csv_bi_module.NOT_FOR_CLINICAL_USE,
+            'active_ai_source': self._prob_source,
             'n_exported_events': int(n_events),
             'threshold': float(self._threshold),
             'edf': self._edf_path,
-            'zuna_npz': self._zuna_paths.get('npz') if self._zuna_paths else None,
-            'zuna_probs': (
-                self._zuna_paths.get('probs') if self._zuna_paths else None),
-            'note': (
+            'edf_sha256': self._edf_sha256,
+            'detector': {
+                'weights': src_meta.get('weights'),
+                'weights_sha256': _weights_sha256(),
+                'step_s': src_meta.get('step_s'),
+                'segment_s': src_meta.get('segment_s'),
+                'use_ica': src_meta.get('use_ica'),
+                'fs': src_meta.get('fs'),
+            },
+            'display': {
+                'montage': self._montage,
+                'highpass_hz': self._hp,
+                'lowpass_hz': self._lp,
+                'notch_hz': self._notch,
+            },
+        }
+        if self._prob_source == 'zuna':
+            payload['zuna_npz'] = (
+                self._zuna_paths.get('npz') if self._zuna_paths else None)
+            payload['zuna_probs'] = (
+                self._zuna_paths.get('probs') if self._zuna_paths else None)
+            payload['note'] = (
                 'Events were reviewed while full-ZUNA reconstructed signal and '
                 'ZUNA-derived ConvLSTM probabilities were active. ZUNA signal '
-                'is reconstructed/imputed data, not original clinical EEG.'),
-        }
+                'is reconstructed/imputed data, not original clinical EEG.')
         with open(meta_path, 'w') as f:
             json.dump(payload, f, indent=2, sort_keys=True)
             f.write('\n')

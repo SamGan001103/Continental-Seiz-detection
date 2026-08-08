@@ -1,11 +1,27 @@
 """Probability cache: a small .npz alongside each EDF."""
 import os
 import json
+import hashlib
 import numpy as np
 
 
 def cache_path_for(edf_path):
     return os.path.splitext(edf_path)[0] + '.probs.npz'
+
+
+def sha256_file(path, chunk_size=1 << 20):
+    """Return the SHA-256 hex digest of a file's bytes, or None on error.
+
+    Used as a content-integrity hash for provenance, unlike the size/mtime
+    check used for cache invalidation."""
+    h = hashlib.sha256()
+    try:
+        with open(path, 'rb') as f:
+            for block in iter(lambda: f.read(chunk_size), b''):
+                h.update(block)
+    except OSError:
+        return None
+    return h.hexdigest()
 
 
 def save_probs(edf_path, window_starts, probs, meta=None):
