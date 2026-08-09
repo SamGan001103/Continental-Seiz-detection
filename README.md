@@ -103,6 +103,9 @@ is stale. Supporting documents:
 | `docs/reproduction_status.md` | what matches the source paper, what does not, and why |
 | `docs/methodology_statements.md` | the claims the thesis will and will not make |
 | `docs/deployment_roadmap.md` | path to a clinician-ready prototype; C/C++ scope |
+| `docs/progress_2026-08-09_…md` | **latest progress log** — chronology, decisions, dead ends |
+| `docs/usability/cognitive_walkthrough_results.md` | first usability results (10 issues, 5 P1) |
+| `docs/ica_implementation_review.md` | is the ICA stage implemented correctly? (measured) |
 | `docs/progress_2026-05-19_zuna_gui.md` | **historical** — numbers superseded |
 | `thesis_report_bundle/` | **archived June 2026 snapshot** — stale code and numbers |
 
