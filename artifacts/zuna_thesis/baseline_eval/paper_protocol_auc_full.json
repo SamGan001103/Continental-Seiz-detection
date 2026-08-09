@@ -1449,42 +1449,66 @@
   "pooled": {
     "paper_pure_nonoverlapping": {
       "bootstrap": {
-        "ci_hi": 0.9378992088987008,
-        "ci_lo": 0.8191298128937231,
-        "n_boot": 2000,
-        "p_ge_target": 0.9175,
+        "ci_hi": 0.9378704134533931,
+        "ci_lo": 0.8166433629586224,
+        "n_boot": 800,
+        "p_ge_target": 0.91625,
+        "target": 0.84
+      },
+      "bootstrap_by_patient": {
+        "ci_hi": 0.9519185368316223,
+        "ci_lo": 0.7043064598005337,
+        "n_boot": 800,
+        "p_ge_target": 0.795,
         "target": 0.84
       },
       "mean_per_file_auc": 0.8694208101199262,
       "n_files_with_auc": 32,
+      "n_patients": 28,
       "n_positive": 249,
       "n_windows": 7678,
       "pooled_auc": 0.8856054180377454
     },
     "paper_pure_windows": {
       "bootstrap": {
-        "ci_hi": 0.9409351526995894,
-        "ci_lo": 0.8260419889253982,
-        "n_boot": 2000,
-        "p_ge_target": 0.943,
+        "ci_hi": 0.9413669443763942,
+        "ci_lo": 0.8274646170385108,
+        "n_boot": 800,
+        "p_ge_target": 0.94125,
+        "target": 0.84
+      },
+      "bootstrap_by_patient": {
+        "ci_hi": 0.950927388146097,
+        "ci_lo": 0.7186596316473254,
+        "n_boot": 800,
+        "p_ge_target": 0.83125,
         "target": 0.84
       },
       "mean_per_file_auc": 0.8834028835824377,
       "n_files_with_auc": 34,
+      "n_patients": 28,
       "n_positive": 503,
       "n_windows": 15211,
       "pooled_auc": 0.8900654409144804
     },
     "project_any_overlap": {
       "bootstrap": {
-        "ci_hi": 0.8485089231927583,
-        "ci_lo": 0.7393022562419366,
-        "n_boot": 2000,
-        "p_ge_target": 0.062,
+        "ci_hi": 0.8496681843422574,
+        "ci_lo": 0.7365686110558823,
+        "n_boot": 800,
+        "p_ge_target": 0.06,
+        "target": 0.84
+      },
+      "bootstrap_by_patient": {
+        "ci_hi": 0.8758161455565138,
+        "ci_lo": 0.6539910390350816,
+        "n_boot": 800,
+        "p_ge_target": 0.1775,
         "target": 0.84
       },
       "mean_per_file_auc": 0.8030026704756327,
       "n_files_with_auc": 42,
+      "n_patients": 28,
       "n_positive": 788,
       "n_windows": 15496,
       "pooled_auc": 0.8007806190629362

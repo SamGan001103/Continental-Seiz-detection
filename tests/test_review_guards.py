@@ -26,6 +26,9 @@ class ReviewGuardTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
         self.w = MainWindow()
+        # Export prompts once for a reviewer id; offscreen that modal would
+        # block forever. Pre-set it rather than stubbing Qt globally.
+        self.w._reviewer_id = 'test'
         self.w._edf_path = os.path.join(self.tmp, 'rec.edf')
         self.w._duration_s = 300.0
         self.w._events = [

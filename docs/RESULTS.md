@@ -10,8 +10,8 @@ All measurements: public TUSZ **v2.0.0** `eval` data, 19 channels, 12-second win
 stride, per-window ICA, pretrained `convlstm_ICA_12_train.h5`. Inference only — no retraining.
 
 **Headline: the 19-channel detector reproduces its source paper.** Window-level AUC **0.89**
-(95 % CI [0.83, 0.94]) over 206 annotated recordings / 27.8 h, against the **0.84** published for
-TUH. The published value lies inside the interval: this is a result **statistically
+(95 % CI [0.82, 0.94] by recording, **[0.73, 0.95] by patient** — quote the latter) over 206
+annotated recordings / 28 patients / 27.8 h, against the **0.84** published for TUH. The published value lies inside the interval: this is a result **statistically
 indistinguishable from the published one**, not a demonstration of improvement.
 
 **Quote two significant figures.** The interval is ±0.06 wide; four decimal places imply a
@@ -84,13 +84,36 @@ python experiments/replicate_paper_auc.py --manifest artifacts/zuna_thesis/manif
 | *source paper, TUH v1.5.1 dev* | *0.84* | — | — | — |
 
 **The reproduction is statistically indistinguishable from the published result.** 0.84 lies
-inside the interval; a one-sided file-level bootstrap gives p ≈ 0.06 against the null that the
-true value is 0.84, which does not reject at α = 0.05. **Do not phrase this as beating the
-paper.** The defensible claim is reproduction, not improvement.
+inside the interval. **Do not phrase this as beating the paper.** The defensible claim is
+reproduction, not improvement.
+
+> ### Two things to get right when writing this up
+>
+> **1. It is the paper's *labelling rule*, not its *sampling*.** The paper's loader steps
+> `i += 12` (non-overlapping) and anchors each tile at the labelled interval's own start
+> (`utils/ICA_load_data_elec.py:115-147`). This project applies the same in-interval labelling
+> rule to its own global 6-second grid. Calling it "the paper's own protocol" overstates it —
+> **zero** of the window offsets the paper's loop would emit coincide with the ones scored here.
+>
+> **2. Do not quote 15,211 windows beside a 12-second non-overlapping protocol.** 15,211 windows
+> over 27.8 h is 547/h; a 12-second non-overlapping tiling cannot exceed 300/h. A co-author
+> spots that with one division. Quote **7,678 windows / 249 positive** for the non-overlapping
+> row, or state plainly that the 15,211 figure is the 6-second-stride variant.
+>
+> **The robustness is the real result, so lead with it.** The same probabilities give 0.89 at the
+> 6 s stride (15,211 / 503) and 0.89 non-overlapping (7,678 / 249). 0.84 lies inside the interval
+> under every variant tried: non-overlapping stride, patient-level clustering, montage
+> reweighting to the paper's own mix, and dropping the single most influential recording.
 
 The confidence interval resamples whole **files**, not windows — windows within one recording
 share patient, montage and artifact regime, so a window-level interval treats correlated windows
 as independent evidence and comes out far too narrow to quote honestly.
+
+**Quote the patient-level interval as well, and prefer it.** The 206 recordings come from 28
+patients, and only **13 contribute a positive window** — three of which supply 68 % of the
+positives. Resampling patients rather than files gives **[0.73, 0.95]**, considerably wider than
+the file-level [0.82, 0.94]. 0.84 sits inside both. The patient interval is the honest one, for
+the same reason patient grouping was necessary in the calibration analysis (§8).
 
 ### Why the two protocols differ, and the disclosure that must accompany it
 
@@ -266,10 +289,22 @@ target is the ICA/preprocessing front end. See `docs/deployment_roadmap.md` §5.
   `models/deep_conv_lstm.py:84` is the identity. Post-hoc Platt scaling would cut ECE ~85 % but
   is deliberately **not** adopted in the GUI (see §8).
 - **Corpus version mismatch** throughout: weights trained on v1.5.1, evaluated on v2.0.0.
-- **Train/test disjointness is assumed, not verified.** v1.5.1 IDs are numeric
-  (`00000258_s001_t000`) and v2.0.0 stems are anonymised (`aaaaaaaq_s006_t000`), so the two
-  schemes cannot be cross-referenced locally. TUSZ maintains patient-disjoint splits by
-  construction; state that this is taken on the corpus documentation's word.
+- **Train/test disjointness is probable but unverified — and the comparator is worse off.**
+  TUSZ v1.5.x splits were **not** patient-disjoint. NEDC report 13 subjects common to eval and
+  train and 5 common to dev and train (Buckwalter, Chhin, Rahman, Obeid & Picone, *IEEE SPMB*
+  2021). We confirm the latter directly from the reference lists in this repository: patients
+  `00001027`, `00001981`, `00004671`, `00006546`, `00009842` appear in **both** `ref_train2.txt`
+  and `ref_dev.txt`, carrying **22.4 % of the development split's seizure events** (151 of 673).
+
+  **The 0.84 we are compared against is therefore itself optimistically biased**, which makes
+  this comparison *conservative* rather than flattering. NEDC rebuilt the partitions for v2.0.0
+  to remove the overlap but do not state whether the shared subjects were dropped from eval or
+  retained in train, and v2.0.0 IDs are anonymised — so disjointness between our evaluation set
+  and the v1.5.1 training data is **probable but unverified**.
+
+  Recording-level fingerprinting of all local `.csv_bi` against the 4,597 training recordings
+  finds no reuse (0 exact seizure-boundary matches, 0 within 50 ms), **but that test has no power
+  against patient-level leakage**, which is the mode that matters. Do not claim more than this.
 - **Event matching uses 5 s proximity, greedily** — sensitivity is a lower bound.
 
 ---

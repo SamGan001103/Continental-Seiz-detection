@@ -7,6 +7,7 @@ Toolbar groups (left to right):
 Keyboard shortcuts:
     Space     accept selected event
     X         reject selected event
+    Shift+X   reject and record a reason
     Enter     jump to selected event and frame it
     J / K     next / prev event
     ← / →     pan half a screen
@@ -38,8 +39,13 @@ from gui.widgets.prob_strip import ProbStrip
 from gui.widgets.event_list import EventList
 from gui.widgets.channel_inspector import ChannelInspector
 
-SENSITIVITIES = [7, 10, 15, 20, 30, 50, 70, 100, 150]   # µV / div
-TIMEBASES = [5, 10, 15, 20, 30, 60, 120, 300]           # s / screen
+# Clinical review conventions, not arbitrary numbers. Amplitude is quoted in
+# µV/mm and sweep in sec/page, which is what an EEG reader expects; "µV/div"
+# and a bare "timebase s" are neither standard nor unambiguous, and the
+# heuristic-evaluation instrument flagged them. 7 µV/mm and 10 s/page are the
+# usual defaults for reading seizures.
+SENSITIVITIES = [3, 5, 7, 10, 15, 20, 30, 50, 70, 100]   # µV / mm
+TIMEBASES = [5, 10, 15, 20, 30, 60, 120, 300]            # seconds per page
 
 APP_NAME = 'Seizure Review'
 # Shown permanently in the title bar and the status bar, and written into every
@@ -48,6 +54,27 @@ APP_NAME = 'Seizure Review'
 # what it is without being told.
 PROTOTYPE_BANNER = 'RESEARCH PROTOTYPE — NOT FOR DIAGNOSTIC USE'
 TITLE_SUFFIX = ' — RESEARCH PROTOTYPE, NOT FOR DIAGNOSTIC USE'
+
+
+def _git_commit():
+    """Short commit of the working tree, for export provenance.
+
+    peer_review_protocol.md asks the facilitator to log the build under test,
+    which the system previously gave them no way to obtain. Suffixed '+dirty'
+    when the tree has uncommitted changes, because a session run against
+    modified code is not reproducible from the commit alone.
+    """
+    import subprocess
+    try:
+        sha = subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'], cwd=REPO,
+            stderr=subprocess.PIPE).decode('ascii').strip()
+        dirty = subprocess.check_output(
+            ['git', 'status', '--porcelain'], cwd=REPO,
+            stderr=subprocess.PIPE).decode('utf-8', 'replace').strip()
+        return sha + ('+dirty' if dirty else '')
+    except Exception:
+        return None
 
 
 def _cfg_weights():
@@ -136,6 +163,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._segment_s = 12
         self._nothing_assessed_warned = set()
         self._dirty = False            # reviewer decisions not yet exported
+        self._reviewer_id = None       # prompted once per session
+        self._session_started = time.time()
+        self._file_opened_at = None
         self._events = []
         self._threshold = 0.5
 
@@ -143,8 +173,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._hp = 1.0
         self._lp = 70.0
         self._notch = 50.0
-        self._sensitivity_uv = 30.0
-        self._timebase_s = 30
+        self._sensitivity_uv = 7.0     # µV/mm — clinical default
+        self._timebase_s = 10          # sec/page — clinical default
 
         # cache of the most-recent post-filter, post-montage display data so
         # channel-inspector popups can be opened without recomputing.
@@ -251,14 +281,20 @@ class MainWindow(QtWidgets.QMainWindow):
         tb.addWidget(self.cb_notch)
         tb.addSeparator()
 
-        tb.addWidget(QtWidgets.QLabel('Sens µV/div'))
+        lbl_sens = QtWidgets.QLabel('Sensitivity µV/mm')
+        lbl_sens.setToolTip('Vertical scale, in the clinical convention. '
+                            'Lower = larger deflections. [ and ] step it.')
+        tb.addWidget(lbl_sens)
         self.cb_sens = QtWidgets.QComboBox()
         self.cb_sens.addItems([str(v) for v in SENSITIVITIES])
         self.cb_sens.setCurrentText(str(int(self._sensitivity_uv)))
         self.cb_sens.currentTextChanged.connect(self._on_sens_change)
         tb.addWidget(self.cb_sens)
 
-        tb.addWidget(QtWidgets.QLabel('Timebase s'))
+        lbl_tb = QtWidgets.QLabel('Sweep sec/page')
+        lbl_tb.setToolTip('Seconds of EEG per screen width. 10 s is the usual '
+                          'clinical default. , and . step it.')
+        tb.addWidget(lbl_tb)
         self.cb_tb = QtWidgets.QComboBox()
         self.cb_tb.addItems([str(v) for v in TIMEBASES])
         self.cb_tb.setCurrentText(str(self._timebase_s))
@@ -296,6 +332,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.thr_slider.setRange(0, 100)
         self.thr_slider.setValue(int(self._threshold * 100))
         self.thr_slider.setFixedWidth(160)
+        self.thr_slider.setToolTip(
+            'Detection threshold. LOWER = more candidates proposed (higher '
+            'sensitivity, more false alarms). HIGHER = fewer, more confident '
+            'candidates.\n\nThe value is a raw uncalibrated model score, not a '
+            'probability: 0.50 corresponds to roughly a 29% chance of seizure '
+            'on this corpus.')
         self.thr_slider.valueChanged.connect(self._on_thr_changed)
         tb.addWidget(self.thr_slider)
         self.thr_lbl = QtWidgets.QLabel(' {:.2f} '.format(self._threshold))
@@ -411,6 +453,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         add('Space', self._shortcut_accept)
         add('X', self._shortcut_reject)
+        add('Shift+X', self._reject_with_reason)
         add('Return', self._shortcut_jump)
         add('Enter', self._shortcut_jump)
         add('J', lambda: self._cycle_selection(+1))
@@ -469,6 +512,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.statusBar().showMessage('EDF load failed.', 5000)
             return
         self._edf_path = path
+        self._file_opened_at = time.time()
         try:
             from gui.io.cache import sha256_file
             self._edf_sha256 = sha256_file(path)
@@ -1139,14 +1183,45 @@ class MainWindow(QtWidgets.QMainWindow):
             self.event_list._refresh_summary(self._events)
             self._mark_dirty()
 
-    def _on_reject(self, event_id):
+    # Why a candidate was dismissed. gui/events.py has carried a review_note
+    # through threshold rebuilds since the beginning but nothing ever wrote one,
+    # so a reviewed session was a binary vector. A reason turns it into evidence
+    # a thesis can quote and a clinician can be asked about.
+    REJECT_REASONS = ['Muscle / EMG', 'Movement or electrode artefact',
+                      'Eye blink', 'Normal variant', 'Not a seizure — other',
+                      'Unsure']
+
+    def _on_reject(self, event_id, reason=None):
+        """Reject a candidate. Deliberately NOT modal.
+
+        X must stay a single instant keystroke — a reviewer works through
+        dozens of candidates and a dialog on every one would make the tool
+        exhausting and push them toward the mouse. Use Shift+X (or the menu)
+        when a reason is worth recording.
+        """
         ev = self._find(event_id)
-        if ev:
-            ev['status'] = 'rejected'
-            self.signal_view.update_event_status(event_id, 'rejected')
-            self.event_list.update_row(event_id, ev)
-            self.event_list._refresh_summary(self._events)
-            self._mark_dirty()
+        if not ev:
+            return
+        ev['status'] = 'rejected'
+        if reason:
+            ev['review_note'] = reason
+        self.signal_view.update_event_status(event_id, 'rejected')
+        self.event_list.update_row(event_id, ev)
+        self.event_list._refresh_summary(self._events)
+        self._mark_dirty()
+
+    def _reject_with_reason(self, event_id=None):
+        """Reject and record why. Optional, opt-in, bound to Shift+X."""
+        if event_id is None:
+            event_id = self.event_list.selected_event_id()
+        if event_id <= 0 or not self._find(event_id):
+            return
+        reason, ok = QtWidgets.QInputDialog.getItem(
+            self, 'Reject candidate',
+            'Reason (recorded in the export provenance):',
+            self.REJECT_REASONS, len(self.REJECT_REASONS) - 1, True)
+        if ok:
+            self._on_reject(event_id, reason=reason or None)
 
     def _on_jump(self, event_id):
         ev = self._find(event_id)
@@ -1221,6 +1296,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 'events': [
                     {'start': float(ev['start']), 'stop': float(ev['stop']),
                      'status': ev['status'],
+                     'review_note': ev.get('review_note'),
                      'model_score_uncalibrated': float(ev.get('prob', 0.0))}
                     for ev in self._reviewed_events()],
                 'note': 'Autosaved reviewer decisions. Not an annotation file.',
@@ -1373,18 +1449,25 @@ class MainWindow(QtWidgets.QMainWindow):
                 insp.set_x_range(x0, x1)
 
     def _refresh_open_inspectors(self):
-        """Feed new data into any currently-open inspectors after a
-        montage / filter change."""
+        """Push new data into open inspectors after a montage / filter change.
+
+        This used to close every inspector and never reopen it, so the detail
+        window disappeared precisely when a reviewer was changing the filter to
+        decide whether something was muscle artefact. Now it updates in place;
+        only an inspector whose channel no longer exists in the new montage is
+        closed, because there is nothing left to show it.
+        """
         if self._display_data is None:
             return
         for idx, insp in list(self._inspectors.items()):
             if idx >= len(self._display_labels):
-                insp.close()
+                insp.close()                      # channel gone in this montage
                 continue
-            # Simplest: close + reopen so the label/data are correct.
-            x0, x1 = self.signal_view.current_span()
-            insp.close()
-        # Re-open closed ones? Keep it simple: user reopens manually if needed.
+            try:
+                insp.set_data(self._display_labels[idx], self._display_data[idx],
+                              self._display_t, self._refs)
+            except Exception:
+                insp.close()
 
     # ==================================================================
     # Keyboard shortcut plumbing
@@ -1469,11 +1552,30 @@ class MainWindow(QtWidgets.QMainWindow):
                              else QtWidgets.QMessageBox.Ok)
         return box.exec_() == QtWidgets.QMessageBox.Ok
 
+    def _ensure_reviewer_id(self):
+        """Ask once per session who is reviewing.
+
+        Without it an exported annotation cannot be attributed, which
+        peer_review_protocol.md requires and which any session used as thesis
+        evidence needs. Free text and skippable — this is a research prototype
+        on public data, not an identity check.
+        """
+        if self._reviewer_id is not None:
+            return
+        try:
+            name, ok = QtWidgets.QInputDialog.getText(
+                self, 'Reviewer', 'Reviewer name or initials (recorded in '
+                                  'the export provenance):')
+        except Exception:
+            name, ok = '', False
+        self._reviewer_id = (name.strip() or 'anonymous') if ok else 'anonymous'
+
     def _export_reviewed(self):
         if not self._edf_path:
             return
         if not self._export_preflight():
             return
+        self._ensure_reviewer_id()
         suffix = (
             '.zuna.reviewed.csv_bi'
             if self._prob_source == 'zuna' else '.reviewed.csv_bi')
@@ -1519,6 +1621,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 'start': round(float(s), 4), 'stop': round(float(e), 4),
                 'status': ev['status'],
                 'model_score_uncalibrated': round(float(ev['prob']), 6),
+                'review_note': ev.get('review_note'),
             })
         write_csv_bi(path,
                      bname=os.path.splitext(os.path.basename(self._edf_path))[0],
@@ -1543,9 +1646,18 @@ class MainWindow(QtWidgets.QMainWindow):
         meta_path = csv_bi_path + '.provenance.json'
         src_meta = (self._prob_sources.get(self._prob_source) or {}).get(
             'meta') or {}
+        now = time.time()
         payload = {
             'annotation_file': csv_bi_path,
             'tool': csv_bi_module.TOOL_NAME,
+            'tool_commit': _git_commit(),
+            'exported_utc': __import__('datetime').datetime.utcfromtimestamp(
+                now).strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'reviewer_id': self._reviewer_id,
+            'review_seconds_on_this_file': (
+                round(now - self._file_opened_at, 1)
+                if self._file_opened_at else None),
+            'session_seconds': round(now - self._session_started, 1),
             'not_for_clinical_use': True,
             'status': csv_bi_module.NOT_FOR_CLINICAL_USE,
             'active_ai_source': self._prob_source,
@@ -1576,6 +1688,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 'no post-hoc calibration. The csv_bi confidence column is 1.0 '
                 'for every exported event because each was human-confirmed.'),
             'exported_events': exported_scores or [],
+            'all_decisions': [
+                {'start': round(float(e['start']), 4),
+                 'stop': round(float(e['stop']), 4),
+                 'status': e['status'],
+                 'model_score_uncalibrated': round(float(e.get('prob', 0.0)), 6),
+                 'review_note': e.get('review_note')}
+                for e in self._events],
             'windows_not_assessed': self._unscored_count(),
         }
         if self._prob_source == 'zuna':

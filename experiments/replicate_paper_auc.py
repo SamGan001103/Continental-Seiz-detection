@@ -176,9 +176,9 @@ def main(argv=None):
         print('excluded {} file(s) with no .csv_bi reference'.format(unannotated))
 
     variants = {
-        'project_any_overlap': ([], []),
-        'paper_pure_windows': ([], []),
-        'paper_pure_nonoverlapping': ([], []),
+        'project_any_overlap': ([], [], []),
+        'paper_pure_windows': ([], [], []),
+        'paper_pure_nonoverlapping': ([], [], []),
     }
     n_straddle = 0
     n_total = 0
@@ -210,6 +210,7 @@ def main(argv=None):
         for name, (lab, mask) in sel.items():
             variants[name][0].append(lab[mask])
             variants[name][1].append(probs[mask])
+            variants[name][2].append(r['stem'])
             row[name] = _auc(lab[mask], probs[mask])
         per_file.append(row)
 
@@ -232,22 +233,38 @@ def main(argv=None):
         pooled = _auc(labs, scs)
         per = [row[name] for row in per_file if row[name] is not None]
         mean_pf = float(np.mean(per)) if per else None
-        ci = bootstrap_ci(list(zip(variants[name][0], variants[name][1])),
-                          n_boot=args.n_boot, target=args.target_auc)
+        pairs_f = list(zip(variants[name][0], variants[name][1]))
+        ci = bootstrap_ci(pairs_f, n_boot=args.n_boot, target=args.target_auc)
+        # Patient-level interval as well. 206 recordings come from 28 patients
+        # and only 13 contribute a positive window, so resampling files
+        # understates the uncertainty; this is the honest interval to quote.
+        by_pat = {}
+        for stem, lab, sc in zip(variants[name][2], variants[name][0],
+                                 variants[name][1]):
+            pat = str(stem).split('_')[0]
+            a, b = by_pat.setdefault(pat, ([], []))
+            a.append(lab)
+            b.append(sc)
+        ci_pat = bootstrap_ci(
+            [(np.concatenate(a), np.concatenate(b)) for a, b in by_pat.values()],
+            n_boot=args.n_boot, target=args.target_auc)
         payload['pooled'][name] = {
             'pooled_auc': pooled, 'n_windows': int(labs.size),
             'n_positive': int(labs.sum()) if labs.size else 0,
             'mean_per_file_auc': mean_pf, 'n_files_with_auc': len(per),
-            'bootstrap': ci}
+            'bootstrap': ci, 'bootstrap_by_patient': ci_pat,
+            'n_patients': len(by_pat)}
         print('{:<30} {:>10} {:>18} {:>8} {:>6}'.format(
             name,
             'n/a' if pooled is None else '{:.4f}'.format(pooled),
             'n/a' if ci is None else '[{:.3f}, {:.3f}]'.format(ci['ci_lo'],
                                                                ci['ci_hi']),
             int(labs.size), int(labs.sum()) if labs.size else 0))
-        if ci and 'p_ge_target' in ci:
-            print('{:<30} {:>10} P(AUC >= {:.2f}) = {:.2f}'.format(
-                '', '', ci['target'], ci['p_ge_target']))
+        if ci_pat:
+            print('{:<30} {:>10} {:>18}  <- by PATIENT ({} patients)'.format(
+                '', '', '[{:.3f}, {:.3f}]'.format(ci_pat['ci_lo'],
+                                                  ci_pat['ci_hi']),
+                len(by_pat)))
 
     print('\nSource paper (Table 2): AUC {:.2f} — TUH EEG Corpus v1.5.1, '
           '19 ch, 12 s window, ICA,\n'

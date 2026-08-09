@@ -193,6 +193,22 @@ class ChannelInspector(QtWidgets.QDialog):
     def sync_checked(self):
         return self.chk_sync.isChecked()
 
+    def set_data(self, channel_name, data1d, t, reference_intervals=None):
+        """Refresh in place after a filter or montage change.
+
+        Previously MainWindow closed every open inspector on any such change and
+        never reopened them, so the detail window vanished exactly when a
+        reviewer was using it to decide whether something was muscle artefact.
+        """
+        self._channel_name = channel_name
+        self._data = np.asarray(data1d, dtype=np.float32)
+        self._t = np.asarray(t, dtype=np.float32)
+        self.setWindowTitle('Channel — {}'.format(channel_name))
+        self._curve.setData(self._t, self._data)
+        if reference_intervals is not None:
+            self._reference_intervals = list(reference_intervals)
+        self._update_stats(self._data)
+
     def sync_toggle_signal(self):
         return self.chk_sync.stateChanged
 
