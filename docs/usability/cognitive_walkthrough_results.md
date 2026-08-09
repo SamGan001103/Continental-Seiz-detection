@@ -219,6 +219,54 @@ result is that the Q2/Q3 failure count collapses, which is the reportable before
 
 ---
 
+## 3c. Second pass — measured before/after (commit `c3c932a`)
+
+The instrument was re-run against the fixed build by the same method (live `MainWindow`,
+offscreen introspection). Only the actions that previously failed were re-scored; every other
+row was passing and nothing in those paths changed.
+
+| Action | Issue | Before | After | Evidence |
+|---|---|:--:|:--:|---|
+| T3.2 use J/K | U-02 | Q2 **F**, Q3 **F** | **P, P** | Help ▸ Keyboard shortcuts bound to F1; dialog generated from the live docstring, which contains `J / K` |
+| T4.3 ChannelInspector | U-04 | Q1 **F**, Q2 **F**, Q3 **F** | **P, P, P** | View ▸ Channel inspector… (Ctrl+I) with tooltip; double-click retained |
+| T3.6 accepted state | U-07, U-08 | Q3 **F**, Q4 **F** | **P, P** | Row colours all distinct (amber/blue/grey); accepted no longer green-dominant |
+| T4.5 rejected state | U-07 | Q3 **F**, Q4 **F** | **P, P** | as above |
+| T5.3 edited state | U-10 | Q4 **F** | **F** (partial) | Now visually distinct (purple), but there is still no *revert to AI extent*, so an accidental drag remains irreversible and edited events still export |
+| T2.3 slider direction | U-03 | Q3 **F** | **F** | Slider tooltip is still empty; no end labels |
+| T5.1 drag affordance | U-05 | Q1 **F**, Q2 **F** | **F, F** | No hover-cursor or handle code in `signal_view.py` |
+| T6.7 ZUNA comparison | U-11 | Q1 **F** | **F** | Unchanged — deliberately out of scope |
+| T1.3 model-load latency | U-06 | Q4 **F** | **F** | Unchanged (P3) |
+| — ground truth visible | U-09 | method fail | **resolved** | Blind mode (Ctrl+B); `references_visible`/`blind_mode` in export provenance |
+
+### Failure counts by CW question
+
+| | Q1 | Q2 | Q3 | Q4 | total |
+|---|:--:|:--:|:--:|:--:|:--:|
+| first pass | 3 | 4 | 5 | 5 | **17** |
+| second pass | 2 | 1 | 1 | 3 | **7** |
+| change | −1 | **−3** | **−4** | −2 | **−59 %** |
+
+**The Q2/Q3 collapse is the result.** Availability failures fell from 4 to 1 and association
+failures from 5 to 1 — which is what should happen when the fixes target discoverability and
+mapping rather than function, and is evidence that the walkthrough diagnosed the right class of
+defect. The residual Q4 failures are all P2/P3 items deliberately deferred.
+
+| Priority | first pass | second pass |
+|---|:--:|:--:|
+| **P1** | 5 | **0** |
+| P2 | 3 | 3 |
+| P3 | 2 | 2 |
+
+Eleven regression tests (`tests/test_usability_p1.py`) pin the P1 fixes, so this before/after
+cannot silently revert.
+
+**Caveat unchanged from §0:** this is still a single evaluator using code introspection.
+Perceptual rows marked (P?) — whether the new colours are *noticeably* distinct at a glance,
+whether the 140 px strip is legible at clinical display size — remain unconfirmed and need a
+human pass. The count above measures learnability defects closed, not usability demonstrated.
+
+---
+
 ## 4. Feed-forward
 
 U-07, U-08, U-02 and U-04 are the pre-clinician backlog and total roughly a day: a Help ▸ About /
