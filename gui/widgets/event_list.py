@@ -3,7 +3,7 @@
 Row selection is exposed so the MainWindow can cycle events via
 keyboard shortcuts and the view auto-centers on the selected event.
 """
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 
 # 'score', not 'p': the value is a raw uncalibrated softmax output, not a
@@ -11,6 +11,18 @@ from PyQt5 import QtCore, QtWidgets
 HEADERS = ['#', 'start (s)', 'stop (s)', 'score', 'status', '']
 SCORE_TOOLTIP = ('Peak model score over the event — a raw, UNCALIBRATED '
                  'network output, not a probability of seizure.')
+
+# Status was text-only here, so accept and reject produced the same visual
+# change — a word swap — in the one place the reviewer spends their time. The
+# palette matches SignalView.STATUS_COLOURS so a row and its region agree.
+# Glyphs carry the same information, so status is never colour-alone.
+# See docs/usability/cognitive_walkthrough_results.md, U-07.
+STATUS_STYLE = {
+    'proposed': ((255, 170, 40), '?', 'Awaiting your decision'),
+    'accepted': ((35, 110, 200), '✓', 'You confirmed this as a seizure'),
+    'rejected': ((180, 180, 180), '✗', 'You dismissed this — excluded from export'),
+    'edited':   ((150, 80, 200), '✎', 'You adjusted the extent — included in export'),
+}
 
 
 class EventList(QtWidgets.QWidget):
@@ -62,6 +74,8 @@ class EventList(QtWidgets.QWidget):
         self._summary.setText(
             '{} events — {} proposed · {} accepted · {} edited · {} rejected'
             .format(n, prop, acc, ed, rej))
+        self._summary.setToolTip(
+            'Only accepted and edited events are written on export.')
 
     def _append_row(self, ev):
         row = self.table.rowCount()
@@ -76,7 +90,7 @@ class EventList(QtWidgets.QWidget):
         self.table.setItem(row, 1, cell('{:.1f}'.format(ev['start'])))
         self.table.setItem(row, 2, cell('{:.1f}'.format(ev['stop'])))
         self.table.setItem(row, 3, cell('{:.2f}'.format(ev['prob'])))
-        self.table.setItem(row, 4, cell(ev['status']))
+        self.table.setItem(row, 4, self._status_cell(ev['status']))
 
         btns = QtWidgets.QWidget()
         bl = QtWidgets.QHBoxLayout(btns)
@@ -102,13 +116,23 @@ class EventList(QtWidgets.QWidget):
         bl.addWidget(reject)
         self.table.setCellWidget(row, 5, btns)
 
+    def _status_cell(self, status):
+        """Status cell carrying colour AND a glyph, so it is never colour-alone."""
+        rgb, glyph, tip = STATUS_STYLE.get(status, STATUS_STYLE['proposed'])
+        it = QtWidgets.QTableWidgetItem('{}  {}'.format(glyph, status))
+        it.setTextAlignment(QtCore.Qt.AlignCenter)
+        it.setBackground(QtGui.QColor(rgb[0], rgb[1], rgb[2], 70))
+        it.setForeground(QtGui.QColor(30, 30, 30))
+        it.setToolTip(tip)
+        return it
+
     def update_row(self, event_id, ev):
         for row in range(self.table.rowCount()):
             if int(self.table.item(row, 0).text()) == event_id:
                 self.table.item(row, 1).setText('{:.1f}'.format(ev['start']))
                 self.table.item(row, 2).setText('{:.1f}'.format(ev['stop']))
                 self.table.item(row, 3).setText('{:.2f}'.format(ev['prob']))
-                self.table.item(row, 4).setText(ev['status'])
+                self.table.setItem(row, 4, self._status_cell(ev['status']))
                 return
 
     # -----------------------------------------------------------------

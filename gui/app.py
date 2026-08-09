@@ -50,6 +50,14 @@ PROTOTYPE_BANNER = 'RESEARCH PROTOTYPE — NOT FOR DIAGNOSTIC USE'
 TITLE_SUFFIX = ' — RESEARCH PROTOTYPE, NOT FOR DIAGNOSTIC USE'
 
 
+def _cfg_weights():
+    try:
+        import eval_config as cfg
+        return cfg.WEIGHTS
+    except Exception:
+        return 'convlstm_ICA_12_train.h5'
+
+
 def _weights_sha256():
     """Hash of the weights file actually on disk, for export provenance.
 
@@ -171,6 +179,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(splitter)
 
         self._build_toolbar()
+        self._build_menu()
 
         # Permanent prototype banner, left of the hover readout so it is never
         # scrolled away or overwritten by a transient showMessage().
@@ -295,6 +304,104 @@ class MainWindow(QtWidgets.QMainWindow):
 
         a_export = tb.addAction('Export reviewed…')
         a_export.triggered.connect(self._export_reviewed)
+
+    # ==================================================================
+    # Menu bar — the walkthrough's dominant failure mode was Q2/Q3:
+    # controls that work correctly but cannot be found. There was no menu bar
+    # at all, so J/K existed only in this module's docstring and the channel
+    # inspector could be reached only by double-clicking a channel label.
+    # ==================================================================
+    def _build_menu(self):
+        mb = self.menuBar()
+
+        m_file = mb.addMenu('&File')
+        a_open = m_file.addAction('&Open EDF…')
+        a_open.setShortcut(QtGui.QKeySequence.Open)
+        a_open.triggered.connect(self._open_edf_dialog)
+        m_file.addSeparator()
+        a_exp = m_file.addAction('&Export reviewed…')
+        a_exp.setShortcut('Ctrl+E')
+        a_exp.triggered.connect(self._export_reviewed)
+        m_file.addSeparator()
+        a_quit = m_file.addAction('&Quit')
+        a_quit.setShortcut(QtGui.QKeySequence.Quit)
+        a_quit.triggered.connect(self.close)
+
+        m_view = mb.addMenu('&View')
+        self.a_inspector = m_view.addAction('&Channel inspector…')
+        self.a_inspector.setShortcut('Ctrl+I')
+        self.a_inspector.setToolTip(
+            'Open a detail window for one channel. You can also double-click '
+            'a channel label in the trace view.')
+        self.a_inspector.triggered.connect(self._choose_channel_inspector)
+        m_view.addSeparator()
+        self.a_blind = m_view.addAction('&Blind mode (hide ground truth)')
+        self.a_blind.setCheckable(True)
+        self.a_blind.setShortcut('Ctrl+B')
+        self.a_blind.setToolTip(
+            'Hide the green reference bands. Any review session used as '
+            'evidence should run in blind mode — the reference is recorded in '
+            'the export provenance either way.')
+        self.a_blind.toggled.connect(self._on_blind_toggled)
+
+        m_help = mb.addMenu('&Help')
+        a_keys = m_help.addAction('&Keyboard shortcuts')
+        a_keys.setShortcut('F1')
+        a_keys.triggered.connect(self._show_shortcuts)
+        a_about = m_help.addAction('&About')
+        a_about.triggered.connect(self._show_about)
+
+    def _show_shortcuts(self):
+        # Reuses this module's docstring verbatim so the dialog cannot drift
+        # from the shortcuts actually wired in _wire_shortcuts().
+        body = (__doc__ or '').split('Keyboard shortcuts:', 1)[-1].strip()
+        box = QtWidgets.QMessageBox(self)
+        box.setWindowTitle('Keyboard shortcuts')
+        box.setTextFormat(QtCore.Qt.RichText)
+        box.setText('<b>Keyboard shortcuts</b>')
+        box.setInformativeText(
+            '<pre style="font-size:12px">{}</pre>'
+            '<p>Also: <b>Ctrl+O</b> open · <b>Ctrl+E</b> export · '
+            '<b>Ctrl+I</b> channel inspector · <b>Ctrl+B</b> blind mode · '
+            '<b>F1</b> this dialog.<br>'
+            'Double-clicking a channel label also opens its inspector.</p>'
+            .format(body))
+        box.exec_()
+
+    def _show_about(self):
+        QtWidgets.QMessageBox.about(
+            self, 'About {}'.format(APP_NAME),
+            '<b>{}</b><br>{}<br><br>'
+            'Human-in-the-loop EEG seizure review. BMET4111 thesis, '
+            'University of Sydney.<br><br>'
+            'Detector: 19-channel ConvLSTM (<code>{}</code>), 12 s windows at '
+            '6 s stride, per-window ICA.<br>'
+            'Scores shown are <b>raw, uncalibrated</b> network outputs, not '
+            'calibrated probabilities of seizure.<br><br>'
+            'Validated on public TUH/TUSZ data only. No patient data.'
+            .format(APP_NAME, PROTOTYPE_BANNER, _cfg_weights()))
+
+    def _choose_channel_inspector(self):
+        """Menu route to the inspector, which was double-click-only before."""
+        if not self._display_labels:
+            self.statusBar().showMessage('Open an EDF first.', 4000)
+            return
+        name, ok = QtWidgets.QInputDialog.getItem(
+            self, 'Channel inspector', 'Channel:', self._display_labels, 0,
+            False)
+        if ok and name in self._display_labels:
+            self._open_channel_inspector(self._display_labels.index(name))
+
+    def _on_blind_toggled(self, blind):
+        """Blind mode hides ground truth so a session can be used as evidence."""
+        self.chk_refs.blockSignals(True)
+        self.chk_refs.setChecked(not blind)
+        self.chk_refs.blockSignals(False)
+        self._on_refs_toggled(not blind)
+        self.statusBar().showMessage(
+            'Blind mode ON — ground-truth bands hidden.' if blind
+            else 'Blind mode OFF — ground truth is visible; this session '
+                 'should not be used as unbiased evidence.', 6000)
 
     def _wire_shortcuts(self):
         def add(seq, fn):
@@ -1211,6 +1318,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_refs_toggled(self, checked):
         self.signal_view.set_references_visible(checked)
         self.prob_strip.set_references_visible(checked)
+        if hasattr(self, 'a_blind') and self.a_blind.isChecked() == checked:
+            self.a_blind.blockSignals(True)
+            self.a_blind.setChecked(not checked)
+            self.a_blind.blockSignals(False)
 
     def _on_view_range(self, x0, x1):
         self._hover_lbl.setText('View: {:.1f}s – {:.1f}s  ({:.1f}s)'
@@ -1450,6 +1561,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 'use_ica': src_meta.get('use_ica'),
                 'fs': src_meta.get('fs'),
             },
+            'references_visible': bool(self.chk_refs.isChecked()),
+            'blind_mode': bool(getattr(self, 'a_blind', None)
+                               and self.a_blind.isChecked()),
             'display': {
                 'montage': self._montage,
                 'highpass_hz': self._hp,

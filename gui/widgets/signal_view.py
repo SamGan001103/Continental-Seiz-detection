@@ -421,13 +421,19 @@ class SignalView(QtWidgets.QWidget):
         for ev in events:
             self._add_region(ev, movable=movable)
 
+    # Green is reserved for GROUND TRUTH. The reference band is (50,160,70) and
+    # accepted events used to be (40,170,90) — the same hue at a different
+    # alpha, so a reviewer's own confirmation looked like the answer key. See
+    # docs/usability/cognitive_walkthrough_results.md, U-08.
+    STATUS_COLOURS = {
+        'proposed': (255, 170, 40, 80),     # amber  — awaiting a decision
+        'accepted': (35, 110, 200, 95),     # blue   — reviewer confirmed
+        'rejected': (180, 180, 180, 40),    # grey   — reviewer dismissed
+        'edited':   (150, 80, 200, 90),     # purple — extent adjusted
+    }
+
     def _brush_for(self, status):
-        return {
-            'proposed': (255, 170, 40, 80),
-            'accepted': (40, 170, 90, 80),
-            'rejected': (180, 180, 180, 40),
-            'edited':   (70, 130, 220, 80),
-        }.get(status, (255, 170, 40, 80))
+        return self.STATUS_COLOURS.get(status, self.STATUS_COLOURS['proposed'])
 
     def _add_region(self, ev, movable=True):
         r = pg.LinearRegionItem(

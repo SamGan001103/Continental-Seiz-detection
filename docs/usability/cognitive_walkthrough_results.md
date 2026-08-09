@@ -201,6 +201,24 @@ Three previously assumed problems were checked and found **already fixed**: the 
 now explains itself, export gives both a pre-flight and a written path, and the uncalibrated
 nature of the score is stated in the axis label, the column header and the tooltip.
 
+## 3b. Status after the first fix round (commit following `f6d6293`)
+
+All five **P1** items are closed. Verified against the running application and pinned by
+`tests/test_usability_p1.py` (11 tests), so a walkthrough re-run cannot silently regress.
+
+| ID | Fix shipped |
+|---|---|
+| **U-02** | Menu bar added (File / View / Help). **Help ▸ Keyboard shortcuts** on **F1**, generated from the `gui/app.py` docstring so it cannot drift from the shortcuts actually wired. Ctrl+O / Ctrl+E / Ctrl+I / Ctrl+B surfaced. |
+| **U-04** | **View ▸ Channel inspector… (Ctrl+I)** with a channel picker. Double-click still works and is now documented in the shortcuts dialog. |
+| **U-07** | Status cells carry background colour **and** a glyph (`?` `✓` `✗` `✎`) **and** a tooltip, so status is never colour-alone. The palette is shared with `SignalView.STATUS_COLOURS`, and a test asserts the two agree. |
+| **U-08** | Accepted recoloured amber→**blue** `(35,110,200)`, edited→purple. Green is now reserved for ground truth. A test asserts accepted is not green-dominant. |
+| **U-09** | **View ▸ Blind mode (Ctrl+B)** hides the reference bands, two-way synced with the toolbar checkbox, and `references_visible` / `blind_mode` are written into export provenance so a contaminated session is permanently flagged. |
+
+Remaining: U-03, U-05, U-10 (P2) and U-11, U-06 (P3). **Re-run this instrument** — the expected
+result is that the Q2/Q3 failure count collapses, which is the reportable before/after.
+
+---
+
 ## 4. Feed-forward
 
 U-07, U-08, U-02 and U-04 are the pre-clinician backlog and total roughly a day: a Help ▸ About /
