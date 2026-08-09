@@ -17,19 +17,27 @@ ConvLSTM detector, shows per-window seizure probability, and lets a reviewer ste
 through proposed events and accept / reject / edit them, exporting a reviewed
 `.csv_bi` plus a `.provenance.json` sidecar.
 
-**Install** (once):
+**Install** (once) — from an **Anaconda Prompt** in this folder:
 
 ```
-conda env create -f environment-seiz36.yml
+setup.bat
+```
+
+Creates the environment and verifies it, printing `SETUP OK`. Takes ~10 min.
+See **[INSTALL.md](INSTALL.md)** for setting this up on another PC, what to do
+when it fails, and the honest limits of a Python 3.6 / TF 1.15 stack.
+
+Manual equivalent: `conda env create -f environment-seiz36.yml` then
+`conda activate seiz36`. No conda? `requirements-seiz36.txt` is the same
+package set via pip into a Python 3.6 virtualenv.
+
+**Launch:** double-click **`launch_gui.bat`** — it finds the interpreter itself.
+
+From a terminal, the env must be active first (a bare `python` will be your
+system Python and fail on `PyQt5`):
+
+```
 conda activate seiz36
-```
-
-No conda? `requirements-seiz36.txt` is the same package set via pip, into a
-Python 3.6 virtualenv.
-
-**Launch:**
-
-```
 python -m gui.main                    # or: python -m gui.main path/to/file.edf
 ```
 
