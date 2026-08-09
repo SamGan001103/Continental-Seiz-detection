@@ -172,7 +172,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._montage = 'Longitudinal Bipolar'
         self._hp = 1.0
         self._lp = 70.0
-        self._notch = 50.0
+        self._notch = 60.0   # TUH is US data — 60 Hz mains
         self._sensitivity_uv = 7.0     # µV/mm — clinical default
         self._timebase_s = 10          # sec/page — clinical default
 
@@ -261,7 +261,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         tb.addWidget(QtWidgets.QLabel('HP'))
         self.cb_hp = QtWidgets.QComboBox()
-        self.cb_hp.addItems(['off', '0.5', '1.0', '3.0', '5.0'])
+        self.cb_hp.addItems(['off', '0.3', '0.5', '1.0', '3.0', '5.0'])
         self.cb_hp.setCurrentText('1.0')
         self.cb_hp.currentTextChanged.connect(self._on_filters_change)
         tb.addWidget(self.cb_hp)
@@ -276,7 +276,7 @@ class MainWindow(QtWidgets.QMainWindow):
         tb.addWidget(QtWidgets.QLabel('Notch'))
         self.cb_notch = QtWidgets.QComboBox()
         self.cb_notch.addItems(['off', '50', '60'])
-        self.cb_notch.setCurrentText('50')
+        self.cb_notch.setCurrentText('60')
         self.cb_notch.currentTextChanged.connect(self._on_filters_change)
         tb.addWidget(self.cb_notch)
         tb.addSeparator()
@@ -1246,6 +1246,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self._mark_dirty()
 
     def _on_selection_change(self, event_id):
+        # Only the selected event is draggable, so selection has to reach
+        # the trace view as well as the viewport.
+        try:
+            self.signal_view.set_selected_event(event_id)
+        except Exception:
+            pass
         if event_id > 0:
             self._on_jump(event_id)
 

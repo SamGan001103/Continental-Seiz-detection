@@ -105,6 +105,7 @@ class _ChannelAxis(pg.AxisItem):
         self.setWidth(64)
         self._drag_cb = None         # callable(new_sensitivity_uv, finished=False)
         self._drag_start = None
+        self._sens_of_spacing = None  # set by the owner: spacing -> sensitivity
         # Hint to users that the axis is interactive.
         self.setCursor(QtCore.Qt.SizeVerCursor)
 
@@ -142,8 +143,12 @@ class _ChannelAxis(pg.AxisItem):
             return
         ev.accept()
         if ev.isStart():
-            # sensitivity = spacing / 3 (set by MainWindow). Remember start state.
-            self._drag_start = (float(ev.buttonDownPos().y()), self._spacing / 3.0)
+            # Recover the current sensitivity from the owner rather than
+            # assuming a fixed spacing/sensitivity ratio — that ratio now
+            # depends on display DPI and channel count.
+            sens0 = (self._sens_of_spacing() if self._sens_of_spacing
+                     else self._spacing / 3.0)
+            self._drag_start = (float(ev.buttonDownPos().y()), sens0)
             return
         if self._drag_start is None:
             return
@@ -196,9 +201,13 @@ class SignalView(QtWidgets.QWidget):
         v.setContentsMargins(0, 0, 0, 0)
 
         self._sensitivity_uv = 30.0
+        self._channel_names = []
+        # Placeholder: the real value needs _pw's height and DPI, so it is
+        # computed in set_signal() / set_sensitivity() once those exist.
         self._spacing = self._sensitivity_uv * 3.0
         self._ch_axis = _ChannelAxis([], spacing=self._spacing)
         self._ch_axis.set_drag_callback(self._on_axis_drag)
+        self._ch_axis._sens_of_spacing = lambda: self._sensitivity_uv
 
         vb = _SignalViewBox()
         self._pw = pg.PlotWidget(viewBox=vb,
@@ -291,8 +300,8 @@ class SignalView(QtWidgets.QWidget):
         self._fs = fs
         self._full_unclipped = np.ascontiguousarray(data_full, dtype=np.float32)
         self._sensitivity_uv = float(sensitivity_uv)
-        self._spacing = self._sensitivity_uv * 3.0
         n_ch = data_full.shape[0]
+        self._spacing = self._compute_spacing(n_ch)
         self._full_offsets = -np.arange(n_ch, dtype=np.float32) * self._spacing
         self._ch_axis.set_channels(self._channel_names)
         self._ch_axis.set_spacing(self._spacing)
@@ -323,7 +332,8 @@ class SignalView(QtWidgets.QWidget):
         """Change µV/div without re-running filter/montage. Rebuilds the
         y-axis spacing and re-clips the visible slice."""
         self._sensitivity_uv = float(sensitivity_uv)
-        self._spacing = self._sensitivity_uv * 3.0
+        self._spacing = self._compute_spacing(
+            len(self._channel_names) or 1)
         if self._full_unclipped is None:
             return
         n_ch = self._full_unclipped.shape[0]
@@ -373,13 +383,54 @@ class SignalView(QtWidgets.QWidget):
         # Clip to current sensitivity BEFORE decimation so spikes that
         # exceed the row are rendered flat at ±sens rather than wiping
         # across the neighboring channel.
-        clipped = np.clip(slice_, -self._sensitivity_uv, self._sensitivity_uv)
+        lvl = self._clip_level()
+        clipped = np.clip(slice_, -lvl, lvl)
         target = int(px_w * (s1 - s0) / (span * self._fs)) if span > 0 else px_w
         target = max(512, min(target, 20000))
         data_ds, t_local = decimate_for_display(clipped, self._fs, target_px=target)
         t_ds = t_local + (s0 / self._fs)
         for i, curve in enumerate(self._curves):
-            curve.setData(t_ds, data_ds[i] + self._full_offsets[i])
+            # Negative-up: the universal EEG display convention. Negating at
+            # render only — the arrays feeding inference are untouched.
+            curve.setData(t_ds, -data_ds[i] + self._full_offsets[i])
+
+
+    # ------------------------------------------------------------------
+    # Amplitude geometry
+    #
+    # The toolbar quotes sensitivity in µV/mm, the clinical convention, so the
+    # renderer has to honour it in real millimetres rather than in arbitrary
+    # "divisions". row_mm is the physical height of one channel row on THIS
+    # display; spacing is therefore the microvolts that row spans.
+    #
+    # Traces are clipped at half the row so a large deflection fills its own
+    # lane and stops before the neighbour's. Clipping at ±sensitivity — one
+    # third of the row — was the old behaviour and it flat-topped 34 % of
+    # samples at a clinical 7 µV/mm, destroying exactly the morphology a
+    # reviewer judges on.
+    # ------------------------------------------------------------------
+    def resizeEvent(self, ev):
+        super().resizeEvent(ev)
+        # Row height in millimetres changed, so µV/mm implies a new spacing.
+        if getattr(self, '_channel_names', None):
+            self.set_sensitivity(self._sensitivity_uv, rebuild_layout=True)
+
+    def _row_mm(self, n_ch):
+        try:
+            dpi_y = float(self._pw.physicalDpiY())
+        except Exception:
+            dpi_y = 96.0
+        if not dpi_y or dpi_y <= 0:
+            dpi_y = 96.0
+        px_per_mm = dpi_y / 25.4
+        h_px = max(1, int(self._pw.height()))
+        return max(1.0, (h_px / float(max(1, n_ch))) / px_per_mm)
+
+    def _compute_spacing(self, n_ch):
+        return float(self._sensitivity_uv) * self._row_mm(n_ch)
+
+    def _clip_level(self):
+        return 0.5 * float(self._spacing)
 
     def plot_item(self):
         return self._pw.getPlotItem()
@@ -412,6 +463,21 @@ class SignalView(QtWidgets.QWidget):
             r.setVisible(self._refs_visible)
 
     # ---- AI-proposed events -----------------------------------------
+    def set_selected_event(self, event_id):
+        """Only the selected event may be dragged.
+
+        Every region used to be movable, so a left-drag beginning inside one
+        moved the event instead of panning the view — promoting it to 'edited',
+        which IS exported, with no undo. Restricting mobility to the current
+        selection makes an extent change deliberate.
+        """
+        self._selected_event_id = event_id
+        for eid, item in getattr(self, '_regions', {}).items():
+            try:
+                item.setMovable(eid == event_id)
+            except Exception:
+                pass
+
     def set_events(self, events, movable=True):
         pi = self._pw.getPlotItem()
         for item in list(self._regions.values()):
@@ -419,7 +485,10 @@ class SignalView(QtWidgets.QWidget):
         self._regions = {}
         self._event_cache = list(events)
         for ev in events:
-            self._add_region(ev, movable=movable)
+            self._add_region(
+                ev,
+                movable=movable and (
+                    ev.get('id') == getattr(self, '_selected_event_id', None)))
 
     # Green is reserved for GROUND TRUTH. The reference band is (50,160,70) and
     # accepted events used to be (40,170,90) — the same hue at a different
