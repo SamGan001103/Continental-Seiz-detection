@@ -16,7 +16,7 @@ indistinguishable from the published one**, not a demonstration of improvement.
 
 **Quote two significant figures.** The interval is ±0.06 wide; four decimal places imply a
 precision this evidence does not carry, and invite a reproducibility challenge that will fail
-(see §8).
+(see §9).
 
 Use **`artifacts/zuna_thesis/manifest_full.csv`** for anything reported, and note that
 **99 of the 305 cached recordings have no `.csv_bi` annotation and are excluded** — an absent
@@ -261,8 +261,10 @@ target is the ICA/preprocessing front end. See `docs/deployment_roadmap.md` §5.
   model quality, not preprocessing drop-out) and count as non-detections at event level. One
   recording, `aaaaaqtw_s002_t012`, has all 49 windows rejected and contains a real 27-second
   seizure.
-- **Probabilities are uncalibrated raw softmax.** No temperature, Platt, or isotonic scaling.
-  The `temp = 1.0` Lambda in `models/deep_conv_lstm.py:84` is the identity.
+- **Probabilities are uncalibrated raw softmax**, and §8 quantifies it: ECE 0.072, and a score
+  of 0.5 corresponds to a 29 % chance of ictal, not 50 %. The `temp = 1.0` Lambda in
+  `models/deep_conv_lstm.py:84` is the identity. Post-hoc Platt scaling would cut ECE ~85 % but
+  is deliberately **not** adopted in the GUI (see §8).
 - **Corpus version mismatch** throughout: weights trained on v1.5.1, evaluated on v2.0.0.
 - **Train/test disjointness is assumed, not verified.** v1.5.1 IDs are numeric
   (`00000258_s001_t000`) and v2.0.0 stems are anonymised (`aaaaaaaq_s006_t000`), so the two
@@ -272,7 +274,97 @@ target is the ICA/preprocessing front end. See `docs/deployment_roadmap.md` §5.
 
 ---
 
-## 8. Inference is not bit-reproducible
+## 8. Calibration — the score is not a probability, and can be made one
+
+```
+python experiments/calibration.py --manifest artifacts/zuna_thesis/manifest_full.csv     --out artifacts/zuna_thesis/baseline_eval/calibration.json     --svg artifacts/zuna_thesis/baseline_eval/reliability.svg
+```
+
+Out-of-fold under 5-fold cross-validation **grouped by patient**, 15,496 windows from 203
+recordings / **28 patients**, 5.09 % ictal.
+
+| | ECE | 95 % CI | Brier | log loss | ROC-AUC |
+|---|---|---|---|---|---|
+| **raw** | **0.072** | [0.052, 0.092] | 0.0647 | 0.283 | 0.801 |
+| temperature | 0.069 | [0.049, 0.094] | 0.0606 | 0.212 | 0.801 |
+| **Platt** | **0.011** | [0.007, 0.028] | 0.0438 | 0.172 | 0.787 |
+| isotonic | 0.015 | [0.010, 0.031] | 0.0417 | 0.172 | 0.777 |
+
+**The detector is substantially over-confident** — mean score 0.087 against a base rate of 0.051.
+Platt scaling cuts ECE by ~85 %. Platt and isotonic are **not separable** at this sample size
+(paired 95 % CI [−0.011, +0.003]); **report them as a tie and prefer Platt**, because it has two
+parameters rather than a free monotone map, is stable across seeds and splits, and its intercept
+can be re-shifted under label shift — which isotonic has no parameter to do.
+
+### Grouping by patient is not optional
+
+The 203 recordings come from only **28 patients**, and just 14 contribute a positive window.
+Grouping folds by *recording* puts other recordings of the same patient in training for ~95 % of
+test windows, and the free monotone map exploits it:
+
+| | by recording | by patient | leave-one-patient-out |
+|---|---|---|---|
+| Platt | 0.0106 | 0.0109 | 0.0107 |
+| isotonic | **0.0085** | 0.0149 | 0.0168 |
+
+Isotonic's apparent advantage is entirely leakage. Any calibration result quoted from this project
+must state the grouping unit.
+
+### Why temperature scaling fails here
+
+Temperature barely moves ECE (0.072 → 0.069) despite fitting a stable T ≈ 2.1 across all folds,
+because a pure logit rescale through the origin has **no intercept**, so nothing pins the mean
+prediction to the base rate. At 5 % prevalence, dividing predominantly negative logits by T > 1
+pushes the mean score *away* from the base rate. Fitting the offset alone at temperature's own
+slope already recovers most of the gap. Temperature is not useless — it cuts log loss 25 % and
+Brier 6 % — but calibration error specifically is what it cannot fix.
+
+### Three units, three different numbers
+
+Calibration is fitted per **window** (what the network emits), but the GUI thresholds the
+per-**second** mean and presents **events**. `mean(f(p)) ≠ f(mean(p))`, so these are different
+objects. Say which one a number describes.
+
+| unit | raw ECE | P(ictal \| score ≥ 0.5) | 95 % CI |
+|---|---|---|---|
+| window (12 s) | 0.072 | 0.287 | [0.166, 0.430] |
+| second (what the GUI thresholds) | 0.059 | 0.350 | [0.199, 0.524] |
+| event (what the reviewer sees) | — | 42 of 289 proposals = 0.15 | see §3 |
+
+Per-second averaging is itself a partial calibrator, removing ~18 % of the miscalibration before
+any fit. Per-second Platt reaches ECE 0.009.
+
+**A raw score of 0.5 is not a 50 % chance of seizure** — at window level it is 29 %, and the
+interval is wide. The GUI's existing labelling (axis "model score", `scores_are_calibrated: false`
+in provenance, "raw, UNCALIBRATED" in the tooltip) is therefore **correct, and this analysis
+validates it** rather than exposing a defect.
+
+### Calibration is NOT adopted in the GUI
+
+Reported as analysis only, for three reasons: the calibrator is fitted on windows while the GUI
+thresholds their per-second mean; thresholding calibrated scores at 0.5 collapses event
+sensitivity (0.494 → 0.32 isotonic / 0.14 Platt) so every event-level number in §3 would need
+re-measuring; and the fitted map is specific to this corpus's prevalence.
+
+### Caveats
+
+- **Prevalence.** Every calibrated probability is conditional on π = 0.0509 on a seizure-enriched
+  corpus. At ambulatory prevalence (20–200× lower) the same score means far less. Transportable
+  only by re-shifting Platt's intercept under a label-shift assumption.
+- **ECE definition.** Positive-class reliability form over 15 equal-mass bins (Naeini et al. 2015;
+  Bröcker 2009), *not* Guo's confidence-vs-accuracy form, which is near-meaningless at a 5 % base
+  rate where predicting background everywhere scores 95 % accuracy. Stable across 5–200 bins.
+- **MCE is partition-dependent** (0.27 at 5 bins to 0.69 at 200) — diagnostic only, never a
+  headline, and never quote a reduction in it.
+- **Calibration buys no discrimination.** Within-fold ROC-AUC is *bit-identical* for temperature
+  and Platt (recorded per fold in the JSON). Isotonic perturbs it by up to 0.003 in either
+  direction through tie creation.
+- **Coverage.** 943 windows (5.7 %), carrying 54 positives, are unscored and excluded — no
+  calibrator here can touch them.
+
+---
+
+## 9. Inference is not bit-reproducible
 
 `random_state=13` at `utils/preprocessing.py:71` is **not sufficient** to make the pipeline
 deterministic. Re-running `compute_probs` on an unchanged EDF reproduces its own cache for some

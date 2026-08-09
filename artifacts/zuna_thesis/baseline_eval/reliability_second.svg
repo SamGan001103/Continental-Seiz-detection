@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="520" viewBox="0 0 660 520" font-family="system-ui,sans-serif">
+<rect width="660" height="520" fill="white"/>
+<line x1="78.0" y1="446.0" x2="78.0" y2="58.0" stroke="#ececec"/>
+<text x="78.0" y="464.0" font-size="11" fill="#555" text-anchor="middle">10<tspan font-size="8" dy="-4">-4</tspan></text>
+<line x1="217.5" y1="446.0" x2="217.5" y2="58.0" stroke="#ececec"/>
+<text x="217.5" y="464.0" font-size="11" fill="#555" text-anchor="middle">10<tspan font-size="8" dy="-4">-3</tspan></text>
+<line x1="357.0" y1="446.0" x2="357.0" y2="58.0" stroke="#ececec"/>
+<text x="357.0" y="464.0" font-size="11" fill="#555" text-anchor="middle">10<tspan font-size="8" dy="-4">-2</tspan></text>
+<line x1="496.5" y1="446.0" x2="496.5" y2="58.0" stroke="#ececec"/>
+<text x="496.5" y="464.0" font-size="11" fill="#555" text-anchor="middle">10<tspan font-size="8" dy="-4">-1</tspan></text>
+<line x1="636.0" y1="446.0" x2="636.0" y2="58.0" stroke="#ececec"/>
+<text x="636.0" y="464.0" font-size="11" fill="#555" text-anchor="middle">1</text>
+<line x1="78.0" y1="446.0" x2="636.0" y2="446.0" stroke="#ececec"/>
+<text x="70.0" y="450.0" font-size="11" fill="#555" text-anchor="end">0.0</text>
+<line x1="78.0" y1="368.4" x2="636.0" y2="368.4" stroke="#ececec"/>
+<text x="70.0" y="372.4" font-size="11" fill="#555" text-anchor="end">0.2</text>
+<line x1="78.0" y1="290.8" x2="636.0" y2="290.8" stroke="#ececec"/>
+<text x="70.0" y="294.8" font-size="11" fill="#555" text-anchor="end">0.4</text>
+<line x1="78.0" y1="213.2" x2="636.0" y2="213.2" stroke="#ececec"/>
+<text x="70.0" y="217.2" font-size="11" fill="#555" text-anchor="end">0.6</text>
+<line x1="78.0" y1="135.6" x2="636.0" y2="135.6" stroke="#ececec"/>
+<text x="70.0" y="139.6" font-size="11" fill="#555" text-anchor="end">0.8</text>
+<line x1="78.0" y1="58.0" x2="636.0" y2="58.0" stroke="#ececec"/>
+<text x="70.0" y="62.0" font-size="11" fill="#555" text-anchor="end">1.0</text>
+<polyline fill="none" stroke="#999" stroke-dasharray="5,4" points="78.0,446.0 87.5,446.0 96.9,445.9 106.4,445.9 115.8,445.9 125.3,445.9 134.7,445.9 144.2,445.9 153.7,445.9 163.1,445.8 172.6,445.8 182.0,445.8 191.5,445.7 200.9,445.7 210.4,445.7 219.9,445.6 229.3,445.5 238.8,445.4 248.2,445.4 257.7,445.2 267.2,445.1 276.6,445.0 286.1,444.8 295.5,444.6 305.0,444.4 314.4,444.1 323.9,443.8 333.4,443.4 342.8,442.9 352.3,442.4 361.7,441.8 371.2,441.1 380.6,440.3 390.1,439.3 399.6,438.2 409.0,436.8 418.5,435.3 427.9,433.5 437.4,431.4 446.8,428.9 456.3,426.0 465.8,422.6 475.2,418.7 484.7,414.1 494.1,408.7 503.6,402.4 513.1,395.0 522.5,386.4 532.0,376.3 541.4,364.6 550.9,350.8 560.3,334.7 569.8,315.9 579.3,293.9 588.7,268.2 598.2,238.2 607.6,203.1 617.1,162.1 626.5,114.1 636.0,58.0"/>
+<text x="558.9" y="314.1" font-size="10" fill="#888">perfect calibration</text>
+<polyline fill="none" stroke="#b02020" stroke-width="2" points="78.0,445.9 78.0,445.9 78.0,445.1 78.0,443.7 98.3,442.7 127.1,441.3 159.6,441.2 196.9,440.5 244.4,438.5 299.3,434.4 362.7,436.3 438.5,432.1 514.5,423.2 572.7,417.4 618.3,317.3"/>
+<circle cx="78.0" cy="445.9" r="3" fill="#b02020"/>
+<circle cx="78.0" cy="445.9" r="3" fill="#b02020"/>
+<circle cx="78.0" cy="445.1" r="3" fill="#b02020"/>
+<circle cx="78.0" cy="443.7" r="3" fill="#b02020"/>
+<circle cx="98.3" cy="442.7" r="3" fill="#b02020"/>
+<circle cx="127.1" cy="441.3" r="3" fill="#b02020"/>
+<circle cx="159.6" cy="441.2" r="3" fill="#b02020"/>
+<circle cx="196.9" cy="440.5" r="3" fill="#b02020"/>
+<circle cx="244.4" cy="438.5" r="3" fill="#b02020"/>
+<circle cx="299.3" cy="434.4" r="3" fill="#b02020"/>
+<circle cx="362.7" cy="436.3" r="3" fill="#b02020"/>
+<circle cx="438.5" cy="432.1" r="3" fill="#b02020"/>
+<circle cx="514.5" cy="423.2" r="3" fill="#b02020"/>
+<circle cx="572.7" cy="417.4" r="3" fill="#b02020"/>
+<circle cx="618.3" cy="317.3" r="3" fill="#b02020"/>
+<rect x="90.0" y="64.0" width="11" height="11" fill="#b02020"/>
+<text x="107.0" y="74.0" font-size="12" fill="#333">raw</text>
+<polyline fill="none" stroke="#2c8a3d" stroke-width="2" points="252.7,445.9 268.7,445.6 279.1,445.0 289.6,443.1 300.2,442.8 312.4,441.6 326.7,441.5 343.1,441.5 363.4,437.2 387.6,434.4 414.9,435.7 449.4,429.1 485.6,419.2 517.4,400.5 564.1,342.5"/>
+<circle cx="252.7" cy="445.9" r="3" fill="#2c8a3d"/>
+<circle cx="268.7" cy="445.6" r="3" fill="#2c8a3d"/>
+<circle cx="279.1" cy="445.0" r="3" fill="#2c8a3d"/>
+<circle cx="289.6" cy="443.1" r="3" fill="#2c8a3d"/>
+<circle cx="300.2" cy="442.8" r="3" fill="#2c8a3d"/>
+<circle cx="312.4" cy="441.6" r="3" fill="#2c8a3d"/>
+<circle cx="326.7" cy="441.5" r="3" fill="#2c8a3d"/>
+<circle cx="343.1" cy="441.5" r="3" fill="#2c8a3d"/>
+<circle cx="363.4" cy="437.2" r="3" fill="#2c8a3d"/>
+<circle cx="387.6" cy="434.4" r="3" fill="#2c8a3d"/>
+<circle cx="414.9" cy="435.7" r="3" fill="#2c8a3d"/>
+<circle cx="449.4" cy="429.1" r="3" fill="#2c8a3d"/>
+<circle cx="485.6" cy="419.2" r="3" fill="#2c8a3d"/>
+<circle cx="517.4" cy="400.5" r="3" fill="#2c8a3d"/>
+<circle cx="564.1" cy="342.5" r="3" fill="#2c8a3d"/>
+<rect x="90.0" y="82.0" width="11" height="11" fill="#2c8a3d"/>
+<text x="107.0" y="92.0" font-size="12" fill="#333">platt</text>
+<polyline fill="none" stroke="#7b4fa8" stroke-width="2" points="78.0,446.0 78.0,445.7 210.7,444.8 310.3,444.3 350.1,435.8 360.1,442.3 370.1,443.5 384.6,441.8 398.2,438.3 411.6,435.2 418.8,434.4 436.6,428.1 458.3,415.4 494.6,408.0 572.1,351.3"/>
+<circle cx="78.0" cy="446.0" r="3" fill="#7b4fa8"/>
+<circle cx="78.0" cy="445.7" r="3" fill="#7b4fa8"/>
+<circle cx="210.7" cy="444.8" r="3" fill="#7b4fa8"/>
+<circle cx="310.3" cy="444.3" r="3" fill="#7b4fa8"/>
+<circle cx="350.1" cy="435.8" r="3" fill="#7b4fa8"/>
+<circle cx="360.1" cy="442.3" r="3" fill="#7b4fa8"/>
+<circle cx="370.1" cy="443.5" r="3" fill="#7b4fa8"/>
+<circle cx="384.6" cy="441.8" r="3" fill="#7b4fa8"/>
+<circle cx="398.2" cy="438.3" r="3" fill="#7b4fa8"/>
+<circle cx="411.6" cy="435.2" r="3" fill="#7b4fa8"/>
+<circle cx="418.8" cy="434.4" r="3" fill="#7b4fa8"/>
+<circle cx="436.6" cy="428.1" r="3" fill="#7b4fa8"/>
+<circle cx="458.3" cy="415.4" r="3" fill="#7b4fa8"/>
+<circle cx="494.6" cy="408.0" r="3" fill="#7b4fa8"/>
+<circle cx="572.1" cy="351.3" r="3" fill="#7b4fa8"/>
+<rect x="90.0" y="100.0" width="11" height="11" fill="#7b4fa8"/>
+<text x="107.0" y="110.0" font-size="12" fill="#333">isotonic</text>
+<text x="357.0" y="498.0" font-size="13" fill="#222" text-anchor="middle">predicted score (log scale)</text>
+<text x="16" y="252.0" font-size="13" fill="#222" text-anchor="middle" transform="rotate(-90 16 252.0)">observed ictal frequency</text>
+<text x="330.0" y="26" font-size="14" fill="#111" text-anchor="middle">Reliability of the per-second seizure score</text>
+<text x="330.0" y="44" font-size="11" fill="#666" text-anchor="middle">15 equal-mass bins · out-of-fold, grouped by patient · n=94908 (4.20% ictal)</text>
+</svg>

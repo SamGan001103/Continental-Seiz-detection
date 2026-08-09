@@ -77,6 +77,9 @@ python experiments/replicate_paper_auc.py --manifest artifacts/zuna_thesis/manif
 # what the source method's decision stage is worth (4-way ablation)
 python experiments/ablate_postprocessing.py --manifest artifacts/zuna_thesis/manifest_full.csv
 
+# calibration: reliability curves, ECE with CIs, three post-hoc calibrators
+python experiments/calibration.py --manifest artifacts/zuna_thesis/manifest_full.csv \n  --out artifacts/zuna_thesis/baseline_eval/calibration.json \n  --svg artifacts/zuna_thesis/baseline_eval/reliability.svg
+
 # ICA on vs off (needs TensorFlow)     # baseline vs ZUNA, re-scored from caches
 python experiments/diag_ica.py         # python experiments/rescore_zuna_compare.py \
                                        #     --dir artifacts/zuna_thesis/compare_first10
@@ -106,6 +109,7 @@ is stale. Supporting documents:
 | `docs/progress_2026-08-09_…md` | **latest progress log** — chronology, decisions, dead ends |
 | `docs/usability/cognitive_walkthrough_results.md` | first usability results (10 issues, 5 P1) |
 | `docs/ica_implementation_review.md` | is the ICA stage implemented correctly? (measured) |
+| `experiments/calibration.py` | calibration analysis — reliability, ECE, Platt/isotonic/temperature |
 | `docs/progress_2026-05-19_zuna_gui.md` | **historical** — numbers superseded |
 | `thesis_report_bundle/` | **archived June 2026 snapshot** — stale code and numbers |
 
