@@ -14,6 +14,14 @@ stride, per-window ICA, pretrained `convlstm_ICA_12_train.h5`. Inference only �
 annotated recordings / 28 patients / 27.8 h, against the **0.84** published for TUH. The published value lies inside the interval: this is a result **statistically
 indistinguishable from the published one**, not a demonstration of improvement.
 
+> **Which row these intervals come from.** Both paper-protocol variants give 0.89 to two
+> significant figures, and the headline quotes the **non-overlapping** one — 0.8856,
+> [0.819, 0.938] by file, [0.730, 0.951] by patient — because non-overlapping windows are the
+> more conservative and more defensible basis. The `pure windows` row in §2 is a *different* row
+> (0.8901, [0.826, 0.941] by file, [0.744, 0.951] by patient); do not mix an AUC from one with an
+> interval from the other. The bootstrap is seeded (`seed=13`, 2000 resamples), so all six of
+> these numbers reproduce exactly from the same caches — re-verified 2026-08-10.
+
 **Quote two significant figures.** The interval is ±0.06 wide; four decimal places imply a
 precision this evidence does not carry, and invite a reproducibility challenge that will fail
 (see §9).
