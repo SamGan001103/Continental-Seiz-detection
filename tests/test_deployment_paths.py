@@ -160,6 +160,67 @@ class Provenance(unittest.TestCase):
             self.assertEqual(_git_commit(), 'abc1234')
         shutil.rmtree(bundle, ignore_errors=True)
 
+    def _tiny_repo(self):
+        """A real one-commit git repo, or None if git is unavailable."""
+        import subprocess
+        d = tempfile.mkdtemp()
+        env = dict(os.environ, GIT_CONFIG_NOSYSTEM='1', HOME=d)
+        def run(*a):
+            subprocess.check_output(('git',) + a, cwd=d, stderr=subprocess.PIPE,
+                                    env=env)
+        try:
+            run('init')
+            run('config', 'user.email', 't@t')
+            run('config', 'user.name', 't')
+            with open(os.path.join(d, 'tracked.txt'), 'w') as f:
+                f.write('one\n')
+            run('add', '.')
+            run('commit', '-m', 'one')
+        except Exception:
+            shutil.rmtree(d, ignore_errors=True)
+            return None
+        return d
+
+    def test_untracked_files_alone_do_not_mark_the_build_dirty(self):
+        """Otherwise the flag is set forever and means nothing.
+
+        This repository permanently carries a large untracked thesis bundle, so
+        plain `git status --porcelain` reported changes on every single run and
+        every export was stamped "+dirty" regardless of the code.
+        """
+        import gui.app as app_mod
+        d = self._tiny_repo()
+        if d is None:
+            self.skipTest('git unavailable')
+        saved = app_mod.REPO
+        try:
+            app_mod.REPO = d
+            self.assertFalse(app_mod._git_commit().endswith('+dirty'),
+                             'clean tree reported as dirty')
+            with open(os.path.join(d, 'untracked.txt'), 'w') as f:
+                f.write('not part of any commit\n')
+            self.assertFalse(app_mod._git_commit().endswith('+dirty'),
+                             'an untracked file must not mark the tree dirty')
+        finally:
+            app_mod.REPO = saved
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_a_modified_tracked_file_does_mark_the_build_dirty(self):
+        """The flag must still fire for the case it exists for."""
+        import gui.app as app_mod
+        d = self._tiny_repo()
+        if d is None:
+            self.skipTest('git unavailable')
+        saved = app_mod.REPO
+        try:
+            app_mod.REPO = d
+            with open(os.path.join(d, 'tracked.txt'), 'w') as f:
+                f.write('changed\n')
+            self.assertTrue(app_mod._git_commit().endswith('+dirty'))
+        finally:
+            app_mod.REPO = saved
+            shutil.rmtree(d, ignore_errors=True)
+
     def test_a_frozen_build_with_no_stamp_reports_none_rather_than_raising(self):
         from gui.app import _git_commit
         bundle = tempfile.mkdtemp()

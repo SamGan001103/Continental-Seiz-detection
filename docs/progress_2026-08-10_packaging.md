@@ -134,7 +134,24 @@ The widgets are still constructed, so every code path that references them
 stays simple; they are simply never shown. Four tests pin both directions, so
 the research build keeps the capability it was written for.
 
-### 2.8 There was nowhere for a crash to go
+### 2.8 The provenance "dirty" flag could never be clean
+
+The build stamp, and `_git_commit()` for source runs, marked a build `+dirty`
+whenever `git status --porcelain` reported anything. That command also lists
+**untracked** files, and this repository permanently carries a 134-file
+untracked thesis bundle — so every build and every export was stamped `+dirty`
+regardless of the code. A flag that is always set carries no information, and
+the first genuinely dirty build would have been indistinguishable from all the
+others.
+
+`+dirty` now means a *tracked* file differs from the commit, i.e. this build
+cannot be reproduced from the commit alone — the thing a reviewer actually
+needs. The untracked count is recorded separately in `build_info.json` rather
+than discarded, because an untracked `.py` inside `gui/` would genuinely reach
+the bundle. Two tests build a real one-commit git repository and check both
+directions.
+
+### 2.9 There was nowhere for a crash to go
 
 A windowed build has no console; a traceback printed to stdout vanishes.
 `gui/main.py` now installs an exception hook that writes to
@@ -157,7 +174,7 @@ success until the frozen executable has actually run.
 1. **Weights hash** — checked against `eval_config.WEIGHTS_SHA256` *before*
    building. Fatal, not a warning: a build carrying the wrong weights is
    indistinguishable from a correct one at run time.
-2. **Test suite** — 130 tests. A release is not built from a failing tree.
+2. **Test suite** — 132 tests. A release is not built from a failing tree.
 3. **`SeizureReview.exe --gui-self-test`** — constructs the real `MainWindow`
    offscreen and pumps the event loop, catching a missing PyQt5 or pyqtgraph
    submodule.
@@ -275,7 +292,7 @@ new   gui/paths.py                       resource resolution, frozen and source
 new   packaging/SeizureReview.spec       the build definition + build stamp
 new   packaging/build_app.bat            verify -> test -> freeze -> smoke test
 new   packaging/smoke_test.py            runs the frozen exe before shipping it
-new   tests/test_deployment_paths.py     20 tests for target-machine failures
+new   tests/test_deployment_paths.py     22 tests for target-machine failures
 new   tests/test_doc_numbers.py          16 tests pinning the shipped docs to
                                          RESULTS.md, and the derived percentages
                                          to the counts they come from
@@ -299,4 +316,4 @@ mod   tests/test_review_guards.py        +3 autosave-fallback cases
 mod   README.md, INSTALL.md              frozen build promoted to Route A
 ```
 
-Tests: 91 → 130, all passing.
+Tests: 91 → 132, all passing.

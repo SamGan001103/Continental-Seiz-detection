@@ -55,7 +55,18 @@ def _git(*argv):
 
 
 _commit = _git('rev-parse', '--short', 'HEAD')
-if _commit and _git('status', '--porcelain'):
+
+# --untracked-files=no matters. Plain `git status --porcelain` also lists
+# untracked files, and this repository permanently carries a large untracked
+# thesis bundle — so every build was stamped "+dirty" regardless of the code,
+# which makes the flag convey nothing. "+dirty" must mean "a TRACKED file
+# differs from the commit", i.e. this build is not reproducible from the commit
+# alone. The untracked count is recorded separately rather than discarded,
+# because an untracked .py inside gui/ would genuinely end up in the bundle.
+_dirty = bool(_git('status', '--porcelain', '--untracked-files=no'))
+_untracked = len([l for l in _git('status', '--porcelain').splitlines()
+                  if l.startswith('??')])
+if _commit and _dirty:
     _commit += '+dirty'
 
 _build_dir = os.path.join(REPO, 'build', 'stamp')
@@ -65,10 +76,13 @@ _stamp = os.path.join(_build_dir, 'build_info.json')
 with open(_stamp, 'w') as _f:
     json.dump({
         'commit': _commit or None,
+        'tracked_tree_clean': not _dirty,
+        'untracked_files_present': _untracked,
         'built_on': __import__('platform').node(),
         'python': sys.version.split()[0],
     }, _f, indent=2)
-print('build stamp: commit={}'.format(_commit or '(unknown)'))
+print('build stamp: commit={} tracked_clean={} untracked={}'.format(
+    _commit or '(unknown)', not _dirty, _untracked))
 
 # --------------------------------------------------------------------------
 # Data files

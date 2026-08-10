@@ -93,8 +93,15 @@ def _git_commit():
         sha = subprocess.check_output(
             ['git', 'rev-parse', '--short', 'HEAD'], cwd=REPO,
             stderr=subprocess.PIPE).decode('ascii').strip()
+        # --untracked-files=no: plain --porcelain also lists untracked files,
+        # and this repository permanently carries a large untracked thesis
+        # bundle, so every export was stamped "+dirty" whatever the code was
+        # doing. A flag that is always set carries no information. "+dirty"
+        # means a TRACKED file differs from the commit, i.e. the session cannot
+        # be reproduced from the commit alone — which is the thing a reviewer
+        # actually needs to know.
         dirty = subprocess.check_output(
-            ['git', 'status', '--porcelain'], cwd=REPO,
+            ['git', 'status', '--porcelain', '--untracked-files=no'], cwd=REPO,
             stderr=subprocess.PIPE).decode('utf-8', 'replace').strip()
         return sha + ('+dirty' if dirty else '')
     except Exception:
