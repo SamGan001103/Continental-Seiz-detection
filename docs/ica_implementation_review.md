@@ -129,11 +129,29 @@ wherever the iteration happened to stop.
 measured window moving by 0.107. An earlier version of this document claimed the non-convergence
 was "at least deterministic"; that was wrong. See `docs/RESULTS.md` §8.
 
-### 3.6 `except:` swallows every failure
+**The rate is strongly recording-dependent, so do not quote a single figure without the range.**
+A spot check on 2026-08-10 over the first 8 windows of `aaaaatao_s003_t001` produced **zero**
+non-convergence warnings — which is not a contradiction of the 58 % pooled figure but an
+instance of the 20–100 % spread, and a caution against generalising from any one recording. The
+same check confirmed `ica.n_components_ == 19` (no rank reduction is applied), giving the 158
+samples per component quoted in §3.4.
 
-`ica.fit` is wrapped in a bare `except: return None`, and the caller
-(`gui/io/infer.py:141-145`) turns `None` into a probability of exactly **0.0** — indistinguishable
-downstream from a confident "no seizure". This is the same sentinel problem as roadmap item B2(a).
+### 3.6 `except:` swallows every failure — *the downstream half is now fixed*
+
+`ica.fit` is still wrapped in a bare `except: return None`, which catches `KeyboardInterrupt`
+and `MemoryError` along with everything else and discards the reason. That part stands.
+
+**The consequence described here no longer holds.** This section originally said `None` becomes
+a probability of exactly 0.0, "indistinguishable downstream from a confident *no seizure*". That
+was true when written and is not true now: `gui/io/infer.py` records
+`skip_code[i] = SKIP_ICA_FAILED` alongside the 0.0, the cache persists the array
+(`CACHE_VERSION = 2`), and the GUI renders those windows as *"not assessed — ICA decomposition
+failed"* rather than as a confident negative. The 0.0 is retained only for backward
+compatibility with v1 caches, and consumers are expected to test `skip_code`, not the
+probability.
+
+Verified 2026-08-10 against `gui/io/infer.py` and `gui/io/cache.py`. What remains open is the
+bare `except` itself, not the sentinel.
 
 ---
 
