@@ -89,12 +89,26 @@ pip-only environment freezes TF 2 cleanly, not a demonstration that it cures the
 Attempt 1 on the list above remains the right next move, now with a working reference build to
 compare against.
 
-### Why it is not urgent
+### Why it is not urgent — and what that judgement now rests on
 
-The only thing lost is *identical library versions across platforms*. Measured, the practical
-difference between the two stacks is a median **0.0001** in `p(seizure)` and **no detection
-decision changing** over 74 windows (`docs/portability.md`). Both are correct applications; they
-differ less than the ICA differs from itself between runs.
+The only thing lost is *identical library versions across platforms*.
+
+This section previously argued the point was academic, citing a median **0.0001** in `p(seizure)`
+and **no detection decision changing** over 74 windows. Measured over 3 870 windows from 111
+recordings, the median holds at 0.00006 but the rest does not: 1.5 % of windows change decision,
+the maximum is 0.788 against the 0.136 quoted, and **41 % of proposed events present on Windows
+are absent on Linux** (`docs/portability.md`).
+
+That does **not** make the Windows freeze urgent, and it is worth being precise about why. Closing
+this issue would give Windows the *modern* stack — the same one macOS and Linux run — which would
+put all three platforms on one side of the divide. But the divide measured above is between the
+**legacy** Windows build that ships today and the modern stack, and the shipped Windows build is
+the one every reported figure was produced on. Fixing this would not remove the disagreement; it
+would move Windows to the other side of it and invalidate the caches.
+
+So the priority is unchanged, but the reasoning is inverted: this is not urgent because the
+difference is small — it is not small — but because the shipped application is self-consistent and
+the handling rule (regenerate caches per machine, never mix figures) covers it.
 
 ---
 
@@ -115,7 +129,15 @@ from every evaluation, which is why the scorable set is 305 of 306 cached record
 
 ## 4. Reported figures are platform-specific (inherent, not fixable)
 
-The ICA does not converge, so a 10⁻¹⁵ difference in linear algebra between two machines produces
-a different decomposition. Numbers move in the third decimal between platforms and between
-regenerations. **Do not mix figures from two machines in one table**; regenerate the caches in a
-single pass on one machine and say which. See `docs/portability.md`.
+The ICA does not converge — verified on real data, `n_iter_` reaches `max_iter` = 200 on every
+window — so a 10⁻¹⁵ difference in linear algebra between two machines produces a different
+decomposition.
+
+**"Third decimal" was wrong.** That was measured over 74 windows and describes only the bulk of
+the distribution. Over 3 870 windows the median is 0.00006 but p99 is 0.30 and the maximum 0.79,
+and at the level a reviewer actually sees, 41 % of proposed events differ between two correct
+builds. See `docs/portability.md` for the distribution and for why neither machine is "right".
+
+**Do not mix figures from two machines in one table.** Previously advice about precision, this is
+now a correctness requirement: such a table can disagree with itself about whether a seizure was
+proposed at all. Regenerate the caches in a single pass on one machine and say which.

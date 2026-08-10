@@ -5,9 +5,18 @@ release notes.*
 
 ## Result
 
-**A modern stack runs the pipeline on all three platforms and agrees with the frozen Windows
-build closely enough that no detection decision changes.** It does **not** agree bit-for-bit, and
-this document explains why that is inherent rather than fixable.
+**A modern stack runs the pipeline on all three platforms. It does not agree with the frozen
+Windows build closely enough to leave the reviewer's event list unchanged.**
+
+An earlier version of this document claimed the opposite — "closely enough that no detection
+decision changes" — on the strength of 74 windows from two recordings. Measured properly over
+3 870 windows from 111 recordings, that claim is false, and the section below gives the
+distribution that replaces it. The *mechanism* described here was right; the *magnitude* was
+taken from a sample that never reached the tail.
+
+The disagreement is inherent rather than fixable, for reasons this document explains. What
+follows from it is a handling rule, not a repair: **regenerate caches on the machine you evaluate
+on, and never mix figures from two machines in one table.**
 
 | | current (Windows only) | portable target |
 |---|---|---|
@@ -56,19 +65,75 @@ TF 2.x does. `experiments/diag_tf2_port.py` is the rebuild.
 
 ## Why bit-identity is impossible, and why that is acceptable
 
-Running the full pipeline on the modern stack against the Windows baseline, 74 windows over two
-recordings:
+Measured by `experiments/platform_drift.py`, which re-scores recordings the Windows machine has
+already cached and compares window-for-window. It refuses any recording whose window grid does
+not align exactly, and any whose file fingerprint does not match the reference, so a data
+difference cannot be reported as a platform difference. Run against the machine that wrote the
+reference it returns 0.000000 over 710 windows, so a non-zero result is real.
+
+**Windows (Python 3.6 / MNE 0.19.2 / TF 1.15) against Linux x86-64 (Python 3.12 / MNE 1.12.1 /
+TF 2.21), 111 recordings, 3 870 windows:**
 
 | | value |
 |---|---|
-| median Δ p(seizure) | **0.0001** |
-| mean Δ | 0.003 |
-| max Δ | **0.136** |
-| windows moved > 0.01 | 4 / 74 |
-| **windows changing a detection decision** | **0 / 74** |
+| median Δ p(seizure) | **0.000058** |
+| p95 Δ | 0.087 |
+| p99 Δ | 0.303 |
+| max Δ | **0.788** |
+| **windows changing a detection decision** | **57 / 3 870 (1.5 %)** |
 
-Against the **0.90** previously recorded for "MNE 1.12", that is more than a sixfold reduction —
-but it is not zero, and the reason is worth stating precisely.
+The median is the one figure that survives from the 74-window measurement — 0.00006 against
+0.0001. That is exactly why the small sample looked safe: it characterises the bulk of the
+distribution correctly and never sampled the tail. The maximum is **5.8×** the previously
+published 0.136.
+
+### The window figure understates what a reviewer sees
+
+Windows are internal. A reviewer steps through *events*, after per-second averaging, thresholding,
+merging runs closer than `MAX_MERGE_GAP_S` and discarding runs shorter than
+`MIN_EVENT_DURATION_S`. Over the same 111 recordings:
+
+| | value |
+|---|---|
+| events proposed on Windows | 44 |
+| events proposed on Linux | 33 |
+| matched (any temporal overlap) | 26 |
+| **present on Windows, absent on Linux** | **18 (41 % of the reference's events)** |
+| present on Linux, absent on Windows | 7 |
+| recordings whose event list changed | 14 / 111 |
+| largest boundary shift on a surviving event | 12.0 s |
+
+**41 % of proposed events do not survive the platform change**, against 1.5 % of windows. The two
+numbers differ by more than an order of magnitude and the window one must not be quoted as a
+proxy for clinical impact.
+
+They are not even related monotonically. `aaaaaarq_s014_t003` lost an event with **zero** window
+flips: per-second averaging means two windows can each stay on the same side of the threshold
+while their average crosses it. And on `aaaaatao_s003_t000` the highest-scoring window in the
+recording — 0.9779 — produced **no event on either platform**, because averaging it with quiet
+neighbours gives (0.9779 + 0.0011)/2 = 0.489. The event that did exist there came from two
+adjacent moderate windows, 0.599 and 0.651, and vanished on Linux when both fell below 0.5.
+
+### macOS
+
+An independent run on Apple Silicon (Python 3.12 / TF 2.21) against the same Windows reference,
+51 recordings and 1 772 windows, gives **61 window flips (3.4 %)** and a maximum of **0.9561** —
+the same picture, a heavier tail. Its event-level figures have not been taken yet and are **not**
+inferable from the window counts, for the reason given above.
+
+### Scope, stated plainly
+
+* This compares **stack and platform together**. The Windows arm is Python 3.6 / TF 1.15; both
+  others are Python 3.12 / TF 2.21. It is not a like-for-like replacement for the 74-window
+  figure, which varied only the stack on one machine.
+* Recordings were selected **shortest-first**, to cover more recordings per hour of compute. That
+  is not a random sample of the corpus, and the event counts are small in absolute terms.
+* Three recordings were dropped because their stem names two different files; five stems appear
+  twice in `manifest_full.csv`, the same TUH session under the `01_tcp_ar` and `03_tcp_ar_a`
+  montages.
+
+Against the **0.90** previously recorded for "MNE 1.12", the typical case is far better — but the
+tail is not, and the reason is worth stating precisely.
 
 Probing the ICA stage directly, MNE 0.19.2 vs 1.12.1 on the same window:
 
@@ -92,16 +157,36 @@ Probing the ICA stage directly, MNE 0.19.2 vs 1.12.1 on the same window:
 platforms, which is not achievable. It is a property of running a non-convergent iterative
 algorithm, not a defect in any library.
 
-This also unifies three previously separate observations, all the same mechanism:
+This also unifies previously separate observations, all the same mechanism:
 
 - the **0.107** drift between a fresh run and the stored caches (`RESULTS.md` §9),
-- the **0.90** attributed to "MNE 1.12" — one unlucky window, not a systematic shift,
-- the residual **0.136** here.
+- the **0.90** attributed to "MNE 1.12" — which now reads as an ordinary draw from this tail
+  rather than one unlucky window,
+- the **0.788** maximum measured here, and the **0.956** measured on macOS.
+
+Two facts rule out the explanations that would have made this fixable. The ICA *implementation*
+is bit-identical on every platform: `utils/fastica_pinned` is verified installed on both stacks,
+and the legacy Windows stack runs scikit-learn **0.22.2** — the exact version the pin transcribes.
+And the fault is not TensorFlow's: swapping TF alone moves p(seizure) by 6.8 × 10⁻⁹.
 
 The consequence is a statement the thesis should make once, clearly: **this pipeline is
-statistically reproducible, not bit-reproducible, and the cause is the non-converged ICA the
-weights were trained with.** Numbers must be quoted to two significant figures and caches
-regenerated in a single pass per platform — which `RESULTS.md` already requires for other reasons.
+statistically reproducible in the bulk of its distribution and not reproducible in its tail, and
+the cause is the non-converged ICA the weights were trained with.** For per-window probabilities
+that means quoting two significant figures. For **events** it means something stronger — the list
+of candidates a reviewer is shown is machine-dependent, and 41 % of them changed between two
+correct builds of the same application. Caches must be regenerated in a single pass per platform,
+which `RESULTS.md` already requires for other reasons.
+
+### What this does and does not say about the tool
+
+It does **not** say either machine is wrong. Neither decomposition is the true one, because
+FastICA stops at `max_iter` without converging — verified on real data, `n_iter_` reaches 200
+every window. The drift is the *width of the operating point*, not an error.
+
+It does say that a reviewer must not be told the tool is deterministic across machines, and that
+an audit trail should record the environment that produced any annotation. `gui/io/cache.py`
+stamps `sklearn`, `fastica_pinned`, `machine`, `tensorflow` and the oneDNN flag into every cache
+for exactly this reason.
 
 ---
 
@@ -121,6 +206,12 @@ regenerated in a single pass per platform — which `RESULTS.md` already require
 - **Do not switch the reported numbers mid-write-up.** The Windows build and its caches are
   verified and internally consistent. Freeze them for the thesis.
 - **Do use the modern stack for development on the MacBook.** It works, and being unable to work
-  on your own laptop is a larger cost than a third-decimal difference in a number nobody has
-  quoted yet.
-- **If the thesis figures are ever regenerated, do it once, on one machine, and say which.**
+  on your own laptop is a larger cost than the drift, provided no figure crosses machines.
+- **If the thesis figures are ever regenerated, do it once, on one machine, and say which.** This
+  was previously advice about the third decimal. It is now a correctness requirement: a table
+  assembled from two machines can disagree with itself about whether a seizure was proposed.
+- **Say this in the limitations, rather than leaving it for a reader to find.** The honest
+  sentence is that the detector's *proposals* are reproducible in distribution but not
+  individually across machines, and that the human-in-the-loop design is what makes that
+  tolerable — a reviewer adjudicates every proposal, and unproposed time was never claimed to be
+  seizure-free (`docs/INTENDED_USE.md`).
