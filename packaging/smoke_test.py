@@ -63,7 +63,13 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     dist = os.path.abspath(args.dist)
+    # PyInstaller emits SeizureReview.exe on Windows and a bare executable on
+    # macOS/Linux, so the smoke test cannot hardcode the extension.
     exe = os.path.join(dist, 'SeizureReview.exe')
+    if not os.path.exists(exe):
+        plain = os.path.join(dist, 'SeizureReview')
+        if os.path.exists(plain) and not os.path.isdir(plain):
+            exe = plain
     failures = []
 
     print('checking {}'.format(dist))

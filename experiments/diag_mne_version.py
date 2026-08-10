@@ -35,14 +35,31 @@ def _prepend(path):
         sys.path.insert(0, os.path.abspath(path))
 
 
-def run(edf, n_windows, out, seed_note):
+def run(edf, n_windows, out, seed_note, pin_fastica=False, tf2=False):
     import numpy as np
+    if pin_fastica:
+        # Must happen before MNE's fit method does its local
+        # `from sklearn.decomposition import FastICA`.
+        from utils.fastica_pinned import install
+        install()
+        print('FastICA         : PINNED (utils.fastica_pinned)')
     import mne
     mne.set_log_level('ERROR')
 
     from gui.io.edf import load_edf_19ch, CHANNELS_19
-    from gui.io.infer import _calc_stft, _build_model, SEGMENT_S
+    from gui.io.infer import _calc_stft, SEGMENT_S
     from utils.preprocessing import detect_interupted_data, ica_arti_remove
+    if tf2:
+        # models/deep_conv_lstm.py uses Keras 1 idioms that Keras 2.6+ removed,
+        # so the modern path rebuilds the identical graph in tf.keras and loads
+        # the same released weights.
+        from experiments.diag_tf2_port import build as _build_tf2
+        from gui.paths import weights_path
+        import tensorflow as _tf
+        print('TensorFlow      : {} (tf.keras rebuild)'.format(_tf.__version__))
+        _build_model = lambda: _m_load(_build_tf2(), weights_path())
+    else:
+        from gui.io.infer import _build_model
 
     print('MNE version in use : {}'.format(mne.__version__))
     print('MNE loaded from    : {}'.format(os.path.dirname(mne.__file__)))
@@ -83,6 +100,11 @@ def run(edf, n_windows, out, seed_note):
     print('wrote {} ({} windows, {} scored)'.format(
         out, len(starts), int((np.array(states) == 0).sum())))
     return 0
+
+
+def _m_load(model, weights):
+    model.load_weights(weights)
+    return model
 
 
 def compare(a_path, b_path):
@@ -134,6 +156,10 @@ def main(argv=None):
     ap.add_argument('--n', type=int, default=25)
     ap.add_argument('--out', default=None)
     ap.add_argument('--compare', nargs=2, default=None)
+    ap.add_argument('--pin-fastica', action='store_true',
+                    help='use utils.fastica_pinned instead of scikit-learn')
+    ap.add_argument('--tf2', action='store_true',
+                    help='build the model with tf.keras (TensorFlow 2)')
     args = ap.parse_args(argv)
 
     if args.compare:
@@ -157,7 +183,8 @@ def main(argv=None):
         rows.sort(key=lambda r: float(r['duration_s']), reverse=True)
         edf = os.path.normpath(os.path.join(repo, rows[0]['edf']))
     print('EDF: {}'.format(os.path.basename(edf)))
-    return run(edf, args.n, args.out, args.mne_path or 'default')
+    return run(edf, args.n, args.out, args.mne_path or 'default',
+               pin_fastica=args.pin_fastica, tf2=args.tf2)
 
 
 if __name__ == '__main__':

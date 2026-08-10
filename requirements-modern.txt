@@ -1,0 +1,27 @@
+# Portable stack: Windows x86-64, macOS Apple Silicon (arm64), Linux x86-64.
+#
+# Validated 2026-08-10 end-to-end against the frozen Python 3.6 build:
+# the released convlstm_ICA_12_train.h5 loads and scores real recordings, with
+# no detection decision changing over 74 windows. See docs/portability.md for
+# what does and does not reproduce, and why bit-identity is not achievable.
+#
+#   conda create -n seizmodern python=3.11
+#   conda activate seizmodern
+#   pip install -r requirements-modern.txt
+#
+# scikit-learn is deliberately UNPINNED. The ICA decomposition is vendored in
+# utils/fastica_pinned.py precisely so this project no longer depends on which
+# scikit-learn is installed — that dependency was the single thing preventing
+# the application from running on Apple Silicon, since 0.22.2 has no arm64
+# wheel.
+
+# numpy must stay below 2: the `stft` package uses np.lib.pad, removed in 2.0.
+numpy<2
+scipy
+scikit-learn
+mne
+tensorflow
+pyedflib
+stft
+PyQt5
+pyqtgraph

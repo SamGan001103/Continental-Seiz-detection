@@ -3,6 +3,23 @@ import stft
 import mne
 from mne.preprocessing import ICA
 
+# Pin the decomposition before any ICA runs.
+#
+# mne.preprocessing.ICA(method='fastica') does not implement ICA — it whitens
+# and then calls sklearn.decomposition.FastICA. So this project's ICA numerics
+# were scikit-learn's, and moved with the installed version: measured, sklearn
+# 0.22.2 -> 0.24.2 shifts p(seizure) by up to 0.002 while MNE 0.19.2 -> 0.23.4
+# changes nothing at all. That made the pipeline unportable, because the exact
+# sklearn this was developed against has no macOS arm64 wheel.
+#
+# utils/fastica_pinned transcribes sklearn 0.22.2's implementation and depends
+# only on numpy and scipy. Verified bit-identical on 25 real windows, both
+# against sklearn 0.22.2 (the version it replaces) and under sklearn 0.24.2,
+# where unpinned code diverges. See experiments/diag_mne_version.py --pin-fastica.
+from utils.fastica_pinned import install as _install_pinned_fastica
+
+_install_pinned_fastica()
+
 def create_mne_raw(data, sfreq, chs=None):
     '''
     data: signal with shape (channel x samples)
