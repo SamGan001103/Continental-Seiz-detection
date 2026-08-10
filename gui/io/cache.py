@@ -141,11 +141,55 @@ def environment_stamp():
         stamp['scipy'] = str(scipy.__version__)
     except Exception:
         pass
+    # scikit-learn decides the ICA numerics and was the one library missing.
+    # mne.preprocessing.ICA(method='fastica') whitens and then calls
+    # sklearn.decomposition.FastICA, so the installed sklearn — not MNE — is
+    # what the decomposition actually came from. Every cache written before
+    # this omitted it, which is why a measured drift of up to 0.43 between two
+    # stacks could not be attributed from the stamp alone.
+    try:
+        import sklearn
+        stamp['sklearn'] = str(sklearn.__version__)
+    except Exception:
+        pass
+    # ...and whether that version was allowed to matter. utils/fastica_pinned
+    # replaces the implementation with a transcription of 0.22.2, so a cache
+    # written with the pin installed is comparable to one written under a
+    # different sklearn, and one written without it is not. Recording the
+    # sklearn version without this flag would be actively misleading.
+    #
+    # This reads the state at write time. utils/preprocessing installs the pin
+    # when it is imported, and any path that produced probabilities has
+    # imported it — so a real cache always records True. Calling this function
+    # in isolation reports False, which is accurate for that process and not a
+    # statement about the cache.
+    try:
+        from utils.fastica_pinned import is_installed
+        stamp['fastica_pinned'] = bool(is_installed())
+    except Exception:
+        pass
     try:
         import platform
         stamp['python'] = platform.python_version()
         stamp['host'] = platform.node()
         stamp['platform'] = platform.system()
+        # arm64 vs x86-64: measured drift between two machines running the
+        # *same* library versions is small but not zero, and cannot be seen
+        # without this.
+        stamp['machine'] = platform.machine()
+    except Exception:
+        pass
+    # Never imported for the stamp's sake — by the time a cache is written the
+    # inference has run, so this is either already loaded or genuinely absent.
+    try:
+        import sys
+        tf = sys.modules.get('tensorflow')
+        if tf is not None:
+            stamp['tensorflow'] = str(tf.__version__)
+            # oneDNN reorders floating-point operations on x86-64 and TF says
+            # so at import. Off on arm64, on by default elsewhere.
+            import os
+            stamp['onednn'] = os.environ.get('TF_ENABLE_ONEDNN_OPTS', '1')
     except Exception:
         pass
     return stamp
