@@ -111,6 +111,46 @@ def load_probs(edf_path):
 CACHE_VERSION = 2   # v2 adds the skip_code array
 
 
+def environment_stamp():
+    """What produced these probabilities, beyond the model weights.
+
+    Caches written before this existed recorded the weights, the stride and the
+    window length, but nothing about the *environment*. That turned out to
+    matter: probabilities regenerated from unchanged EDFs with unchanged code
+    differ from the stored caches by up to 0.107, while two fresh runs are
+    bit-identical to each other. The pipeline is deterministic; the caches were
+    simply produced under conditions nobody recorded, and with no stamp there is
+    no way to tell which condition changed.
+
+    Kept to cheap, always-available values so writing a cache never fails
+    because provenance could not be collected.
+    """
+    stamp = {}
+    try:
+        import mne
+        stamp['mne'] = str(mne.__version__)
+    except Exception:
+        pass
+    try:
+        import numpy
+        stamp['numpy'] = str(numpy.__version__)
+    except Exception:
+        pass
+    try:
+        import scipy
+        stamp['scipy'] = str(scipy.__version__)
+    except Exception:
+        pass
+    try:
+        import platform
+        stamp['python'] = platform.python_version()
+        stamp['host'] = platform.node()
+        stamp['platform'] = platform.system()
+    except Exception:
+        pass
+    return stamp
+
+
 def save_probability_file(path, window_starts, probs, meta=None,
                           skip_code=None):
     """Write a probability cache to an explicit path.
@@ -140,6 +180,9 @@ def save_probability_file(path, window_starts, probs, meta=None,
         meta.setdefault('cache_version', 1)
         meta['has_skip_code'] = False
     meta['n_windows'] = int(arrays['probs'].size)
+    # Recorded under one key so a reader can tell at a glance whether two caches
+    # came from the same environment, without comparing a dozen loose fields.
+    meta.setdefault('env', environment_stamp())
     parent = os.path.dirname(os.path.abspath(path))
     if parent and not os.path.exists(parent):
         os.makedirs(parent)

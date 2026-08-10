@@ -424,15 +424,17 @@ python experiments/diag_ica_paper_variant.py --variant as_trained     # the cont
 python experiments/diag_ica_paper_variant.py --variant all_components
 ```
 
-§9 records that inference is **not bit-reproducible**: `random_state=13` does not pin FastICA,
-so re-running an unchanged file moves individual window probabilities. That has a consequence
-nobody had measured — **it puts a floor under every comparison in this document.**
+§9 records that a fresh run and the stored cache disagree by up to 0.107 on the same file —
+**not** because inference is non-deterministic (two fresh runs are bit-identical) but because the
+caches were written under conditions that no longer hold. Any experiment that compares a *fresh*
+arm against a *cached* arm therefore inherits that drift as a floor.
 
-Running the *identical* configuration twice and comparing it to its own cache:
+Running the identical configuration and comparing it to its own cache measures exactly that
+floor:
 
 | comparison | delta pooled AUC | 95 % CI (cluster bootstrap by recording) | vs floor |
 |---|---|---|---|
-| **noise floor — identical config re-run** | **−0.0057** | **[−0.019, +0.003]** | — |
+| **floor — identical config, fresh vs cached** | **−0.0057** | **[−0.019, +0.003]** | — |
 | paper-literal: remove **all** flagged components | −0.0200 | [−0.049, +0.004] | 3.5× |
 | ICA off vs on | +0.0203 | [−0.030, +0.057] | 3.5× |
 | ZUNA vs baseline | −0.0428 | [−0.152, +0.040] | 7.5× |
@@ -693,12 +695,34 @@ re-measuring; and the fitted map is specific to this corpus's prevalence.
 
 ---
 
-## 9. Inference is not bit-reproducible
+## 9. The caches do not match current code — but inference IS reproducible
 
-`random_state=13` at `utils/preprocessing.py:71` is **not sufficient** to make the pipeline
-deterministic. Re-running `compute_probs` on an unchanged EDF reproduces its own cache for some
-windows and then diverges — one measured window moved by 0.107. Regenerating the caches
-therefore moves per-file AUCs slightly and shifts pooled figures in the third decimal.
+> **This section previously said "inference is not bit-reproducible" and blamed `random_state`.
+> That diagnosis was wrong.** The observation was right; the cause was not. Corrected 2026-08-10
+> after direct measurement — see below.
+
+**Inference is deterministic.** Running `compute_probs` twice on the same EDF, in two separate
+processes, gives **bit-identical** probabilities: 8/8 and 25/25 exact matches on the two files
+tested, max difference 0.000000.
+
+**The stored caches are what differ.** Against the same file, a fresh run matches its cache on
+only **2 of 8** windows, with a maximum difference of **0.1067** — the very number this section
+used to attribute to non-determinism.
+
+So the caches were produced under conditions that no longer hold, and
+`experiments/diag_mne_version.py` reproduces both halves of that on demand.
+
+**The cause cannot be identified from the artefacts**, because the caches record the weights,
+stride and window length but nothing about the environment — no MNE version, no host, no commit.
+`gui/io/cache.environment_stamp()` now records MNE, numpy, scipy, Python, host and platform on
+every new cache, so this cannot recur silently.
+
+Consequences to respect:
+
+0. **Every number in this document derives from those caches.** They are internally consistent —
+   all regenerated in one pass on 2026-08-08 — so the comparisons between them are sound. But
+   they describe the pipeline *as it was when the caches were written*, and a final thesis
+   number set should be regenerated in one pass with the stamped writer.
 
 Consequences to respect:
 
@@ -706,8 +730,10 @@ Consequences to respect:
    stable across regenerations.
 2. **Regenerate all artefacts in one pass** with no cache writers running, and commit them
    together. Numbers from different passes must never be mixed in one table.
-3. This also corrects `docs/ica_implementation_review.md`, which described the non-converged ICA
-   as "at least deterministic". It is not.
+3. `docs/ica_implementation_review.md` §3.5 says the non-converged ICA is "not even
+   deterministic". **That is now also wrong** and is corrected there: it is deterministic
+   run-to-run. What is not stable is the relationship between *today's code* and *yesterday's
+   caches*.
 
 The cause is not established. FastICA fails to converge on most windows (§4 and the ICA review),
 so the returned unmixing matrix is wherever the iteration stopped, and that appears sensitive to

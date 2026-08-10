@@ -204,10 +204,12 @@ demonstrated cause. On 142 of 243 windows (58 % pooled, 20–100 % depending on 
 the fixed-point iteration hits `max_iter` without converging, so the returned unmixing matrix is
 wherever the iteration happened to stop.
 
-**And it is not even deterministic.** `random_state=13` is insufficient: re-running
-`compute_probs` on an unchanged EDF reproduces the cache for some windows and then diverges, one
-measured window moving by 0.107. An earlier version of this document claimed the non-convergence
-was "at least deterministic"; that was wrong. See `docs/RESULTS.md` §8.
+**It *is* deterministic — an earlier claim here that it is not was wrong.** Two fresh runs of
+`compute_probs` on the same EDF, in separate processes, are **bit-identical** (8/8 and 25/25
+exact). The 0.107 divergence previously cited is between a fresh run and the *stored cache*, and
+reflects caches written under conditions that were never recorded — not `random_state=13` failing
+to pin FastICA. Corrected 2026-08-10; see `docs/RESULTS.md` §9 and
+`experiments/diag_mne_version.py`.
 
 **The rate is strongly recording-dependent, so do not quote a single figure without the range.**
 A spot check on 2026-08-10 over the first 8 windows of `aaaaatao_s003_t001` produced **zero**
