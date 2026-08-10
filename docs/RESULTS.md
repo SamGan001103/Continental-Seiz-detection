@@ -39,8 +39,15 @@ Last regenerated: 2026-08-08, in a single quiesced pass with no cache writers ru
 ## 1. What the source paper actually published
 
 Yang et al., *Continental generalization of a human-in-the-loop AI system for clinical seizure
-recognition*, **Expert Syst. Appl. 207:118083 (2022)** — preprint arXiv:2103.10900v2, **Table 2**.
-This is the paper whose detector these weights implement (19 ch / 12 s / ICA).
+recognition*, **Expert Syst. Appl. 207:118083 (2022)** — preprint arXiv:2103.10900v2, **Table 2
+and Fig. 5**. This is the paper whose detector these weights implement (19 ch / 12 s / ICA).
+
+> **Citation not fully verified — see `docs/source_verification.md` §2.** The sensitivity and
+> FA/24 h figures below are confirmed from Table 2. Whether the **AUC column** is also in Table 2
+> could not be settled: two independent retrievals of the arXiv rendering disagreed, and one
+> quoted the paper as saying "achieving a 0.84 AUROC score (see **Table 3**)". The AUCs are
+> therefore attributed to "Table 2 and Fig. 5" rather than to Table 2 alone until somebody reads
+> the PDF. **No copy of this paper is in the repository** — that is the underlying problem.
 
 | dataset | AUC | eval method | sensitivity | FA/24 h |
 |---|---|---|---|---|
