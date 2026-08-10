@@ -115,7 +115,26 @@ through `gui.paths.weights_path()`.
 PyInstaller's own extraction directory — showing the reviewer the application's
 internals. It now prefers the last folder they opened, then `Documents`.
 
-### 2.7 There was nowhere for a crash to go
+### 2.7 A research-only feature was still on the clinical toolbar
+
+The toolbar carried a **Run full ZUNA** button and an *AI source* selector. A
+full-ZUNA run needs a second Python interpreter with a modern stack,
+`utils/zuna_bridge.py`, and a writable `artifacts/` tree — **none of which
+exist in the frozen build**, which ships one interpreter and may sit on a
+read-only share. A clinician pressing that button would have got a subprocess
+error naming a script they do not have.
+
+`gui.io.zuna.zuna_available()` now gates both controls, and they are not put on
+the toolbar at all when a run is impossible. This also closes walkthrough item
+**U-11**, whose recommendation was to "consider hiding the selector for
+clinician sessions" — ZUNA is a documented *negative* result and has no place
+in a clinical deployment regardless of whether it could run.
+
+The widgets are still constructed, so every code path that references them
+stays simple; they are simply never shown. Four tests pin both directions, so
+the research build keeps the capability it was written for.
+
+### 2.8 There was nowhere for a crash to go
 
 A windowed build has no console; a traceback printed to stdout vanishes.
 `gui/main.py` now installs an exception hook that writes to
@@ -138,7 +157,7 @@ success until the frozen executable has actually run.
 1. **Weights hash** — checked against `eval_config.WEIGHTS_SHA256` *before*
    building. Fatal, not a warning: a build carrying the wrong weights is
    indistinguishable from a correct one at run time.
-2. **Test suite** — 110 tests. A release is not built from a failing tree.
+2. **Test suite** — 114 tests. A release is not built from a failing tree.
 3. **`SeizureReview.exe --gui-self-test`** — constructs the real `MainWindow`
    offscreen and pumps the event loop, catching a missing PyQt5 or pyqtgraph
    submodule.
@@ -250,7 +269,7 @@ new   gui/paths.py                       resource resolution, frozen and source
 new   packaging/SeizureReview.spec       the build definition + build stamp
 new   packaging/build_app.bat            verify -> test -> freeze -> smoke test
 new   packaging/smoke_test.py            runs the frozen exe before shipping it
-new   tests/test_deployment_paths.py     16 tests for target-machine failures
+new   tests/test_deployment_paths.py     20 tests for target-machine failures
 new   docs/DEPLOYMENT.md
 new   docs/INTENDED_USE.md
 new   docs/progress_2026-08-10_packaging.md
@@ -260,6 +279,7 @@ mod   gui/io/edf.py                      chdir removed
 mod   gui/io/infer.py                    chdir removed, weights via gui.paths
 mod   gui/io/cache.py                    read-only-share fallback
 mod   gui/main.py                        crash log, excepthook, self-tests, HiDPI
+mod   gui/io/zuna.py                     zuna_available() gate
 mod   gui/app.py                         autosave fallback, frozen provenance,
                                          file-dialog start directory,
                                          Help > intended use (rendered in-app)
@@ -270,4 +290,4 @@ mod   tests/test_review_guards.py        +3 autosave-fallback cases
 mod   README.md, INSTALL.md              frozen build promoted to Route A
 ```
 
-Tests: 91 → 110, all passing.
+Tests: 91 → 114, all passing.

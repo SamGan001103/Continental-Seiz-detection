@@ -272,10 +272,12 @@ recorded here instead.
 | ID | Status now | Evidence |
 |---|---|---|
 | **U-10** | **Closed.** §3c scored this **F (partial)** on the grounds that "there is still no *revert to AI extent*, so an accidental drag remains irreversible". That remedy has since shipped. | `MainWindow._revert_extent()` (`gui/app.py:1405`), bound to **Ctrl+R** and to an **Edit** menu action, restoring the already-preserved `source_start`/`source_stop` and returning the event to `proposed`. It declines on human-added events, which have no detector extent to return to. Pinned by `test_revert_restores_the_detector_extent` and `test_revert_declines_on_a_human_added_event`. A general **Ctrl+Z** undo stack was added alongside it. |
+| **U-11** | **Closed**, by the packaging work rather than by usability work. §3c recorded it as "deliberately out of scope". Packaging forced the issue: a full-ZUNA run needs a second interpreter, `utils/zuna_bridge.py` and a writable `artifacts/` tree, none of which exist in the frozen build, so the button could only ever fail there. | `gui.io.zuna.zuna_available()` gates both the *AI source* selector and the **Run full ZUNA** action; neither is placed on the toolbar when a run is impossible. This is the remedy §3c proposed — "consider hiding the selector for clinician sessions" — and it is the right outcome on scope grounds too, since ZUNA is a documented *negative* result. Four tests in `tests/test_deployment_paths.py` pin both directions. |
 | U-03, U-05 | Still open (P2) | Slider tooltip and drag affordance unchanged. |
-| U-11, U-06 | Still open (P3) | U-11 deliberately out of scope; U-06 is a one-line dialog change. |
+| U-06 | Still open (P3) | A one-line dialog change; see the note below. |
 
-**Do not quote the §3c counts as current.** On the code as it stands the P2 count is 2, not 3.
+**Do not quote the §3c counts as current.** On the code as it stands the P2 count is 2, not 3,
+and the P3 count is 1, not 2.
 A third full pass of the instrument has *not* been run, so there is no measured Q1–Q4 table for
 the present build — only this item-level check. Re-run the instrument before reporting any
 updated failure count.

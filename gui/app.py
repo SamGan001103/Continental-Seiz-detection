@@ -35,7 +35,8 @@ from gui.io.cache import (load_probs, load_probability_file,
                           save_probability_file)
 from gui.io import csv_bi as csv_bi_module
 from gui.io.csv_bi import read_csv_bi, write_csv_bi
-from gui.io.zuna import ZunaFullRunner, zuna_session_paths
+from gui.io.zuna import (ZunaFullRunner, zuna_session_paths,
+                         zuna_available)
 from gui.events import (clamp_interval, rebuild_events, assign_event_ids,
                         EXPORTED_STATUSES)
 from gui.processing import (apply_montage, apply_filters, MONTAGES)
@@ -59,6 +60,12 @@ APP_NAME = 'Seizure Review'
 # what it is without being told.
 PROTOTYPE_BANNER = 'RESEARCH PROTOTYPE — NOT FOR DIAGNOSTIC USE'
 TITLE_SUFFIX = ' — RESEARCH PROTOTYPE, NOT FOR DIAGNOSTIC USE'
+
+# Resolved once, at import. The ZUNA controls are hidden entirely when a run is
+# impossible — chiefly in the packaged application, which has no second
+# interpreter and no utils/zuna_bridge.py. Leaving a dead button on the toolbar
+# of a clinical build invites a press that can only end in a subprocess error.
+ZUNA_AVAILABLE = zuna_available()
 
 
 def _git_commit():
@@ -329,22 +336,29 @@ class MainWindow(QtWidgets.QMainWindow):
         tb.addWidget(self.chk_refs)
         tb.addSeparator()
 
-        tb.addWidget(QtWidgets.QLabel('AI source'))
+        # ZUNA is a research side-study and cannot run in the packaged
+        # application (see gui.io.zuna.zuna_available). The widgets are still
+        # constructed so the code paths that reference them stay simple, but
+        # they are not put on the toolbar where a clinician could press them.
         self.cb_source = QtWidgets.QComboBox()
         self.cb_source.addItem('Baseline', 'baseline')
         self.cb_source.setToolTip(
             'Switch between original-EDF baseline probabilities and full '
             'ZUNA probabilities after ZUNA has finished.')
         self.cb_source.currentIndexChanged.connect(self._on_source_change)
-        tb.addWidget(self.cb_source)
 
-        self.a_run_zuna = tb.addAction('Run full ZUNA')
+        self.a_run_zuna = QtWidgets.QAction('Run full ZUNA', self)
         self.a_run_zuna.setToolTip(
             'Run full-file ZUNA reconstruction for this EDF. This is optional '
             'and computationally heavy.')
         self.a_run_zuna.setEnabled(False)
         self.a_run_zuna.triggered.connect(self._run_full_zuna_for_session)
-        tb.addSeparator()
+
+        if ZUNA_AVAILABLE:
+            tb.addWidget(QtWidgets.QLabel('AI source'))
+            tb.addWidget(self.cb_source)
+            tb.addAction(self.a_run_zuna)
+            tb.addSeparator()
 
         tb.addWidget(QtWidgets.QLabel('Threshold'))
         self.thr_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
@@ -631,7 +645,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._prob_source = 'baseline'
         self._zuna_paths = zuna_session_paths(path)
         self._reset_source_combo()
-        self.a_run_zuna.setEnabled(True)
+        self.a_run_zuna.setEnabled(ZUNA_AVAILABLE)
         self.setWindowTitle('{} — {}{}'.format(
             APP_NAME, os.path.basename(path), TITLE_SUFFIX))
 
@@ -740,6 +754,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self._ensure_zuna_combo_item()
 
     def _ensure_zuna_combo_item(self):
+        if not ZUNA_AVAILABLE:
+            return
         for i in range(self.cb_source.count()):
             if self.cb_source.itemData(i) == 'zuna':
                 return
@@ -1065,7 +1081,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._zuna_stage_started = None
         self._zuna_stage = 'Idle'
         self._zuna_run_settings = {}
-        self.a_run_zuna.setEnabled(bool(self._edf_path))
+        self.a_run_zuna.setEnabled(ZUNA_AVAILABLE and bool(self._edf_path))
 
     def _on_zuna_failed(self, edf_path, message):
         if os.path.abspath(edf_path) != os.path.abspath(self._edf_path or ''):

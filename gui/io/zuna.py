@@ -15,6 +15,27 @@ import time
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 
+def zuna_available():
+    """Whether a full-ZUNA run can be started at all.
+
+    ZUNA is a side-study whose result was negative, and it is a *research*
+    capability: it needs a second Python interpreter with a modern stack,
+    ``utils/zuna_bridge.py``, and a writable ``artifacts/`` tree. None of those
+    exist in the packaged application, which ships one frozen interpreter and
+    may sit on a read-only share.
+
+    Without this check the frozen build still showed a "Run full ZUNA" button
+    and a ZUNA entry in the AI-source list. A clinician pressing it would get a
+    subprocess failure referring to a script they do not have — the worst
+    possible moment for an unexplained error, and for a feature that has no
+    business being in a clinical deployment in the first place.
+    """
+    from gui.paths import is_frozen
+    if is_frozen():
+        return False
+    return os.path.exists(os.path.join(REPO, 'utils', 'zuna_bridge.py'))
+
+
 def _safe_stem(edf_path):
     stem = os.path.splitext(os.path.basename(edf_path))[0]
     seed = os.path.abspath(edf_path)

@@ -168,6 +168,62 @@ class Provenance(unittest.TestCase):
         shutil.rmtree(bundle, ignore_errors=True)
 
 
+try:
+    from PyQt5 import QtWidgets
+    _qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication(
+        ['-platform', 'offscreen'])
+    HAVE_QT = True
+except Exception:                                    # pragma: no cover
+    HAVE_QT = False
+
+
+@unittest.skipUnless(HAVE_QT, 'PyQt5 not available')
+class ResearchOnlyFeaturesAreHiddenWhenPackaged(unittest.TestCase):
+    """ZUNA cannot run in the packaged application, so it must not be offered.
+
+    It needs a second Python interpreter with a modern stack,
+    utils/zuna_bridge.py, and a writable artifacts/ tree — none of which exist
+    in a frozen build. A clinician pressing a visible "Run full ZUNA" button
+    would get a subprocess error naming a script they do not have.
+    """
+
+    def setUp(self):
+        import gui.app as app_mod
+        self.app_mod = app_mod
+        self._saved = app_mod.ZUNA_AVAILABLE
+
+    def tearDown(self):
+        self.app_mod.ZUNA_AVAILABLE = self._saved
+
+    def _toolbar_actions(self, w):
+        tb = w.findChildren(QtWidgets.QToolBar)[0]
+        return [a.text() for a in tb.actions() if a.text()]
+
+    def test_zuna_is_unavailable_in_a_frozen_build(self):
+        from gui.io.zuna import zuna_available
+        with frozen_as(tempfile.mkdtemp()):
+            self.assertFalse(zuna_available())
+
+    def test_the_run_button_is_absent_when_zuna_cannot_run(self):
+        self.app_mod.ZUNA_AVAILABLE = False
+        w = self.app_mod.MainWindow()
+        self.assertNotIn('Run full ZUNA', self._toolbar_actions(w))
+        self.assertFalse(w.a_run_zuna.isEnabled())
+
+    def test_no_zuna_entry_is_added_to_the_source_list(self):
+        self.app_mod.ZUNA_AVAILABLE = False
+        w = self.app_mod.MainWindow()
+        w._ensure_zuna_combo_item()
+        items = [w.cb_source.itemData(i) for i in range(w.cb_source.count())]
+        self.assertNotIn('zuna', items)
+
+    def test_the_run_button_is_present_when_zuna_can_run(self):
+        """The research build must keep the capability it was written for."""
+        self.app_mod.ZUNA_AVAILABLE = True
+        w = self.app_mod.MainWindow()
+        self.assertIn('Run full ZUNA', self._toolbar_actions(w))
+
+
 class ReadOnlyRecordingDirectory(unittest.TestCase):
     """Recordings normally live on a read-only share on a clinical PC.
 
