@@ -94,6 +94,61 @@ def _walk_index(root):
     return {k: sorted(v) for k, v in index.items()}
 
 
+def _events(window_starts, probs, threshold, duration_s):
+    """The events a reviewer would actually be shown, for one probability array.
+
+    A window is an internal unit. What a reviewer steps through is a *shaped
+    event*: per-second averaging, threshold, merge runs closer than
+    MAX_MERGE_GAP_S, discard runs shorter than MIN_EVENT_DURATION_S. A window
+    that flips at the threshold may vanish inside an existing event, extend
+    one, create one, or be discarded for being too short - so the window count
+    and the event count answer different questions, and only the second is a
+    claim about what somebody sees.
+
+    Reads eval_config for the shaping parameters, exactly as gui/events.py
+    does, so this measures the shipped decision stage and not a variant of it.
+    """
+    from gui.postprocess import events_from_probs
+    from gui.io.infer import SEGMENT_S
+    import eval_config as _cfg
+    return events_from_probs(
+        window_starts, probs, threshold, SEGMENT_S,
+        duration_s=duration_s,
+        average=_cfg.USE_PER_SECOND_AVERAGING,
+        min_duration_s=(_cfg.MIN_EVENT_DURATION_S
+                        if _cfg.USE_SOURCE_POSTPROCESSING else 0.0),
+        max_gap_s=(_cfg.MAX_MERGE_GAP_S
+                   if _cfg.USE_SOURCE_POSTPROCESSING else 0.0))
+
+
+def _compare_events(ref_ev, loc_ev):
+    """Match two event lists by overlap in time.
+
+    Overlap of any length counts as the same event. A stricter criterion (say
+    50 % reciprocal overlap) would report boundary movement as a lost event
+    plus a gained one, which overstates what changed: a reviewer looking at a
+    seizure whose marked end moved by two seconds sees one event, moved.
+
+    Matching is greedy over reference events in time order. Events are few per
+    recording and non-overlapping by construction, so greedy is exact here.
+
+    Returns (matched, lost, gained, max_boundary_shift_s).
+    """
+    used = set()
+    matched = 0
+    shift = 0.0
+    for rs, re_, _rp in ref_ev:
+        for j, (ls, le, _lp) in enumerate(loc_ev):
+            if j in used:
+                continue
+            if ls < re_ and rs < le:            # any temporal overlap
+                used.add(j)
+                matched += 1
+                shift = max(shift, abs(ls - rs), abs(le - re_))
+                break
+    return matched, len(ref_ev) - matched, len(loc_ev) - len(used), shift
+
+
 # ---------------------------------------------------------------- export
 
 
@@ -212,6 +267,8 @@ def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None,
     deltas = []
     per_rec = []
     missing, misaligned, ambiguous = [], [], []
+    ev_totals = {'ref': 0, 'local': 0, 'matched': 0, 'lost': 0, 'gained': 0,
+                 'recordings_changed': 0, 'max_shift_s': 0.0}
 
     # Iterate over positions in `stems`, never over a reordered copy of it.
     # `offsets` is indexed by a recording's position in the export, so pairing
@@ -279,16 +336,44 @@ def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None,
         flipped = int(((probs[both] >= threshold) !=
                        (rp[both] >= threshold)).sum())
         deltas.append(d)
+
+        # Events, on the full arrays rather than the compared subset: shaping
+        # is sensitive to gaps, so dropping windows out of the middle would
+        # split events that the GUI would keep whole. Windows either side
+        # marked unscored are zeroed on both arms, because an unscored window
+        # cannot contribute a detection to a reviewer either way.
+        rp_full = np.where(rk == 0, ref_probs[lo:hi], 0.0)
+        lp_full = np.where(skip == 0, probs, 0.0)
+        ref_ev = _events(rs, rp_full, threshold, _dur)
+        loc_ev = _events(starts, lp_full, threshold, _dur)
+        ev_match, ev_lost, ev_gained, ev_shift = _compare_events(ref_ev,
+                                                                 loc_ev)
+        ev_totals['ref'] += len(ref_ev)
+        ev_totals['local'] += len(loc_ev)
+        ev_totals['matched'] += ev_match
+        ev_totals['lost'] += ev_lost
+        ev_totals['gained'] += ev_gained
+        if ev_lost or ev_gained:
+            ev_totals['recordings_changed'] += 1
+        ev_totals['max_shift_s'] = max(ev_totals['max_shift_s'], ev_shift)
+
         per_rec.append({
             'stem': stem, 'n': int(both.sum()),
             'median': float(np.median(d)), 'max': float(d.max()),
             'decisions_changed': flipped,
             'ref_max': float(rp[both].max()),
             'local_max': float(probs[both].max()),
+            'events_ref': len(ref_ev), 'events_local': len(loc_ev),
+            'events_matched': ev_match, 'events_lost': ev_lost,
+            'events_gained': ev_gained,
+            'event_max_shift_s': round(ev_shift, 3),
         })
-        print('  {:<22} n={:<4} median {:.6f}  max {:.4f}  flips {}'.format(
-            stem, int(both.sum()), float(np.median(d)), float(d.max()),
-            flipped))
+        print('  {:<22} n={:<4} median {:.6f}  max {:.4f}  flips {:<3} '
+              'events {}->{}{}'.format(
+                  stem, int(both.sum()), float(np.median(d)), float(d.max()),
+                  flipped, len(ref_ev), len(loc_ev),
+                  '  (-{} +{})'.format(ev_lost, ev_gained)
+                  if (ev_lost or ev_gained) else ''))
 
     if not deltas:
         print('\nnothing could be compared.')
@@ -312,6 +397,7 @@ def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None,
         'not_found': len(missing),
         'misaligned': misaligned,
         'ambiguous_stems': sorted(set(ambiguous)),
+        'events': dict(ev_totals),
     }
     print()
     print('=' * 62)
@@ -323,6 +409,19 @@ def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None,
     print('max    |delta|      : {:.6f}'.format(summary['max']))
     print('decisions changed   : {} of {} windows at threshold {}'.format(
         flips, n_win, threshold))
+    # The window figure is internal. These are the events a reviewer is shown.
+    print('-' * 62)
+    print('events (reference)  : {}'.format(ev_totals['ref']))
+    print('events (this machine): {}'.format(ev_totals['local']))
+    print('  matched           : {}'.format(ev_totals['matched']))
+    print('  lost              : {}   (in the reference, absent here)'.format(
+        ev_totals['lost']))
+    print('  gained            : {}   (here, absent in the reference)'.format(
+        ev_totals['gained']))
+    print('  recordings with any event change: {} of {}'.format(
+        ev_totals['recordings_changed'], summary['n_recordings']))
+    print('  largest boundary shift on a matched event: {:.1f} s'.format(
+        ev_totals['max_shift_s']))
     if missing:
         print('not found locally   : {}'.format(len(missing)))
     if misaligned:
