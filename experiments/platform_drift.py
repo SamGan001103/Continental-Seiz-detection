@@ -415,6 +415,23 @@ def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None,
             'events_gained': ev_gained,
             'event_max_shift_s': round(ev_shift, 3),
         })
+        # Checkpoint after every recording. This run takes over an hour and a
+        # segfault in a native library - which happened at recording 88 of 120 -
+        # otherwise discards every window-level percentile computed so far. The
+        # per-recording lines survive in stdout, but the raw deltas the
+        # percentiles need do not. Writing a few thousand floats each time costs
+        # nothing against the cost of re-scoring the corpus.
+        if out_json:
+            try:
+                with open(out_json + '.partial', 'w') as _f:
+                    json.dump({'complete': False,
+                               'per_recording': per_rec,
+                               'events_so_far': dict(ev_totals),
+                               'deltas': [float(x) for a in deltas for x in a]},
+                              _f)
+            except Exception:                          # noqa: BLE001
+                pass
+
         print('  {:<22} n={:<4} median {:.6f}  max {:.4f}  flips {:<3} '
               'events {}->{}{}'.format(
                   stem, int(both.sum()), float(np.median(d)), float(d.max()),
