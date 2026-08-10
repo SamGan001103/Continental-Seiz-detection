@@ -273,9 +273,14 @@ Running the *identical* configuration twice and comparing it to its own cache:
 | **noise floor — identical config re-run** | **−0.0057** | **[−0.019, +0.003]** | — |
 | paper-literal: remove **all** flagged components | −0.0200 | [−0.049, +0.004] | 3.5× |
 | ICA off vs on | +0.0203 | [−0.030, +0.057] | 3.5× |
-| ZUNA vs baseline | −0.0421 | [−0.149, +0.038] | 7.3× |
+| ZUNA vs baseline | −0.0428 | [−0.152, +0.040] | 7.5× |
 
-All on 12 recordings except ZUNA (10), pooled window AUC, arms matched window-by-window.
+All on 12 recordings except ZUNA (10), pooled window AUC, arms matched window-by-window and
+masked on the union of each pair's refusals.
+
+The floor itself is independently corroborated: re-running one file and diffing against its own
+cache gives an identical window grid and a **maximum per-window divergence of 0.1067**, matching
+the 0.107 recorded in §9 from a separate measurement.
 
 > **Read this table before quoting any secondary result.** Two of the three effects are ~3.5×
 > the noise *point estimate*, but the noise **interval** is itself ±0.02 — comparable to the
@@ -328,17 +333,38 @@ python experiments/zuna_auc_interval.py
 
 The two arms score the same recordings, so the comparison is **paired** and the bootstrap must
 preserve that: resample recordings, and recompute both arms' pooled AUC from the same drawn
-files. Restricted to window starts present in *both* arms, so a ZUNA run that dropped a trailing
-window cannot shift the pairing — this is why the baseline reads 0.6887 here against 0.6878 in
-the table above, which pools every baseline window.
+files. Windows are matched on **start time**, and a window is dropped if **either** arm failed to
+score it.
 
 | | pooled AUC | 95 % CI (cluster bootstrap by recording) |
 |---|---|---|
-| baseline | 0.6887 | [0.529, 0.829] |
-| ZUNA | 0.6466 | [0.500, 0.790] |
-| **delta (ZUNA − baseline)** | **−0.0421** | **[−0.149, +0.038]** |
+| baseline | 0.6878 | [0.526, 0.835] |
+| ZUNA | 0.6450 | [0.498, 0.792] |
+| **delta (ZUNA − baseline)** | **−0.0428** | **[−0.152, +0.040]** |
 
-`P(ZUNA worse on AUC) = 0.84` over 10,000 resamples. 336 windows, 113 ictal, 10 recordings.
+`P(ZUNA worse on AUC) = 0.84` over 10,000 resamples. 330 windows, 112 ictal, 10 recordings.
+
+#### The paired mask is not a detail — the table above it is mismatched
+
+`experiments/rescore_zuna_compare.py:105` masks each arm separately with `keep = probs != 0.0`.
+Measured on these 10 files, **6 windows are refused in the baseline arm and scored in the ZUNA
+arm**, so they enter one arm's AUC and not the other's. The 0.6878 / 0.6466 pair in the table
+above is therefore computed on **different window sets**, which is exactly the defect this
+document criticises `diag_ica.py` for in §4.
+
+Masking *both* arms on the union of refusals gives baseline **0.6878** — the published figure
+reproduces exactly — and ZUNA **0.6450**, slightly below the table's 0.6466 because the ZUNA arm
+now also drops those 6 windows.
+
+Keeping them instead is not a fix either: their stored `0.0` is a **sentinel for "never scored"**,
+and handing it to an AUC ranks a refusal as a confident negative. An earlier draft of this
+section did exactly that, reported baseline 0.6887, and attributed the gap to window-start
+intersection. That explanation was wrong — the intersection is empty of effect here, since all
+336 starts are shared. The cause was always the unscored-window mask.
+
+**The conclusion is unchanged**: −0.0428 against −0.0412, and the interval still crosses zero.
+The defect moved the third decimal, not the finding. It is recorded because the same masking
+error, left in place, would silently bias a larger comparison.
 
 > **The interval crosses zero, so say so.** An earlier version of this section called the result
 > "inconclusive at best and **mildly negative** on the more rigorous measure". The second half of

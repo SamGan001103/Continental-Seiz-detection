@@ -76,11 +76,25 @@ def load_pair(base_path):
     if b is None or z is None:
         return None
 
-    # The two arms can differ in window count; compare only shared starts, so a
-    # ZUNA run that dropped a trailing window cannot shift the pairing.
+    # Two independent requirements, and getting either wrong biases the result.
+    #
+    # 1. Match on window START, not index: the arms need not produce the same
+    #    number of windows, and aligning by position would compare different
+    #    moments in the recording.
+    # 2. Drop a window if EITHER arm failed to score it. Masking each arm
+    #    separately — which experiments/rescore_zuna_compare.py does with
+    #    `keep = probs != 0.0` — leaves the arms on different window sets:
+    #    measured here, 6 windows are refused in the baseline arm and scored in
+    #    the ZUNA arm, so those 6 enter one arm's AUC and not the other's.
+    #    Keeping them instead, as an earlier version of this script did, is no
+    #    better: their stored 0.0 is a *sentinel* for "never scored", and
+    #    feeding it to the AUC ranks a refusal as a confident negative.
     bs = {int(s): i for i, s in enumerate(b['window_starts'])}
     zs = {int(s): i for i, s in enumerate(z['window_starts'])}
-    shared = sorted(set(bs) & set(zs))
+    b_ok = np.asarray(b['skip_code']) == 0
+    z_ok = np.asarray(z['skip_code']) == 0
+    shared = sorted(s for s in (set(bs) & set(zs))
+                    if b_ok[bs[s]] and z_ok[zs[s]])
     if not shared:
         return None
     starts = np.array(shared, dtype=float)
