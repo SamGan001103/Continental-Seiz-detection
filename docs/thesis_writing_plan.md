@@ -236,7 +236,7 @@ Validated at the window level, the only level the paper makes a public-data clai
 figures are not reproducible — private data, 20-channel model. Corpus version differs.
 
 ### 5.2 Why the false-alarm gap exists
-Four causes, in order: (i) **the PWA/PEI lens** — their 76.68 % is a *two-stage* system whose
+Four causes, in order: (i) **the PWI/PEI lens** — their 76.68 % is a *two-stage* system whose
 second stage sets thresholds from the **last two hours** of signal, and **none of your 206
 recordings exceeds 58 minutes**, so it cannot run; (ii) 20 channels including ECG; (iii) your
 corpus is **83× more seizure-dense** (3.05/h vs 0.037/h) — *and the authors themselves write that
@@ -271,7 +271,7 @@ calibration is prevalence-specific.
 
 ## 6. Conclusion  **[YOURS]**
 Reconstructed and validated; built and evaluated the interface; characterised honestly; showed the
-scoring-convention sensitivity. Future: PWA/PEI lens for false alarms, C++ ICA front end
+scoring-convention sensitivity. Future: PWI/PEI lens for false alarms, C++ ICA front end
 (BMET4112 — profiling says ICA is ~90 % of runtime, the network ~2 %), clinician evaluation.
 
 ---

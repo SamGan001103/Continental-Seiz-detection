@@ -44,14 +44,14 @@ This is the paper whose detector these weights implement (19 ch / 12 s / ICA).
 false-alarm columns are blank for TUH. There is therefore **no published TUH false-positive
 statistic to replicate**, and no published TUH sensitivity either. The only public-data claim the
 paper makes for the 19-channel detector is the single number 0.84, and Fig. 5 identifies it as
-the TUH **development** split, measured before the PWA/PEI lens.
+the TUH **development** split, measured before the PWI/PEI lens.
 
 > ### ⚠ Do not compare our FP/24 h to their 56.55
 >
 > Our event-level false-alarm figure and their 56.55 look similar. **The resemblance is a
 > coincidence and the two are not comparable.** Theirs is RPAH: 14,590 hours, 1,006 sessions,
 > **private** clinical data under hospital ethics, a **20-channel** model (19 EEG + ECG, see
-> `utils/ICA_load_data_elec.py:285`), the PWA/PEI lens, and the **SDR** metric, which by the
+> `utils/ICA_load_data_elec.py:285`), the PWI/PEI lens, and the **SDR** metric, which by the
 > paper's own footnote "combines the false alarms within 30 seconds into one". Ours is 27.8 hours
 > of public TUSZ across 206 files, 19 channels, concatenate/discard shaping, and per-event
 > matching with a 5 s tolerance. Different data, different model, different metric, and about
@@ -189,6 +189,66 @@ can dismiss. Switch with `USE_PER_SECOND_AVERAGING` in `eval_config.py`.
 
 (The sweep runs at the configured operating point, so its 0.50 row differs slightly from the
 ablation table above, which re-scores each configuration independently.)
+
+### The PWI/PEI lens — why it is not implemented
+
+```
+python experiments/evaluate_baseline.py --manifest artifacts/zuna_thesis/manifest_full.csv \
+    --thresholds 0.5 0.7 0.8 0.9 0.95 0.99 --name fa_cost
+```
+
+The paper's second stage is a **PWI/PEI lens** (Periodic Waveform Index / Periodic Energy Index),
+not "PWA" — an error corrected throughout this repository on 2026-08-10. Verified against the
+arXiv source, the mechanism is:
+
+> "We use the 85-percentile of PWI and PEI values for each frequency band over the **last two
+> hours** as adaptive thresholds."
+
+Three independent reasons it is absent, in order of how decisive they are.
+
+**1. It cannot run on this corpus, let alone be validated on it.** The adaptive thresholds need
+two hours of preceding signal. Of **306 recordings, zero reach two hours**; the longest is
+**58.3 minutes — 49 % of the required window**. Implementing it would produce a component that
+can never be exercised, and shipping an untestable stage into a clinical review tool is worse
+than not having it.
+
+**2. Plain thresholding already buys the false-alarm reduction, and the price is measurable.**
+
+| threshold | sensitivity | hits | FP/24 h |
+|---|---|---|---|
+| 0.50 | 49.4 % | 42/85 | 204.4 |
+| 0.70 | 44.7 % | 38/85 | 117.3 |
+| 0.80 | 42.4 % | 36/85 | **67.3** |
+| 0.90 | 36.5 % | 31/85 | 33.6 |
+| 0.95 | 34.1 % | 29/85 | 18.1 |
+| 0.99 | 27.1 % | 23/85 | 4.3 |
+
+The paper's 56.55 FA/24 h sits between the 0.80 and 0.90 rows — reachable here at roughly
+**41 % sensitivity**, i.e. a **3× false-alarm reduction for about 8 percentage points**. Any lens
+has to beat *that* curve to be worth its complexity, and there is no way to show it does without
+two-hour recordings.
+
+**3. It optimises the wrong objective for a human-in-the-loop tool.** The lens is a
+*suppression* stage: it removes detections. In an autonomous system screening 14,590 hours that
+is exactly right. In a review assistant it is close to backwards.
+
+> A **false positive** costs the reviewer a few seconds to reject — the interface is built around
+> fast rejection for precisely this reason. A **false negative** is a seizure the reviewer is
+> never shown. The detector already misses about half of them, and 22 % of all seizures produce
+> no model response at all (§4.4 figure). Adding a stage whose job is to discard candidates, to a
+> tool whose entire value is surfacing candidates a human then adjudicates, trades a cheap error
+> for an expensive one.
+
+Moving from threshold 0.50 to 0.80 illustrates it: 159 fewer false alarms across 27.8 h, at the
+cost of **6 of the 42 seizures the system would otherwise have surfaced**. For a reviewer who is
+the safety net, that is a bad trade.
+
+**Where it would matter.** The deployment target is ambulatory/outpatient monitoring, where
+studies routinely run 24–72 hours — well past the two-hour window. If this system is ever
+evaluated on ambulatory recordings, the lens becomes both applicable and testable, and the
+false-alarm burden over a multi-day study is a genuine clinical problem worth solving. **The
+blocker is the evaluation corpus, not the idea.** Recorded as future work with a precondition:
+obtain recordings ≥ 2 h before implementing it.
 
 ### Reviewer-triage view, threshold 0.5
 

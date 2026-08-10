@@ -95,7 +95,7 @@ patient, montage and artifact regime.
 | Result | Dataset | Value | Why not comparable |
 |---|---|---|---|
 | AUC | RPAH, 1,006 sessions | 0.82 | private clinical data (ethics X19-0323-2019/STE16040) |
-| Sensitivity | RPAH, 1,006 sessions | 76.68 % | private data; **20-channel** model (19 EEG + ECG); PWA/PEI lens; SDR metric |
+| Sensitivity | RPAH, 1,006 sessions | 76.68 % | private data; **20-channel** model (19 EEG + ECG); PWI/PEI lens; SDR metric |
 | FA / 24 h | RPAH, 1,006 sessions | 56.55 | as above; SDR merges alarms within 30 s into one |
 | Sensitivity + arbiter | RPAH, 66-session pilot | 92.19 % | private data; requires a human expert arbiter |
 | Review time | RPAH, 66-session pilot | 90 → 7.62 min | private data; clinical workflow study |
@@ -105,7 +105,7 @@ patient, montage and artifact regime.
 > ### ⚠ The 56.55 trap
 > Our event-level false-alarm figures land in the same numeric neighbourhood as the paper's
 > **56.55 FA/24 h**. **This is coincidence.** Theirs is 14,590 h of private RPAH data through a
-> 20-channel model with the PWA/PEI lens, scored by SDR (which merges alarms within 30 s). Ours
+> 20-channel model with the PWI/PEI lens, scored by SDR (which merges alarms within 30 s). Ours
 > is 27.8 h of public TUSZ through a 19-channel model with concatenate/discard shaping, scored
 > by per-event matching at 5 s tolerance. Different data, model, post-processing, metric, and
 > about two and a half orders of magnitude of recording time. Never present them as a comparison.

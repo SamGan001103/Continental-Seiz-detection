@@ -44,7 +44,7 @@ Read from the arXiv preprint (arXiv:2103.10900v2), Table 2 and §2.3–2.7:
   decompose the signal into 19 independent components"*, Fp1/Fp2 Pearson correlation for EOG
   rejection, STFT with a 250-sample window and 50 % overlap, DC removed → `(n × 23 × 125)`,
   MNE v0.20, Python 3.6. **This is exactly the pipeline in this repository.**
-- The PWA/PEI "lens" post-processing (§2.5) is applied **only to the RPAH inference**, not to
+- The PWI/PEI "lens" post-processing (§2.5) is applied **only to the RPAH inference**, not to
   the TUH AUC. So 0.84 is the raw window-level model score, with no post-processing — which is
   what makes it directly comparable.
 - The RPAH figures (76.68 %, 56.55 FA/24 h, AUC 0.82) come from **private clinical data under
