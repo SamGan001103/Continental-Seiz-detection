@@ -46,9 +46,22 @@ block_cipher = None
 # annotation exported from the packaged application would carry a null build
 # identifier — on precisely the machine where provenance matters most.
 def _git(*argv):
+    # -c core.autocrlf=true is not cosmetic. This repository is checked out on
+    # Windows, where git writes CRLF into the working tree and stores LF in the
+    # index. Building through WSL runs a Linux git against that same Windows
+    # working tree, and Linux git has no autocrlf set — so it compares CRLF
+    # files against an LF index and reports all 110 of them as modified:
+    # 223900 insertions and 223900 deletions, every one of them a carriage
+    # return. The stamp then reads "+dirty" and claims the build cannot be
+    # reproduced from its commit, on a tree that is in fact clean.
+    #
+    # Forcing the setting here makes the answer independent of which operating
+    # system reads the checkout. It cannot produce a false *clean*: a real edit
+    # still differs after the line-ending filter, and .gitattributes already
+    # pins the files whose endings are load-bearing.
     try:
         return subprocess.check_output(
-            ('git',) + argv, cwd=REPO,
+            ('git', '-c', 'core.autocrlf=true') + argv, cwd=REPO,
             stderr=subprocess.PIPE).decode('utf-8', 'replace').strip()
     except Exception:
         return ''
