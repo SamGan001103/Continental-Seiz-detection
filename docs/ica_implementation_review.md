@@ -196,9 +196,23 @@ exactly the slow drift that destabilises ICA.
 
 ### 3.4 The window is too short for a 19-component decomposition
 
-The standard heuristic is that resolving N components from N channels needs **more than kN²
-samples per channel, with k ≥ 20**. For N = 19 that is **≥ 7220 samples**. A 12-second window at
-250 Hz gives **3000** — a factor of 2.4 short, or 158 samples per component.
+The standard heuristic, from the EEGLAB documentation, is that
+
+> "finding *N* stable components (from N-channel data) typically requires *more than* *kN²* data
+> sample points (at each channel), where N² is the number of weights in the unmixing matrix that
+> ICA is trying to learn and *k* is a multiplier."
+
+**The source does not fix a value for *k*** — it says only that *k* "increases with higher
+channel counts", and its own worked example (32 channels, 30,800 points) works out at about
+**30** points per weight, while still warning that 30 is not enough at 256 components. An earlier
+version of this document asserted "k ≥ 20" as though the source stated it; verified 2026-08-10,
+it does not.
+
+Taking *k* = 20 as the commonly quoted value, N = 19 needs **≥ 7220** samples; a 12-second window
+at 250 Hz gives **3000**, a factor of **2.4** short. At the *k* ≈ 30 implied by EEGLAB's own
+example the requirement is 10,830 and the shortfall is **3.6×**. **The conclusion does not depend
+on which multiplier is used** — either way the window is short by a wide margin, at 158 samples
+per component. Quote the shortfall as "at least 2.4×" and name the *k* you assumed.
 
 This is the most likely driver of §3.5 — the relationship is a strong correlation, not a
 demonstrated cause — and it is structural: it cannot be fixed without either

@@ -31,10 +31,8 @@ Every layer, checked by building the model and printing shapes.
 
 Total parameters **384,846**. The architecture is a faithful implementation.
 
-**One environment deviation:** the paper states **Keras 2.0 and TensorFlow 1.4.0**; this project
-pins **Keras 2.2.5 / TF 1.15**. Untested, unlike the MNE gap. Lower priority than MNE because the
-forward pass was independently re-implemented in numpy and matched TF to 2.7 × 10⁻⁷, but it
-should be disclosed alongside the MNE row.
+**One environment deviation, now measured:** the paper states **Keras 2.0 and TensorFlow 1.4.0**;
+this project pins **Keras 2.2.5 / TF 1.15**. Tested — max difference **6.8 × 10⁻⁹**. See §8.
 
 ## 2. Numbers — verified from Table 3, Table 1, Table 7 and body text
 
@@ -121,16 +119,45 @@ Worth knowing before quoting, since an examiner may hit them:
 | `threshold=2.0` is a z-score, not a Pearson *r* | MNE introspection; paper says only "Pearson correlation" |
 | MNE 0.19.2 ≡ 0.20.0, bit-identical | `experiments/diag_mne_version.py`, 25/25 exact |
 
-## 7. Still not independently checked
+## 7. Method references — all now checked
 
-The method references that justify *our* analytical choices. None read in either pass.
+Verified 2026-08-10. These justify *our* analytical choices, so an examiner may well check them.
 
-Naeini et al. 2015 / Bröcker 2009 (ECE form) · Guo et al. (the form we reject) · Murphy (Brier
-decomposition) · Winkler et al. 2015 (1–2 Hz ICA pre-filter) · Wharton et al. 1994 (cognitive
-walkthrough) · the *kN²*, *k ≥ 20* samples-per-component heuristic underpinning
-`ica_implementation_review.md` §3.4.
+| reference | claim we make | status |
+|---|---|---|
+| **Bröcker (2009)**, *Reliability, sufficiency, and the decomposition of proper scores*, Q. J. R. Meteorol. Soc. **135**(643):1512–1519, doi:10.1002/qj.456 | cited for the reliability form of ECE | **verified** — exists as cited |
+| **Murphy (1973)**, *A new vector partition of the probability score* | Brier decomposition **REL − RES + UNC** | **verified** — the decomposition is exactly Br = REL − RES + UNC |
+| **Guo et al.**, *On Calibration of Modern Neural Networks*, arXiv:1706.04599 | the confidence-vs-accuracy ECE form we **reject** | **verified** — this is indeed that form |
+| **Winkler et al. (2015)**, *On the influence of high-pass filtering on ICA-based artifact reduction in EEG-ERP*, Proc. IEEE EMBC, pp. 4101–4105 | 1–2 Hz "consistently produced good results in terms of signal-to-noise ratio, single-trial classification accuracy and the percentage of near-dipolar ICA components" | **verified** — wording matches |
+| **Wharton et al. (1994)**, *The cognitive walkthrough method: a practitioner's guide* | the four-question instrument used in `docs/usability/` | **verified** — Q1–Q4 match (right goal / action visible / action associated / feedback understood) |
+| **Naeini, Cooper & Hauskrecht (2015)**, *Obtaining Well Calibrated Probabilities Using Bayesian Binning*, AAAI | ECE in the **positive-class reliability** form | **partially verified** — the paper exists as cited, but secondary descriptions of its ECE use *confidence-vs-accuracy* language. For a **binary** problem the positive-class form and Naeini's binary definition coincide; the distinction we draw against Guo is defensible but should be checked against Naeini's own equation, not a summary. |
+| **kN², k ≥ 20** samples-per-component heuristic | ICA window-length adequacy (`ica_implementation_review.md` §3.4) | **formula verified, the multiplier was not** — see below |
 
-**Next verification target.**
+### The one claim that did not survive
+
+The kN² formula is EEGLAB's and is quoted correctly. But **"k ≥ 20" was asserted as though the
+source stated it, and the source does not.** EEGLAB says only that *k* "increases with higher
+channel counts", and its own worked example implies *k* ≈ 30.
+
+Corrected in §3.4 of the ICA review. **The conclusion is unaffected and if anything strengthened**:
+at *k* = 20 the 12-second window is 2.4× short, at *k* ≈ 30 it is 3.6× short. The review now
+states the assumed multiplier explicitly rather than hiding it inside a citation.
+
+## 8. Environment deviations from the paper — both now measured
+
+| | paper | this project | measured difference |
+|---|---|---|---|
+| MNE | v0.20 | 0.19.2 | **bit-identical**, 25/25 exact (`diag_mne_version.py`) |
+| Keras / TensorFlow | Keras 2.0, TF 1.4.0 | Keras 2.2.5, TF 1.15 | **max 6.8 × 10⁻⁹**, 13/20 bit-identical, no window crossing the 0.5 threshold (`diag_tf_version.py`) |
+| Python | 3.6 | 3.6.15 | match |
+
+Both were installed into isolated `--target` directories, so `seiz36` was never modified. The
+Keras/TF test isolates the forward pass: the STFT input tensors are computed **once** in the
+current environment and saved, then the identical tensors are loaded and predicted under each
+framework version, so nothing but Keras/TF differs between the two runs.
+
+**Neither deviation from the published environment affects any reported number.** This closes
+both rows that had been carried as disclosed-but-untested.
 
 ---
 
