@@ -47,16 +47,30 @@ def writable_root():
     Either way the bundle is the wrong place, so this never depends on which
     build shape is in use.
     """
-    if is_frozen():
-        base = os.environ.get('LOCALAPPDATA') or os.path.expanduser('~')
+    if not is_frozen():
+        return app_root()
+    # Every candidate stays inside a SeizureReview/ directory. An earlier
+    # version fell back to the home directory itself, which would have scattered
+    # bare logs/, cache/ and autosave/ folders into the user's home — litter
+    # with names generic enough that nobody could tell what had created them.
+    import tempfile
+    candidates = [
+        os.environ.get('LOCALAPPDATA'),
+        os.environ.get('APPDATA'),
+        os.path.expanduser('~'),
+        tempfile.gettempdir(),
+    ]
+    for base in candidates:
+        if not base:
+            continue
         d = os.path.join(base, 'SeizureReview')
         try:
-            if not os.path.exists(d):
+            if not os.path.isdir(d):
                 os.makedirs(d)
             return d
         except OSError:
-            return os.path.expanduser('~')
-    return app_root()
+            continue
+    return tempfile.gettempdir()
 
 
 def weights_path():

@@ -260,6 +260,31 @@ defect. The residual Q4 failures are all P2/P3 items deliberately deferred.
 Eleven regression tests (`tests/test_usability_p1.py`) pin the P1 fixes, so this before/after
 cannot silently revert.
 
+---
+
+## 3d. Changes made after the second pass
+
+The §3c table is a measurement taken at commit `c3c932a` and is left exactly as recorded.
+Work done since has closed one of the items it scored as failing. Rewriting the table to
+match today's code would misrepresent when the measurement was taken, so the change is
+recorded here instead.
+
+| ID | Status now | Evidence |
+|---|---|---|
+| **U-10** | **Closed.** §3c scored this **F (partial)** on the grounds that "there is still no *revert to AI extent*, so an accidental drag remains irreversible". That remedy has since shipped. | `MainWindow._revert_extent()` (`gui/app.py:1405`), bound to **Ctrl+R** and to an **Edit** menu action, restoring the already-preserved `source_start`/`source_stop` and returning the event to `proposed`. It declines on human-added events, which have no detector extent to return to. Pinned by `test_revert_restores_the_detector_extent` and `test_revert_declines_on_a_human_added_event`. A general **Ctrl+Z** undo stack was added alongside it. |
+| U-03, U-05 | Still open (P2) | Slider tooltip and drag affordance unchanged. |
+| U-11, U-06 | Still open (P3) | U-11 deliberately out of scope; U-06 is a one-line dialog change. |
+
+**Do not quote the §3c counts as current.** On the code as it stands the P2 count is 2, not 3.
+A third full pass of the instrument has *not* been run, so there is no measured Q1–Q4 table for
+the present build — only this item-level check. Re-run the instrument before reporting any
+updated failure count.
+
+U-06 is worth revisiting now that the application ships frozen: TensorFlow's first load inside a
+PyInstaller bundle is materially slower than from source, so the "loading model (first open
+only)…" phase is longer on a hospital PC than on the development machine, and the case for
+naming it explicitly is stronger than the P3 rating implies.
+
 **Caveat unchanged from §0:** this is still a single evaluator using code introspection.
 Perceptual rows marked (P?) — whether the new colours are *noticeably* distinct at a glance,
 whether the 140 px strip is legible at clinical display size — remain unconfirmed and need a

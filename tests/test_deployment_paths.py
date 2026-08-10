@@ -73,6 +73,35 @@ class BundledResources(unittest.TestCase):
         self.assertTrue(os.path.exists(paths.params_path()),
                         paths.params_path())
 
+    def test_writable_root_stays_namespaced_when_localappdata_is_unusable(self):
+        """It must never resolve to a bare home or temp directory.
+
+        Doing so would scatter generic logs/, cache/ and autosave/ folders into
+        the user's home, with names too generic for anyone to attribute.
+        """
+        saved_frozen = getattr(sys, 'frozen', None)
+        saved_local = os.environ.get('LOCALAPPDATA')
+        saved_app = os.environ.get('APPDATA')
+        try:
+            sys.frozen = True
+            os.environ['LOCALAPPDATA'] = os.path.join(
+                tempfile.mkdtemp(), 'nope', 'still-nope')
+            os.environ.pop('APPDATA', None)
+            root = paths.writable_root()
+            self.assertEqual(os.path.basename(root), 'SeizureReview')
+            self.assertTrue(os.path.isdir(root))
+        finally:
+            if saved_frozen is None:
+                del sys.frozen
+            else:
+                sys.frozen = saved_frozen
+            if saved_local is None:
+                os.environ.pop('LOCALAPPDATA', None)
+            else:
+                os.environ['LOCALAPPDATA'] = saved_local
+            if saved_app is not None:
+                os.environ['APPDATA'] = saved_app
+
     def test_writable_root_is_never_the_bundle_when_frozen(self):
         """sys._MEIPASS is deleted on exit; writing a review there loses it."""
         saved = getattr(sys, 'frozen', None)
