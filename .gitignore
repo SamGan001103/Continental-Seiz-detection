@@ -32,6 +32,12 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+#  packaging/SeizureReview.spec is hand-written source, not generated. It is the
+#  definition of the shipped application — losing it would mean the build could
+#  not be reproduced.
+!packaging/*.spec
+
+build_log.txt
 
 # Installer logs
 pip-log.txt

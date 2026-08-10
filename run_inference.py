@@ -210,12 +210,10 @@ def main():
                     help='stride between windows in seconds (default: canonical)')
     args = ap.parse_args()
 
-    # Resolve --file against the invocation directory BEFORE the chdir below,
-    # otherwise a relative path is silently reinterpreted under utils/ and the
-    # run fails with a confusing "failed to open" on a path the user never gave.
+    # No chdir into utils/ any more: pyst resolves a bare parameter filename
+    # against its own package directory, so a relative --file stays relative to
+    # where the user actually invoked the command.
     explicit = os.path.abspath(args.file) if args.file else None
-
-    os.chdir(os.path.join(REPO_ROOT, 'utils'))  # params file resolution
 
     print('Building model and loading weights...')
     model = ConvLstmNet(epochs=1).setup((-1, 2 * SEGMENT_S - 1, 19, 125, 1))

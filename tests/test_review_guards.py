@@ -82,6 +82,41 @@ class ReviewGuardTests(unittest.TestCase):
         self.w._clear_autosave()
         self.assertFalse(os.path.exists(path))
 
+    def test_autosave_reports_where_it_actually_wrote(self):
+        self.w._on_accept(1)
+        self.assertEqual(os.path.abspath(self.w._autosave_written_to),
+                         os.path.abspath(self.w._autosave_path()))
+
+    def test_autosave_falls_back_when_the_recording_folder_is_read_only(self):
+        """Clinical recordings normally live on a read-only share.
+
+        Losing crash recovery there — silently — would leave the reviewer
+        believing their decisions were protected when they were not.
+        """
+        blocker = os.path.join(self.tmp, 'blocker')
+        with open(blocker, 'wb') as f:
+            f.write(b'not a directory')
+        self.w._autosave_path = lambda: os.path.join(
+            blocker, 'sub', 'x.review.autosave.json')
+
+        self.w._on_accept(1)
+        where = self.w._autosave_written_to
+        self.assertIsNotNone(where, 'autosave silently wrote nowhere')
+        self.assertEqual(os.path.abspath(where),
+                         os.path.abspath(self.w._autosave_fallback_path()))
+        self.assertTrue(os.path.exists(where))
+        with open(where) as f:
+            self.assertEqual(
+                [e['status'] for e in json.load(f)['events']], ['accepted'])
+        self.w._clear_autosave()
+        self.assertFalse(os.path.exists(where))
+
+    def test_the_discard_prompt_warns_when_nothing_could_be_autosaved(self):
+        self.w._autosave_path = lambda: None
+        self.w._autosave_fallback_path = lambda: None
+        self.w._on_accept(1)
+        self.assertIsNone(self.w._autosave_written_to)
+
     def test_only_reviewed_events_count_as_unsaved_work(self):
         self.assertEqual(self.w._reviewed_events(), [])
         self.w._on_accept(1)

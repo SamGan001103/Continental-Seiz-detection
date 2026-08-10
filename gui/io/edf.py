@@ -9,6 +9,7 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
+from gui.paths import params_path  # noqa: E402
 from utils.pyst import read_edf_elec  # noqa: E402
 
 CHANNELS_19 = ['Fp1', 'Fp2', 'F7', 'F3', 'Fz', 'F4', 'F8',
@@ -24,18 +25,17 @@ def load_edf_19ch(path):
     passes through. Uses the repo's partial-match montage logic so
     'EEGFP1-REF' → Fp1 regardless of vendor naming."""
     path = os.path.abspath(path)
-    cwd = os.getcwd()
+    # The montage file is passed as an absolute path. This used to os.chdir into
+    # utils/ because pyst resolved a bare filename against the cwd — which
+    # mutated global process state on every load and has no equivalent in a
+    # frozen build, where utils/ is a directory inside the bundle.
     try:
-        os.chdir(os.path.join(REPO, 'utils'))  # params lookup is cwd-relative
-        try:
-            fs, data = read_edf_elec(path)
-        except SystemExit as ex:
-            raise RuntimeError(
-                'Could not find the required 19 EEG channels in this EDF. '
-                'Expected TUH-style labels for: {}'.format(
-                    ', '.join(CHANNELS_19))) from ex
-    finally:
-        os.chdir(cwd)
+        fs, data = read_edf_elec(path, parameters=params_path())
+    except SystemExit as ex:
+        raise RuntimeError(
+            'Could not find the required 19 EEG channels in this EDF. '
+            'Expected TUH-style labels for: {}'.format(
+                ', '.join(CHANNELS_19))) from ex
     fs = float(fs)
     if fs <= 0:
         raise RuntimeError('Invalid EDF sampling rate: {}'.format(fs))

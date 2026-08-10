@@ -17,7 +17,28 @@ ConvLSTM detector, shows per-window seizure probability, and lets a reviewer ste
 through proposed events and accept / reject / edit them, exporting a reviewed
 `.csv_bi` plus a `.provenance.json` sidecar.
 
-**Install** (once) — from an **Anaconda Prompt** in this folder:
+### Running it on a machine that is not a development machine
+
+Build a standalone Windows application — no Python, no conda, no internet, no
+administrator rights:
+
+```
+packaging\build_app.bat
+```
+
+The result is `dist\SeizureReview\`. Copy that folder to the target PC and
+double-click `SeizureReview.exe`. The build refuses to complete unless the
+weights hash matches, the tests pass, and the *frozen executable* has been
+launched and made to score a real recording.
+
+See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for hospital deployment
+(antivirus, SmartScreen, where the app writes, performance) and
+**[docs/INTENDED_USE.md](docs/INTENDED_USE.md)** for what the software may and
+may not be used for.
+
+### Development install
+
+From an **Anaconda Prompt** in this folder:
 
 ```
 setup.bat

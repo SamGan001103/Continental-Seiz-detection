@@ -22,6 +22,7 @@ import os
 import sys
 import json
 import time
+import hashlib
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -68,6 +69,18 @@ def _git_commit():
     when the tree has uncommitted changes, because a session run against
     modified code is not reproducible from the commit alone.
     """
+    # A frozen build has no repository and the target machine has no git, so
+    # the commit is stamped into the bundle at build time instead. Without this
+    # every exported annotation from the packaged app would have a null build
+    # identifier — exactly the machine where provenance matters most.
+    from gui.paths import is_frozen, resource
+    if is_frozen():
+        try:
+            import json
+            with open(resource('build_info.json'), encoding='utf-8') as f:
+                return json.load(f).get('commit')
+        except Exception:
+            return None
     import subprocess
     try:
         sha = subprocess.check_output(
@@ -97,9 +110,9 @@ def _weights_sha256():
     weights file is detectable after the fact rather than silently accepted.
     """
     try:
-        import eval_config as cfg
         from gui.io.cache import sha256_file
-        return sha256_file(os.path.join(REPO, cfg.WEIGHTS))
+        from gui.paths import weights_path
+        return sha256_file(weights_path())
     except Exception:
         return None
 
@@ -168,6 +181,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._nothing_assessed_warned = set()
         self._dirty = False            # reviewer decisions not yet exported
         self._reviewer_id = None       # prompted once per session
+        self._last_open_dir = None     # reviewers work out of one folder
+        self._autosave_written_to = None   # where crash recovery actually went
         self._session_started = time.time()
         self._file_opened_at = None
         self._events = []
@@ -409,8 +424,29 @@ class MainWindow(QtWidgets.QMainWindow):
         a_keys = m_help.addAction('&Keyboard shortcuts')
         a_keys.setShortcut('F1')
         a_keys.triggered.connect(self._show_shortcuts)
+        a_use = m_help.addAction('&Intended use and limitations…')
+        a_use.triggered.connect(self._show_intended_use)
         a_about = m_help.addAction('&About')
         a_about.triggered.connect(self._show_about)
+
+    def _show_intended_use(self):
+        """Open the bundled INTENDED_USE.md.
+
+        It ships inside the application so a reviewer on an offline clinical PC
+        can reach it. A limitations document that only exists in the repository
+        is not available to the person who needs it.
+        """
+        from gui.paths import resource
+        for cand in (resource('doc', 'INTENDED_USE.md'),
+                     os.path.join(REPO, 'docs', 'INTENDED_USE.md')):
+            if os.path.exists(cand):
+                QtGui.QDesktopServices.openUrl(
+                    QtCore.QUrl.fromLocalFile(os.path.abspath(cand)))
+                return
+        QtWidgets.QMessageBox.warning(
+            self, 'Not found',
+            'INTENDED_USE.md is missing from this installation.\n\n'
+            'The application folder may have been copied incompletely.')
 
     def _show_shortcuts(self):
         # Reuses this module's docstring verbatim so the dialog cannot drift
@@ -511,12 +547,22 @@ class MainWindow(QtWidgets.QMainWindow):
     # File loading
     # ==================================================================
     def _open_edf_dialog(self):
-        start_dir = os.path.join(REPO, 'sample_data')
+        # Frozen, REPO is PyInstaller's temporary extraction directory — opening
+        # the dialog there shows the user the app's own internals. Start
+        # somewhere a clinician would actually keep recordings.
+        from gui.paths import is_frozen
+        start_dir = self._last_open_dir or ''
         if not os.path.isdir(start_dir):
-            start_dir = REPO
+            start_dir = os.path.join(REPO, 'sample_data')
+        if not os.path.isdir(start_dir):
+            start_dir = (os.path.expanduser('~/Documents') if is_frozen()
+                         else REPO)
+        if not os.path.isdir(start_dir):
+            start_dir = os.path.expanduser('~')
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self, 'Open EDF', start_dir, 'EDF files (*.edf)')
         if path:
+            self._last_open_dir = os.path.dirname(path)
             self.load_edf(path)
 
     def load_edf(self, path):
@@ -1412,14 +1458,35 @@ class MainWindow(QtWidgets.QMainWindow):
             return None
         return os.path.splitext(self._edf_path)[0] + '.review.autosave.json'
 
+    def _autosave_fallback_path(self):
+        """Per-user autosave location for a read-only recording folder.
+
+        Clinical recordings usually sit on a read-only share. Without this the
+        autosave silently does nothing there — leaving the reviewer with no
+        crash recovery on precisely the machines where it matters, and no
+        indication that they are unprotected.
+        """
+        if not self._edf_path:
+            return None
+        from gui.paths import writable_root
+        p = os.path.abspath(self._edf_path)
+        key = hashlib.sha256(p.encode('utf-8', 'replace')).hexdigest()[:16]
+        stem = os.path.splitext(os.path.basename(p))[0]
+        return os.path.join(writable_root(), 'autosave',
+                            '{}.{}.review.autosave.json'.format(stem, key))
+
+    def _autosave_locations(self):
+        """Sidecar first, then the per-user fallback."""
+        return [p for p in (self._autosave_path(),
+                            self._autosave_fallback_path()) if p]
+
     def _autosave_review(self):
-        """Write reviewer decisions beside the EDF after every change.
+        """Write reviewer decisions after every change.
 
         A crash-recovery record, not an export: it is deliberately not a
         `.csv_bi`, so it can never be mistaken for an annotation file.
         """
-        path = self._autosave_path()
-        if not path:
+        if not self._edf_path:
             return
         try:
             payload = {
@@ -1436,19 +1503,31 @@ class MainWindow(QtWidgets.QMainWindow):
                     for ev in self._reviewed_events()],
                 'note': 'Autosaved reviewer decisions. Not an annotation file.',
             }
-            with open(path, 'w') as f:
-                json.dump(payload, f, indent=2, sort_keys=True)
-                f.write('\n')
-        except OSError:
-            pass          # autosave is best-effort; never block the reviewer
+            blob = json.dumps(payload, indent=2, sort_keys=True) + '\n'
+        except Exception:
+            return        # autosave is best-effort; never block the reviewer
+
+        for path in self._autosave_locations():
+            try:
+                parent = os.path.dirname(path)
+                if parent and not os.path.isdir(parent):
+                    os.makedirs(parent)
+                with open(path, 'w') as f:
+                    f.write(blob)
+                self._autosave_written_to = path
+                return
+            except OSError:
+                continue  # read-only location; try the next one
+        self._autosave_written_to = None
 
     def _clear_autosave(self):
-        path = self._autosave_path()
-        if path and os.path.exists(path):
-            try:
-                os.remove(path)
-            except OSError:
-                pass
+        for path in self._autosave_locations():
+            if os.path.exists(path):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+        self._autosave_written_to = None
 
     def _confirm_discard_review(self, action):
         """Ask before losing unexported decisions. True = proceed."""
@@ -1459,9 +1538,16 @@ class MainWindow(QtWidgets.QMainWindow):
         box.setIcon(QtWidgets.QMessageBox.Warning)
         box.setWindowTitle('Unexported review')
         box.setText('{} reviewed event(s) have not been exported.'.format(n))
+        # Name the file that actually exists. Telling the reviewer their work is
+        # safe in a location nothing could be written to would be worse than
+        # saying nothing.
+        where = getattr(self, '_autosave_written_to', None)
+        recovery = ('Autosaved decisions are kept at\n{}'.format(where)
+                    if where else
+                    'WARNING: decisions could not be autosaved anywhere. '
+                    'They exist only in this window.')
         box.setInformativeText(
-            'Export them before you {}?\n\nAutosaved decisions are kept at\n{}'
-            .format(action, os.path.basename(self._autosave_path() or '')))
+            'Export them before you {}?\n\n{}'.format(action, recovery))
         export = box.addButton('Export now…', QtWidgets.QMessageBox.AcceptRole)
         discard = box.addButton('Discard', QtWidgets.QMessageBox.DestructiveRole)
         box.addButton(QtWidgets.QMessageBox.Cancel)

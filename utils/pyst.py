@@ -183,6 +183,29 @@ def nedc_print_vals(fsamp_a, sig_a, labels_a):
 # pairs in a dictionary data structure. Note that the montage specification
 # is stored as one entry (a list) in the dictionary.
 #
+# Resolved at IMPORT time, not at call time. In Python 3.6 __file__ may be
+# relative, so os.path.abspath(__file__) inside a function returns the wrong
+# directory once anything has called os.chdir — which this codebase used to do
+# on every EDF load.
+_PKG_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _resolve_params(pfile_a):
+     """Resolve a bare parameter filename against this package directory.
+
+     Callers historically passed a bare name like "params_common_electrodes.txt"
+     and relied on the caller having os.chdir'd into utils/. That breaks in a
+     frozen build, where there is no utils/ to chdir into, and it made every
+     caller responsible for a global process state change. Resolving here means
+     an absolute path still works untouched and a bare name works from any
+     working directory.
+     """
+     if os.path.isabs(pfile_a) or os.path.exists(pfile_a):
+          return pfile_a
+     cand = os.path.join(_PKG_DIR, pfile_a)
+     return cand if os.path.exists(cand) else pfile_a
+
+
 def nedc_load_parameters(pfile_a):
 
      # declare local variables
@@ -193,7 +216,7 @@ def nedc_load_parameters(pfile_a):
      # open the file
      #
      try:
-          fp = open(pfile_a, "r")
+          fp = open(_resolve_params(pfile_a), "r")
      except:
           print ("%s (%s: %s): file not found (%s)" \
                % (sys.argv[0], __name__, "nedc_load_parameters", pfile_a))

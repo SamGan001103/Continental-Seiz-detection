@@ -2,17 +2,53 @@
 
 Two routes. Pick by who is doing it.
 
-| | Route A — Miniconda | Route B — frozen `.exe` |
+| | Route A — frozen `.exe` | Route B — Miniconda |
 |---|---|---|
-| Who | anyone who can double-click and paste one line | anyone at all |
-| Time | ~15 min, mostly download | ~2 min |
-| Needs internet | yes | no |
-| Coding knowledge | none, but you see a terminal | none |
-| Status | **works today** | **not built yet** — see §3 |
+| Who | anyone at all | anyone who can double-click and paste one line |
+| Time | ~2 min (copy a folder) | ~15 min, mostly download |
+| Needs internet | no | yes |
+| Needs admin rights | no | no, but it installs software |
+| Coding knowledge | none | none, but you see a terminal |
+| Status | **works** | **works** |
+| Use it for | hospital PCs, clinician demos | development, running experiments |
+
+**For a hospital PC, use Route A.** Full deployment guidance — antivirus,
+SmartScreen, where the app writes, performance expectations — is in
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ---
 
-## 1. Route A — Miniconda (works today)
+## 1. Route A — the frozen application (no Python needed)
+
+### If someone has already built it for you
+
+1. Copy the whole **`SeizureReview`** folder to the PC. Anywhere the logged-in
+   user can write is fine — `Documents` is a good choice. Copy the *entire*
+   folder; the `.exe` on its own will not run.
+2. Double-click **`SeizureReview.exe`**.
+3. On first launch Windows will say *"Windows protected your PC"* because the
+   app is not code-signed. Click **More info → Run anyway**. Tell the clinician
+   this will happen *before* they see it.
+
+That is the whole install. No Python, no conda, no internet, no admin rights.
+
+### Building it yourself
+
+On a machine that already has the `seiz36` environment (Route B):
+
+```
+packaging\build_app.bat
+```
+
+~10 minutes. It verifies the model weights hash, runs the test suite, freezes
+the app, then launches the frozen executable and scores a real recording before
+declaring success. The result is `dist\SeizureReview\` — about 1.2 GB.
+
+Rebuild whenever the code changes; the folder does not update itself.
+
+---
+
+## 2. Route B — Miniconda (for development)
 
 ### Step 1 — install Miniconda (once per machine, ~5 min)
 
@@ -48,7 +84,13 @@ Double-click **`launch_gui.bat`**. That's it, from then on.
 
 ---
 
-## 2. If something goes wrong
+## 3. If something goes wrong
+
+**Route A (frozen app):** every crash is written to
+`%LOCALAPPDATA%\SeizureReview\logs\seizure_review.log`. Start there. Common
+cases are in [docs/DEPLOYMENT.md §5](docs/DEPLOYMENT.md).
+
+**Route B (Miniconda):**
 
 | symptom | cause | fix |
 |---|---|---|
@@ -60,7 +102,7 @@ Double-click **`launch_gui.bat`**. That's it, from then on.
 
 ---
 
-## 3. Honest limitations, and what "portable" really costs
+## 4. Honest limitations, and what "portable" really costs
 
 **The environment is the fragile part, not the code.** This runs on **Python 3.6
 with TensorFlow 1.15**, both long past end-of-life. That is not a preference —
@@ -74,22 +116,23 @@ The practical consequences:
 - **Python 3.6 packages are increasingly hard to resolve.** `setup.bat` works
   today. It may not in a year, and it will not work on Apple Silicon at all.
 - **No Apple Silicon, no ARM.** TF 1.15 has no wheels for either.
-- **Route A needs internet and ~2 GB of download.**
+- **Route B needs internet and ~2 GB of download.**
 
-### The real fix for a no-knowledge install: freeze it
+**Route A insulates the target machine from all of this** — the frozen folder
+carries its own Python 3.6 and TF 1.15, so a hospital PC never has to resolve a
+package. The fragility moves to the *build* machine, where it can be dealt with
+by someone who knows what a conda channel is. That is the main argument for
+freezing, over and above convenience.
 
-A **PyInstaller** build would produce a folder you copy to any Windows PC and
-double-click — no Python, no conda, no internet. That is the honest answer to
-"set it up fast on a fresh PC without coding knowledge".
+What Route A does **not** fix:
 
-It is not built yet because it is a day of fiddly work (TF 1.15 hidden imports,
-Qt plugin paths, the ~700 MB–1 GB result) and it has to be redone whenever the
-code changes. **Worth doing once, immediately before the clinician session** —
-not before, or you will rebuild it repeatedly.
+- **Not code-signed.** SmartScreen warns on first run; antivirus may quarantine.
+  A signing certificate is the fix and the project does not have one.
+- **No auto-update.** A new version is a new folder copy.
+- **1.2 GB.** Too big to email; use a USB stick or a network share.
 
-### For a demo specifically — don't install anything
+### For a clinician demo specifically
 
-The lowest-risk option by far: **bring your own laptop**. A clinician session is
-20 minutes; spending the first 15 installing Miniconda on their machine wastes
-the scarcest resource in the room. Install on their PC only if they ask to keep
-it.
+**Bring your own laptop.** A clinician session is 20 minutes; spending any of it
+on their machine wastes the scarcest resource in the room. Have the frozen
+folder on a USB stick in your pocket for the case where they ask to keep it.

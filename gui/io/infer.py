@@ -9,9 +9,10 @@ if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
 from gui.io.edf import load_edf_19ch, CHANNELS_19, TARGET_FS  # noqa: E402
+from gui.paths import weights_path  # noqa: E402
 
 SEGMENT_S = 12
-WEIGHTS = os.path.join(REPO, 'convlstm_ICA_12_train.h5')
+WEIGHTS = weights_path()
 _MODERN_TO_LEGACY = {
     'T7': 'T3',
     'T8': 'T4',
@@ -35,15 +36,18 @@ def _calc_stft(s_):
 
 
 def _build_model():
-    cwd = os.getcwd()
-    os.chdir(os.path.join(REPO, 'utils'))  # keras import paths expect this cwd
-    try:
-        from models.deep_conv_lstm import ConvLstmNet
-        m = ConvLstmNet(epochs=1).setup(
-            (-1, 2 * SEGMENT_S - 1, len(CHANNELS_19), 125, 1))
-        m.model.load_weights(WEIGHTS)
-    finally:
-        os.chdir(cwd)
+    # No os.chdir here. The old code changed the working directory into utils/
+    # with the comment "keras import paths expect this cwd", but models/ sits at
+    # the repository root and resolves through sys.path — the chdir was doing
+    # nothing except mutating global state that a frozen build cannot satisfy.
+    from models.deep_conv_lstm import ConvLstmNet
+    m = ConvLstmNet(epochs=1).setup(
+        (-1, 2 * SEGMENT_S - 1, len(CHANNELS_19), 125, 1))
+    if not os.path.exists(WEIGHTS):
+        raise RuntimeError(
+            'Model weights not found at {}. The application folder is '
+            'incomplete — re-copy it in full.'.format(WEIGHTS))
+    m.model.load_weights(WEIGHTS)
     return m.model
 
 

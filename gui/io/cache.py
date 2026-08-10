@@ -1,12 +1,36 @@
-"""Probability cache: a small .npz alongside each EDF."""
+"""Probability cache: a small .npz alongside each EDF.
+
+Sidecar-next-to-the-EDF is the preferred location because it travels with the
+recording and needs no bookkeeping. It is not always available: on a clinical
+workstation the recordings usually sit on a read-only network share or a
+PACS export directory, and a failed sidecar write would silently discard a
+ten-minute inference run. When the sidecar cannot be written the cache falls
+back to a per-user directory, and reads check both.
+"""
 import os
 import json
 import hashlib
 import numpy as np
 
+from gui.paths import writable_root
+
 
 def cache_path_for(edf_path):
     return os.path.splitext(edf_path)[0] + '.probs.npz'
+
+
+def fallback_cache_path_for(edf_path):
+    """Per-user cache location, used when the EDF's directory is not writable.
+
+    Keyed by a digest of the absolute path so two recordings with the same
+    basename in different folders do not collide; the basename is kept as a
+    prefix purely so the directory is legible to a human clearing it out.
+    """
+    p = os.path.abspath(edf_path)
+    key = hashlib.sha256(p.encode('utf-8', 'replace')).hexdigest()[:16]
+    stem = os.path.splitext(os.path.basename(p))[0]
+    return os.path.join(writable_root(), 'cache',
+                        '{}.{}.probs.npz'.format(stem, key))
 
 
 def sha256_file(path, chunk_size=1 << 20):
@@ -25,8 +49,11 @@ def sha256_file(path, chunk_size=1 << 20):
 
 
 def save_probs(edf_path, window_starts, probs, meta=None, skip_code=None):
-    """Write per-window probabilities to `<edf_basename>.probs.npz` next
-    to the EDF file.
+    """Write per-window probabilities for an EDF, and return where they went.
+
+    Prefers `<edf_basename>.probs.npz` beside the recording. Falls back to the
+    per-user cache when that directory is not writable, rather than raising and
+    discarding a multi-minute inference run.
 
     window_starts : int array, seconds from file start
     probs         : float array, p(seizure) per window
@@ -43,32 +70,42 @@ def save_probs(edf_path, window_starts, probs, meta=None, skip_code=None):
         meta.setdefault('edf_basename', os.path.basename(edf_path))
     except OSError:
         pass
-    save_probability_file(cache_path_for(edf_path), window_starts, probs, meta,
-                          skip_code=skip_code)
+    try:
+        save_probability_file(cache_path_for(edf_path), window_starts, probs,
+                              meta, skip_code=skip_code)
+        return cache_path_for(edf_path)
+    except (OSError, IOError):
+        # Read-only recording directory. Do not lose the run.
+        fb = fallback_cache_path_for(edf_path)
+        save_probability_file(fb, window_starts, probs, meta,
+                              skip_code=skip_code)
+        return fb
 
 
-def load_probs(edf_path):
-    p = cache_path_for(edf_path)
-    if not os.path.exists(p):
-        return None
-    loaded = load_probability_file(p)
+def _fresh_for(edf_path, loaded):
+    """True if a loaded cache still matches the EDF's size and mtime."""
     if loaded is None:
-        return None
-    starts = loaded['window_starts']
-    probs = loaded['probs']
+        return False
     meta = loaded['meta']
     try:
         st = os.stat(edf_path)
-        if 'edf_size' not in meta or 'edf_mtime' not in meta:
-            return None
-        if int(meta['edf_size']) != int(st.st_size):
-            return None
-        cached_mtime = float(meta['edf_mtime'])
-        if abs(cached_mtime - float(st.st_mtime)) > 1.0:
-            return None
     except OSError:
-        return None
-    return loaded
+        return False
+    if 'edf_size' not in meta or 'edf_mtime' not in meta:
+        return False
+    if int(meta['edf_size']) != int(st.st_size):
+        return False
+    return abs(float(meta['edf_mtime']) - float(st.st_mtime)) <= 1.0
+
+
+def load_probs(edf_path):
+    for p in (cache_path_for(edf_path), fallback_cache_path_for(edf_path)):
+        if not os.path.exists(p):
+            continue
+        loaded = load_probability_file(p)
+        if _fresh_for(edf_path, loaded):
+            return loaded
+    return None
 
 
 CACHE_VERSION = 2   # v2 adds the skip_code array
