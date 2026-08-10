@@ -18,8 +18,8 @@
         "by_cohort": {
           "nonseizure": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 258.5143749186939,
-            "false_positives": 207,
+            "false_alarms_per_24h": 262.2609600624431,
+            "false_positives": 210,
             "files": 162,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -29,21 +29,21 @@
             "sensitivity": null
           },
           "seizure": {
-            "duplicate_detections": 13,
-            "false_alarms_per_24h": 136.60299432111512,
-            "false_positives": 49,
+            "duplicate_detections": 12,
+            "false_alarms_per_24h": 122.66391326794012,
+            "false_positives": 44,
             "files": 44,
-            "hits": 42,
-            "mean_offset_abs_error_s": 29.165540476190465,
-            "mean_onset_abs_error_s": 15.448364285714279,
-            "misses": 43,
+            "hits": 41,
+            "mean_offset_abs_error_s": 30.146146341463403,
+            "mean_onset_abs_error_s": 15.681236585365848,
+            "misses": 44,
             "n_refs": 85,
-            "sensitivity": 0.49411764705882355
+            "sensitivity": 0.4823529411764706
           },
           "unannotated": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 271.6014234875445,
-            "false_positives": 159,
+            "false_alarms_per_24h": 264.7686832740213,
+            "false_positives": 155,
             "files": 99,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -54,16 +54,16 @@
           }
         },
         "pooled": {
-          "duplicate_detections": 13,
-          "false_alarms_per_24h": 237.8428576166628,
-          "false_positives": 415,
+          "duplicate_detections": 12,
+          "false_alarms_per_24h": 234.40416569931347,
+          "false_positives": 409,
           "files": 305,
-          "hits": 42,
-          "mean_offset_abs_error_s": 29.165540476190465,
-          "mean_onset_abs_error_s": 15.448364285714279,
-          "misses": 43,
+          "hits": 41,
+          "mean_offset_abs_error_s": 30.146146341463403,
+          "mean_onset_abs_error_s": 15.681236585365848,
+          "misses": 44,
           "n_refs": 85,
-          "sensitivity": 0.49411764705882355
+          "sensitivity": 0.4823529411764706
         },
         "threshold": 0.5
       },
@@ -71,8 +71,167 @@
         "by_cohort": {
           "nonseizure": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 417.11981267074276,
-            "false_positives": 334,
+            "false_alarms_per_24h": 437.1016001040718,
+            "false_positives": 350,
+            "files": 162,
+            "hits": 0,
+            "mean_offset_abs_error_s": null,
+            "mean_onset_abs_error_s": null,
+            "misses": 0,
+            "n_refs": 0,
+            "sensitivity": null
+          },
+          "seizure": {
+            "duplicate_detections": 16,
+            "false_alarms_per_24h": 220.23748064016522,
+            "false_positives": 79,
+            "files": 44,
+            "hits": 48,
+            "mean_offset_abs_error_s": 25.058439583333325,
+            "mean_onset_abs_error_s": 10.663318749999997,
+            "misses": 37,
+            "n_refs": 85,
+            "sensitivity": 0.5647058823529412
+          },
+          "unannotated": {
+            "duplicate_detections": 0,
+            "false_alarms_per_24h": 433.87900355871886,
+            "false_positives": 254,
+            "files": 99,
+            "hits": 0,
+            "mean_offset_abs_error_s": null,
+            "mean_onset_abs_error_s": null,
+            "misses": 0,
+            "n_refs": 0,
+            "sensitivity": null
+          }
+        },
+        "pooled": {
+          "duplicate_detections": 16,
+          "false_alarms_per_24h": 391.4377632582667,
+          "false_positives": 683,
+          "files": 305,
+          "hits": 48,
+          "mean_offset_abs_error_s": 25.058439583333325,
+          "mean_onset_abs_error_s": 10.663318749999997,
+          "misses": 37,
+          "n_refs": 85,
+          "sensitivity": 0.5647058823529412
+        },
+        "threshold": 0.3
+      },
+      {
+        "by_cohort": {
+          "nonseizure": {
+            "duplicate_detections": 0,
+            "false_alarms_per_24h": 584.4672824248731,
+            "false_positives": 468,
+            "files": 162,
+            "hits": 0,
+            "mean_offset_abs_error_s": null,
+            "mean_onset_abs_error_s": null,
+            "misses": 0,
+            "n_refs": 0,
+            "sensitivity": null
+          },
+          "seizure": {
+            "duplicate_detections": 21,
+            "false_alarms_per_24h": 295.5085183273103,
+            "false_positives": 106,
+            "files": 44,
+            "hits": 49,
+            "mean_offset_abs_error_s": 23.8364693877551,
+            "mean_onset_abs_error_s": 9.31297551020408,
+            "misses": 36,
+            "n_refs": 85,
+            "sensitivity": 0.5764705882352941
+          },
+          "unannotated": {
+            "duplicate_detections": 0,
+            "false_alarms_per_24h": 526.1209964412811,
+            "false_positives": 308,
+            "files": 99,
+            "hits": 0,
+            "mean_offset_abs_error_s": null,
+            "mean_onset_abs_error_s": null,
+            "misses": 0,
+            "n_refs": 0,
+            "sensitivity": null
+          }
+        },
+        "pooled": {
+          "duplicate_detections": 21,
+          "false_alarms_per_24h": 505.48771185035326,
+          "false_positives": 882,
+          "files": 305,
+          "hits": 49,
+          "mean_offset_abs_error_s": 23.8364693877551,
+          "mean_onset_abs_error_s": 9.31297551020408,
+          "misses": 36,
+          "n_refs": 85,
+          "sensitivity": 0.5764705882352941
+        },
+        "threshold": 0.1
+      },
+      {
+        "by_cohort": {
+          "nonseizure": {
+            "duplicate_detections": 0,
+            "false_alarms_per_24h": 665.6432938727721,
+            "false_positives": 533,
+            "files": 162,
+            "hits": 0,
+            "mean_offset_abs_error_s": null,
+            "mean_onset_abs_error_s": null,
+            "misses": 0,
+            "n_refs": 0,
+            "sensitivity": null
+          },
+          "seizure": {
+            "duplicate_detections": 18,
+            "false_alarms_per_24h": 373.56737222509037,
+            "false_positives": 134,
+            "files": 44,
+            "hits": 54,
+            "mean_offset_abs_error_s": 24.748294444444454,
+            "mean_onset_abs_error_s": 8.576264814814815,
+            "misses": 31,
+            "n_refs": 85,
+            "sensitivity": 0.6352941176470588
+          },
+          "unannotated": {
+            "duplicate_detections": 0,
+            "false_alarms_per_24h": 604.6975088967971,
+            "false_positives": 354,
+            "files": 99,
+            "hits": 0,
+            "mean_offset_abs_error_s": null,
+            "mean_onset_abs_error_s": null,
+            "misses": 0,
+            "n_refs": 0,
+            "sensitivity": null
+          }
+        },
+        "pooled": {
+          "duplicate_detections": 18,
+          "false_alarms_per_24h": 585.1507412689464,
+          "false_positives": 1021,
+          "files": 305,
+          "hits": 54,
+          "mean_offset_abs_error_s": 24.748294444444454,
+          "mean_onset_abs_error_s": 8.576264814814815,
+          "misses": 31,
+          "n_refs": 85,
+          "sensitivity": 0.6352941176470588
+        },
+        "threshold": 0.05
+      },
+      {
+        "by_cohort": {
+          "nonseizure": {
+            "duplicate_detections": 0,
+            "false_alarms_per_24h": 824.2487316248211,
+            "false_positives": 660,
             "files": 162,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -83,20 +242,20 @@
           },
           "seizure": {
             "duplicate_detections": 15,
-            "false_alarms_per_24h": 217.4496644295302,
-            "false_positives": 78,
+            "false_alarms_per_24h": 535.2607124419205,
+            "false_positives": 192,
             "files": 44,
-            "hits": 48,
-            "mean_offset_abs_error_s": 22.806906249999994,
-            "mean_onset_abs_error_s": 11.524718749999996,
-            "misses": 37,
+            "hits": 64,
+            "mean_offset_abs_error_s": 22.372217187500002,
+            "mean_onset_abs_error_s": 9.158071875000001,
+            "misses": 21,
             "n_refs": 85,
-            "sensitivity": 0.5647058823529412
+            "sensitivity": 0.7529411764705882
           },
           "unannotated": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 428.75444839857647,
-            "false_positives": 251,
+            "false_alarms_per_24h": 688.3985765124555,
+            "false_positives": 403,
             "files": 99,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -108,174 +267,15 @@
         },
         "pooled": {
           "duplicate_detections": 15,
-          "false_alarms_per_24h": 379.97545686710225,
-          "false_positives": 663,
+          "false_alarms_per_24h": 719.2597260455707,
+          "false_positives": 1255,
           "files": 305,
-          "hits": 48,
-          "mean_offset_abs_error_s": 22.806906249999994,
-          "mean_onset_abs_error_s": 11.524718749999996,
-          "misses": 37,
+          "hits": 64,
+          "mean_offset_abs_error_s": 22.372217187500002,
+          "mean_onset_abs_error_s": 9.158071875000001,
+          "misses": 21,
           "n_refs": 85,
-          "sensitivity": 0.5647058823529412
-        },
-        "threshold": 0.3
-      },
-      {
-        "by_cohort": {
-          "nonseizure": {
-            "duplicate_detections": 0,
-            "false_alarms_per_24h": 580.720697281124,
-            "false_positives": 465,
-            "files": 162,
-            "hits": 0,
-            "mean_offset_abs_error_s": null,
-            "mean_onset_abs_error_s": null,
-            "misses": 0,
-            "n_refs": 0,
-            "sensitivity": null
-          },
-          "seizure": {
-            "duplicate_detections": 20,
-            "false_alarms_per_24h": 315.0232318017553,
-            "false_positives": 113,
-            "files": 44,
-            "hits": 50,
-            "mean_offset_abs_error_s": 21.660690000000002,
-            "mean_onset_abs_error_s": 10.233755999999998,
-            "misses": 35,
-            "n_refs": 85,
-            "sensitivity": 0.5882352941176471
-          },
-          "unannotated": {
-            "duplicate_detections": 0,
-            "false_alarms_per_24h": 531.2455516014235,
-            "false_positives": 311,
-            "files": 99,
-            "hits": 0,
-            "mean_offset_abs_error_s": null,
-            "mean_onset_abs_error_s": null,
-            "misses": 0,
-            "n_refs": 0,
-            "sensitivity": null
-          }
-        },
-        "pooled": {
-          "duplicate_detections": 20,
-          "false_alarms_per_24h": 509.4995190872608,
-          "false_positives": 889,
-          "files": 305,
-          "hits": 50,
-          "mean_offset_abs_error_s": 21.660690000000002,
-          "mean_onset_abs_error_s": 10.233755999999998,
-          "misses": 35,
-          "n_refs": 85,
-          "sensitivity": 0.5882352941176471
-        },
-        "threshold": 0.1
-      },
-      {
-        "by_cohort": {
-          "nonseizure": {
-            "duplicate_detections": 0,
-            "false_alarms_per_24h": 671.8876024456874,
-            "false_positives": 538,
-            "files": 162,
-            "hits": 0,
-            "mean_offset_abs_error_s": null,
-            "mean_onset_abs_error_s": null,
-            "misses": 0,
-            "n_refs": 0,
-            "sensitivity": null
-          },
-          "seizure": {
-            "duplicate_detections": 20,
-            "false_alarms_per_24h": 381.93082085699535,
-            "false_positives": 137,
-            "files": 44,
-            "hits": 55,
-            "mean_offset_abs_error_s": 23.106121818181823,
-            "mean_onset_abs_error_s": 9.675363636363636,
-            "misses": 30,
-            "n_refs": 85,
-            "sensitivity": 0.6470588235294118
-          },
-          "unannotated": {
-            "duplicate_detections": 0,
-            "false_alarms_per_24h": 609.8220640569394,
-            "false_positives": 357,
-            "files": 99,
-            "hits": 0,
-            "mean_offset_abs_error_s": null,
-            "mean_onset_abs_error_s": null,
-            "misses": 0,
-            "n_refs": 0,
-            "sensitivity": null
-          }
-        },
-        "pooled": {
-          "duplicate_detections": 20,
-          "false_alarms_per_24h": 591.4550097840868,
-          "false_positives": 1032,
-          "files": 305,
-          "hits": 55,
-          "mean_offset_abs_error_s": 23.106121818181823,
-          "mean_onset_abs_error_s": 9.675363636363636,
-          "misses": 30,
-          "n_refs": 85,
-          "sensitivity": 0.6470588235294118
-        },
-        "threshold": 0.05
-      },
-      {
-        "by_cohort": {
-          "nonseizure": {
-            "duplicate_detections": 0,
-            "false_alarms_per_24h": 820.5021464810719,
-            "false_positives": 657,
-            "files": 162,
-            "hits": 0,
-            "mean_offset_abs_error_s": null,
-            "mean_onset_abs_error_s": null,
-            "misses": 0,
-            "n_refs": 0,
-            "sensitivity": null
-          },
-          "seizure": {
-            "duplicate_detections": 13,
-            "false_alarms_per_24h": 521.3216313887455,
-            "false_positives": 187,
-            "files": 44,
-            "hits": 61,
-            "mean_offset_abs_error_s": 23.553091803278697,
-            "mean_onset_abs_error_s": 8.87172786885246,
-            "misses": 24,
-            "n_refs": 85,
-            "sensitivity": 0.7176470588235294
-          },
-          "unannotated": {
-            "duplicate_detections": 0,
-            "false_alarms_per_24h": 679.8576512455516,
-            "false_positives": 398,
-            "files": 99,
-            "hits": 0,
-            "mean_offset_abs_error_s": null,
-            "mean_onset_abs_error_s": null,
-            "misses": 0,
-            "n_refs": 0,
-            "sensitivity": null
-          }
-        },
-        "pooled": {
-          "duplicate_detections": 13,
-          "false_alarms_per_24h": 711.8092268913138,
-          "false_positives": 1242,
-          "files": 305,
-          "hits": 61,
-          "mean_offset_abs_error_s": 23.553091803278697,
-          "mean_onset_abs_error_s": 8.87172786885246,
-          "misses": 24,
-          "n_refs": 85,
-          "sensitivity": 0.7176470588235294
+          "sensitivity": 0.7529411764705882
         },
         "threshold": 0.01
       }
@@ -285,8 +285,8 @@
         "by_cohort": {
           "nonseizure": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 237.2837257707818,
-            "false_positives": 190,
+            "false_alarms_per_24h": 243.52803434369713,
+            "false_positives": 195,
             "files": 162,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -296,21 +296,21 @@
             "sensitivity": null
           },
           "seizure": {
-            "duplicate_detections": 10,
-            "false_alarms_per_24h": 131.02736189984512,
-            "false_positives": 47,
+            "duplicate_detections": 9,
+            "false_alarms_per_24h": 117.08828084667012,
+            "false_positives": 42,
             "files": 44,
-            "hits": 42,
-            "mean_offset_abs_error_s": 26.594111904761895,
-            "mean_onset_abs_error_s": 15.448364285714279,
-            "misses": 43,
+            "hits": 41,
+            "mean_offset_abs_error_s": 27.511999999999986,
+            "mean_onset_abs_error_s": 15.681236585365848,
+            "misses": 44,
             "n_refs": 85,
-            "sensitivity": 0.49411764705882355
+            "sensitivity": 0.4823529411764706
           },
           "unannotated": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 259.644128113879,
-            "false_positives": 152,
+            "false_alarms_per_24h": 249.3950177935943,
+            "false_positives": 146,
             "files": 99,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -321,16 +321,16 @@
           }
         },
         "pooled": {
-          "duplicate_detections": 10,
-          "false_alarms_per_24h": 222.941859308149,
-          "false_positives": 389,
+          "duplicate_detections": 9,
+          "false_alarms_per_24h": 219.50316739079966,
+          "false_positives": 383,
           "files": 305,
-          "hits": 42,
-          "mean_offset_abs_error_s": 26.594111904761895,
-          "mean_onset_abs_error_s": 15.448364285714279,
-          "misses": 43,
+          "hits": 41,
+          "mean_offset_abs_error_s": 27.511999999999986,
+          "mean_onset_abs_error_s": 15.681236585365848,
+          "misses": 44,
           "n_refs": 85,
-          "sensitivity": 0.49411764705882355
+          "sensitivity": 0.4823529411764706
         },
         "threshold": 0.5
       },
@@ -338,8 +338,8 @@
         "by_cohort": {
           "nonseizure": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 357.1744503707558,
-            "false_positives": 286,
+            "false_alarms_per_24h": 367.1653440874203,
+            "false_positives": 294,
             "files": 162,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -349,13 +349,13 @@
             "sensitivity": null
           },
           "seizure": {
-            "duplicate_detections": 10,
-            "false_alarms_per_24h": 183.99586990191017,
-            "false_positives": 66,
+            "duplicate_detections": 12,
+            "false_alarms_per_24h": 192.35931853381518,
+            "false_positives": 69,
             "files": 44,
             "hits": 48,
-            "mean_offset_abs_error_s": 20.74657291666667,
-            "mean_onset_abs_error_s": 11.524718749999996,
+            "mean_offset_abs_error_s": 23.03904375,
+            "mean_onset_abs_error_s": 11.038318749999997,
             "misses": 37,
             "n_refs": 85,
             "sensitivity": 0.5647058823529412
@@ -374,13 +374,13 @@
           }
         },
         "pooled": {
-          "duplicate_detections": 10,
-          "false_alarms_per_24h": 318.65211767437233,
-          "false_positives": 556,
+          "duplicate_detections": 12,
+          "false_alarms_per_24h": 324.9563861895128,
+          "false_positives": 567,
           "files": 305,
           "hits": 48,
-          "mean_offset_abs_error_s": 20.74657291666667,
-          "mean_onset_abs_error_s": 11.524718749999996,
+          "mean_offset_abs_error_s": 23.03904375,
+          "mean_onset_abs_error_s": 11.038318749999997,
           "misses": 37,
           "n_refs": 85,
           "sensitivity": 0.5647058823529412
@@ -391,8 +391,8 @@
         "by_cohort": {
           "nonseizure": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 459.5811109665669,
-            "false_positives": 368,
+            "false_alarms_per_24h": 467.0742812540653,
+            "false_positives": 374,
             "files": 162,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -402,21 +402,21 @@
             "sensitivity": null
           },
           "seizure": {
-            "duplicate_detections": 10,
-            "false_alarms_per_24h": 248.11564274651525,
-            "false_positives": 89,
+            "duplicate_detections": 8,
+            "false_alarms_per_24h": 236.96437790397522,
+            "false_positives": 85,
             "files": 44,
-            "hits": 50,
-            "mean_offset_abs_error_s": 21.67513000000001,
-            "mean_onset_abs_error_s": 10.233755999999998,
-            "misses": 35,
+            "hits": 49,
+            "mean_offset_abs_error_s": 20.882853061224495,
+            "mean_onset_abs_error_s": 11.011183673469382,
+            "misses": 36,
             "n_refs": 85,
-            "sensitivity": 0.5882352941176471
+            "sensitivity": 0.5764705882352941
           },
           "unannotated": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 406.5480427046263,
-            "false_positives": 238,
+            "false_alarms_per_24h": 415.0889679715302,
+            "false_positives": 243,
             "files": 99,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -427,16 +427,16 @@
           }
         },
         "pooled": {
-          "duplicate_detections": 10,
-          "false_alarms_per_24h": 398.31514709296545,
-          "false_positives": 695,
+          "duplicate_detections": 8,
+          "false_alarms_per_24h": 402.326954329873,
+          "false_positives": 702,
           "files": 305,
-          "hits": 50,
-          "mean_offset_abs_error_s": 21.67513000000001,
-          "mean_onset_abs_error_s": 10.233755999999998,
-          "misses": 35,
+          "hits": 49,
+          "mean_offset_abs_error_s": 20.882853061224495,
+          "mean_onset_abs_error_s": 11.011183673469382,
+          "misses": 36,
           "n_refs": 85,
-          "sensitivity": 0.5882352941176471
+          "sensitivity": 0.5764705882352941
         },
         "threshold": 0.1
       },
@@ -444,8 +444,8 @@
         "by_cohort": {
           "nonseizure": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 514.5310264082217,
-            "false_positives": 412,
+            "false_alarms_per_24h": 507.0378561207233,
+            "false_positives": 406,
             "files": 162,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -455,21 +455,21 @@
             "sensitivity": null
           },
           "seizure": {
-            "duplicate_detections": 9,
-            "false_alarms_per_24h": 306.6597831698503,
-            "false_positives": 110,
+            "duplicate_detections": 8,
+            "false_alarms_per_24h": 295.5085183273103,
+            "false_positives": 106,
             "files": 44,
-            "hits": 55,
-            "mean_offset_abs_error_s": 21.060318181818182,
-            "mean_onset_abs_error_s": 10.002636363636363,
-            "misses": 30,
+            "hits": 54,
+            "mean_offset_abs_error_s": 23.135398148148152,
+            "mean_onset_abs_error_s": 10.450564814814815,
+            "misses": 31,
             "n_refs": 85,
-            "sensitivity": 0.6470588235294118
+            "sensitivity": 0.6352941176470588
           },
           "unannotated": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 445.8362989323843,
-            "false_positives": 261,
+            "false_alarms_per_24h": 454.3772241992882,
+            "false_positives": 266,
             "files": 99,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -480,16 +480,16 @@
           }
         },
         "pooled": {
-          "duplicate_detections": 9,
-          "false_alarms_per_24h": 448.7492952140891,
-          "false_positives": 783,
+          "duplicate_detections": 8,
+          "false_alarms_per_24h": 445.883718616298,
+          "false_positives": 778,
           "files": 305,
-          "hits": 55,
-          "mean_offset_abs_error_s": 21.060318181818182,
-          "mean_onset_abs_error_s": 10.002636363636363,
-          "misses": 30,
+          "hits": 54,
+          "mean_offset_abs_error_s": 23.135398148148152,
+          "mean_onset_abs_error_s": 10.450564814814815,
+          "misses": 31,
           "n_refs": 85,
-          "sensitivity": 0.6470588235294118
+          "sensitivity": 0.6352941176470588
         },
         "threshold": 0.05
       },
@@ -497,8 +497,8 @@
         "by_cohort": {
           "nonseizure": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 631.9240275790295,
-            "false_positives": 506,
+            "false_alarms_per_24h": 624.4308572915311,
+            "false_positives": 500,
             "files": 162,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -508,16 +508,16 @@
             "sensitivity": null
           },
           "seizure": {
-            "duplicate_detections": 5,
-            "false_alarms_per_24h": 401.4455343314404,
-            "false_positives": 144,
+            "duplicate_detections": 6,
+            "false_alarms_per_24h": 409.8089829633454,
+            "false_positives": 147,
             "files": 44,
-            "hits": 61,
-            "mean_offset_abs_error_s": 21.449944262295084,
-            "mean_onset_abs_error_s": 12.694878688524591,
-            "misses": 24,
+            "hits": 63,
+            "mean_offset_abs_error_s": 18.91445714285715,
+            "mean_onset_abs_error_s": 12.1800873015873,
+            "misses": 22,
             "n_refs": 85,
-            "sensitivity": 0.7176470588235294
+            "sensitivity": 0.7411764705882353
           },
           "unannotated": {
             "duplicate_detections": 0,
@@ -533,16 +533,16 @@
           }
         },
         "pooled": {
-          "duplicate_detections": 5,
-          "false_alarms_per_24h": 555.3487446519188,
-          "false_positives": 969,
+          "duplicate_detections": 6,
+          "false_alarms_per_24h": 553.6293986932441,
+          "false_positives": 966,
           "files": 305,
-          "hits": 61,
-          "mean_offset_abs_error_s": 21.449944262295084,
-          "mean_onset_abs_error_s": 12.694878688524591,
-          "misses": 24,
+          "hits": 63,
+          "mean_offset_abs_error_s": 18.91445714285715,
+          "mean_onset_abs_error_s": 12.1800873015873,
+          "misses": 22,
           "n_refs": 85,
-          "sensitivity": 0.7176470588235294
+          "sensitivity": 0.7411764705882353
         },
         "threshold": 0.01
       }
@@ -552,8 +552,8 @@
         "by_cohort": {
           "nonseizure": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 533.2639521269675,
-            "false_positives": 427,
+            "false_alarms_per_24h": 549.4991544165474,
+            "false_positives": 440,
             "files": 162,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -563,21 +563,21 @@
             "sensitivity": null
           },
           "seizure": {
-            "duplicate_detections": 32,
-            "false_alarms_per_24h": 278.78162106350027,
-            "false_positives": 100,
+            "duplicate_detections": 34,
+            "false_alarms_per_24h": 270.4181724315953,
+            "false_positives": 97,
             "files": 44,
-            "hits": 48,
-            "mean_offset_abs_error_s": 32.16097291666666,
-            "mean_onset_abs_error_s": 11.622966666666663,
-            "misses": 37,
+            "hits": 47,
+            "mean_offset_abs_error_s": 35.99428510638296,
+            "mean_onset_abs_error_s": 11.373136170212762,
+            "misses": 38,
             "n_refs": 85,
-            "sensitivity": 0.5647058823529412
+            "sensitivity": 0.5529411764705883
           },
           "unannotated": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 524.4128113879003,
-            "false_positives": 307,
+            "false_alarms_per_24h": 526.1209964412811,
+            "false_positives": 308,
             "files": 99,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -588,16 +588,16 @@
           }
         },
         "pooled": {
-          "duplicate_detections": 32,
-          "false_alarms_per_24h": 477.9781765115585,
-          "false_positives": 834,
+          "duplicate_detections": 34,
+          "false_alarms_per_24h": 484.28244502669895,
+          "false_positives": 845,
           "files": 305,
-          "hits": 48,
-          "mean_offset_abs_error_s": 32.16097291666666,
-          "mean_onset_abs_error_s": 11.622966666666663,
-          "misses": 37,
+          "hits": 47,
+          "mean_offset_abs_error_s": 35.99428510638296,
+          "mean_onset_abs_error_s": 11.373136170212762,
+          "misses": 38,
           "n_refs": 85,
-          "sensitivity": 0.5647058823529412
+          "sensitivity": 0.5529411764705883
         },
         "threshold": 0.5
       },
@@ -605,8 +605,8 @@
         "by_cohort": {
           "nonseizure": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 690.6205281644334,
-            "false_positives": 553,
+            "false_alarms_per_24h": 691.8693898790165,
+            "false_positives": 554,
             "files": 162,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -617,20 +617,20 @@
           },
           "seizure": {
             "duplicate_detections": 37,
-            "false_alarms_per_24h": 342.9013939081053,
-            "false_positives": 123,
+            "false_alarms_per_24h": 340.1135776974703,
+            "false_positives": 122,
             "files": 44,
             "hits": 49,
-            "mean_offset_abs_error_s": 33.261257142857126,
-            "mean_onset_abs_error_s": 8.611544897959181,
+            "mean_offset_abs_error_s": 36.81227755102039,
+            "mean_onset_abs_error_s": 8.461140816326528,
             "misses": 36,
             "n_refs": 85,
             "sensitivity": 0.5764705882352941
           },
           "unannotated": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 643.9857651245551,
-            "false_positives": 377,
+            "false_alarms_per_24h": 635.4448398576512,
+            "false_positives": 372,
             "files": 99,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -642,12 +642,12 @@
         },
         "pooled": {
           "duplicate_detections": 37,
-          "false_alarms_per_24h": 603.4904314948095,
-          "false_positives": 1053,
+          "false_alarms_per_24h": 600.6248548970184,
+          "false_positives": 1048,
           "files": 305,
           "hits": 49,
-          "mean_offset_abs_error_s": 33.261257142857126,
-          "mean_onset_abs_error_s": 8.611544897959181,
+          "mean_offset_abs_error_s": 36.81227755102039,
+          "mean_onset_abs_error_s": 8.461140816326528,
           "misses": 36,
           "n_refs": 85,
           "sensitivity": 0.5764705882352941
@@ -658,8 +658,8 @@
         "by_cohort": {
           "nonseizure": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 895.4338493560556,
-            "false_positives": 717,
+            "false_alarms_per_24h": 874.2032002081436,
+            "false_positives": 700,
             "files": 162,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -669,21 +669,21 @@
             "sensitivity": null
           },
           "seizure": {
-            "duplicate_detections": 37,
-            "false_alarms_per_24h": 490.65565307176047,
-            "false_positives": 176,
+            "duplicate_detections": 40,
+            "false_alarms_per_24h": 482.2922044398555,
+            "false_positives": 173,
             "files": 44,
-            "hits": 53,
-            "mean_offset_abs_error_s": 27.931588679245277,
-            "mean_onset_abs_error_s": 8.563216981132074,
-            "misses": 32,
+            "hits": 52,
+            "mean_offset_abs_error_s": 31.74873653846153,
+            "mean_onset_abs_error_s": 7.683205769230769,
+            "misses": 33,
             "n_refs": 85,
-            "sensitivity": 0.6235294117647059
+            "sensitivity": 0.611764705882353
           },
           "unannotated": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 842.1352313167259,
-            "false_positives": 493,
+            "false_alarms_per_24h": 833.594306049822,
+            "false_positives": 488,
             "files": 99,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -694,16 +694,16 @@
           }
         },
         "pooled": {
-          "duplicate_detections": 37,
-          "false_alarms_per_24h": 794.3378329076979,
-          "false_positives": 1386,
+          "duplicate_detections": 40,
+          "false_alarms_per_24h": 780.0099499187423,
+          "false_positives": 1361,
           "files": 305,
-          "hits": 53,
-          "mean_offset_abs_error_s": 27.931588679245277,
-          "mean_onset_abs_error_s": 8.563216981132074,
-          "misses": 32,
+          "hits": 52,
+          "mean_offset_abs_error_s": 31.74873653846153,
+          "mean_onset_abs_error_s": 7.683205769230769,
+          "misses": 33,
           "n_refs": 85,
-          "sensitivity": 0.6235294117647059
+          "sensitivity": 0.611764705882353
         },
         "threshold": 0.1
       },
@@ -711,8 +711,8 @@
         "by_cohort": {
           "nonseizure": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 1006.5825419539482,
-            "false_positives": 806,
+            "false_alarms_per_24h": 984.1030310914531,
+            "false_positives": 788,
             "files": 162,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -722,21 +722,21 @@
             "sensitivity": null
           },
           "seizure": {
-            "duplicate_detections": 41,
-            "false_alarms_per_24h": 591.0170366546206,
-            "false_positives": 212,
+            "duplicate_detections": 44,
+            "false_alarms_per_24h": 563.1388745482706,
+            "false_positives": 202,
             "files": 44,
-            "hits": 58,
-            "mean_offset_abs_error_s": 29.1279724137931,
-            "mean_onset_abs_error_s": 8.220139655172414,
-            "misses": 27,
+            "hits": 60,
+            "mean_offset_abs_error_s": 28.62388666666666,
+            "mean_onset_abs_error_s": 7.843061666666668,
+            "misses": 25,
             "n_refs": 85,
-            "sensitivity": 0.6823529411764706
+            "sensitivity": 0.7058823529411765
           },
           "unannotated": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 908.7544483985764,
-            "false_positives": 532,
+            "false_alarms_per_24h": 896.797153024911,
+            "false_positives": 525,
             "files": 99,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -747,16 +747,16 @@
           }
         },
         "pooled": {
-          "duplicate_detections": 41,
-          "false_alarms_per_24h": 888.3287453152467,
-          "false_positives": 1550,
+          "duplicate_detections": 44,
+          "false_alarms_per_24h": 868.2697091307089,
+          "false_positives": 1515,
           "files": 305,
-          "hits": 58,
-          "mean_offset_abs_error_s": 29.1279724137931,
-          "mean_onset_abs_error_s": 8.220139655172414,
-          "misses": 27,
+          "hits": 60,
+          "mean_offset_abs_error_s": 28.62388666666666,
+          "mean_onset_abs_error_s": 7.843061666666668,
+          "misses": 25,
           "n_refs": 85,
-          "sensitivity": 0.6823529411764706
+          "sensitivity": 0.7058823529411765
         },
         "threshold": 0.05
       },
@@ -775,21 +775,21 @@
             "sensitivity": null
           },
           "seizure": {
-            "duplicate_detections": 35,
-            "false_alarms_per_24h": 802.8910686628808,
-            "false_positives": 288,
+            "duplicate_detections": 38,
+            "false_alarms_per_24h": 816.8301497160558,
+            "false_positives": 293,
             "files": 44,
-            "hits": 62,
-            "mean_offset_abs_error_s": 27.177719354838715,
-            "mean_onset_abs_error_s": 8.909808064516128,
-            "misses": 23,
+            "hits": 66,
+            "mean_offset_abs_error_s": 26.80047272727273,
+            "mean_onset_abs_error_s": 9.116039393939394,
+            "misses": 19,
             "n_refs": 85,
-            "sensitivity": 0.7294117647058823
+            "sensitivity": 0.7764705882352941
           },
           "unannotated": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 1072.7402135231316,
-            "false_positives": 628,
+            "false_alarms_per_24h": 1055.6583629893237,
+            "false_positives": 618,
             "files": 99,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -800,16 +800,16 @@
           }
         },
         "pooled": {
-          "duplicate_detections": 35,
-          "false_alarms_per_24h": 1109.551258664721,
-          "false_positives": 1936,
+          "duplicate_detections": 38,
+          "false_alarms_per_24h": 1106.6856820669298,
+          "false_positives": 1931,
           "files": 305,
-          "hits": 62,
-          "mean_offset_abs_error_s": 27.177719354838715,
-          "mean_onset_abs_error_s": 8.909808064516128,
-          "misses": 23,
+          "hits": 66,
+          "mean_offset_abs_error_s": 26.80047272727273,
+          "mean_onset_abs_error_s": 9.116039393939394,
+          "misses": 19,
           "n_refs": 85,
-          "sensitivity": 0.7294117647058823
+          "sensitivity": 0.7764705882352941
         },
         "threshold": 0.01
       }
@@ -819,8 +819,8 @@
         "by_cohort": {
           "nonseizure": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 348.43241836867435,
-            "false_positives": 279,
+            "false_alarms_per_24h": 353.42786522700663,
+            "false_positives": 283,
             "files": 162,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -830,21 +830,21 @@
             "sensitivity": null
           },
           "seizure": {
-            "duplicate_detections": 11,
-            "false_alarms_per_24h": 181.20805369127518,
-            "false_positives": 65,
+            "duplicate_detections": 12,
+            "false_alarms_per_24h": 183.99586990191017,
+            "false_positives": 66,
             "files": 44,
-            "hits": 47,
-            "mean_offset_abs_error_s": 21.577408510638296,
-            "mean_onset_abs_error_s": 11.253380851063826,
-            "misses": 38,
+            "hits": 46,
+            "mean_offset_abs_error_s": 23.43788913043479,
+            "mean_onset_abs_error_s": 11.120519565217387,
+            "misses": 39,
             "n_refs": 85,
-            "sensitivity": 0.5529411764705883
+            "sensitivity": 0.5411764705882353
           },
           "unannotated": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 350.1779359430605,
-            "false_positives": 205,
+            "false_alarms_per_24h": 357.0106761565836,
+            "false_positives": 209,
             "files": 99,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -855,16 +855,16 @@
           }
         },
         "pooled": {
-          "duplicate_detections": 11,
-          "false_alarms_per_24h": 314.6403104374648,
-          "false_positives": 549,
+          "duplicate_detections": 12,
+          "false_alarms_per_24h": 319.7983483134888,
+          "false_positives": 558,
           "files": 305,
-          "hits": 47,
-          "mean_offset_abs_error_s": 21.577408510638296,
-          "mean_onset_abs_error_s": 11.253380851063826,
-          "misses": 38,
+          "hits": 46,
+          "mean_offset_abs_error_s": 23.43788913043479,
+          "mean_onset_abs_error_s": 11.120519565217387,
+          "misses": 39,
           "n_refs": 85,
-          "sensitivity": 0.5529411764705883
+          "sensitivity": 0.5411764705882353
         },
         "threshold": 0.5
       },
@@ -872,8 +872,8 @@
         "by_cohort": {
           "nonseizure": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 419.61753609990893,
-            "false_positives": 336,
+            "false_alarms_per_24h": 418.36867438532585,
+            "false_positives": 335,
             "files": 162,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -883,21 +883,21 @@
             "sensitivity": null
           },
           "seizure": {
-            "duplicate_detections": 11,
-            "false_alarms_per_24h": 214.66184821889522,
-            "false_positives": 77,
+            "duplicate_detections": 10,
+            "false_alarms_per_24h": 206.2983995869902,
+            "false_positives": 74,
             "files": 44,
             "hits": 48,
-            "mean_offset_abs_error_s": 23.315802083333338,
-            "mean_onset_abs_error_s": 9.775856249999997,
+            "mean_offset_abs_error_s": 22.680056250000007,
+            "mean_onset_abs_error_s": 9.747318749999998,
             "misses": 37,
             "n_refs": 85,
             "sensitivity": 0.5647058823529412
           },
           "unannotated": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 377.508896797153,
-            "false_positives": 221,
+            "false_alarms_per_24h": 396.29893238434164,
+            "false_positives": 232,
             "files": 99,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -908,13 +908,13 @@
           }
         },
         "pooled": {
-          "duplicate_detections": 11,
-          "false_alarms_per_24h": 363.3551125999138,
-          "false_positives": 634,
+          "duplicate_detections": 10,
+          "false_alarms_per_24h": 367.36691983682135,
+          "false_positives": 641,
           "files": 305,
           "hits": 48,
-          "mean_offset_abs_error_s": 23.315802083333338,
-          "mean_onset_abs_error_s": 9.775856249999997,
+          "mean_offset_abs_error_s": 22.680056250000007,
+          "mean_onset_abs_error_s": 9.747318749999998,
           "misses": 37,
           "n_refs": 85,
           "sensitivity": 0.5647058823529412
@@ -925,8 +925,8 @@
         "by_cohort": {
           "nonseizure": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 497.0469624040588,
-            "false_positives": 398,
+            "false_alarms_per_24h": 493.3003772603096,
+            "false_positives": 395,
             "files": 162,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -936,21 +936,21 @@
             "sensitivity": null
           },
           "seizure": {
-            "duplicate_detections": 9,
-            "false_alarms_per_24h": 301.08415074858027,
-            "false_positives": 108,
+            "duplicate_detections": 8,
+            "false_alarms_per_24h": 284.3572534847703,
+            "false_positives": 102,
             "files": 44,
-            "hits": 52,
-            "mean_offset_abs_error_s": 21.674044230769237,
-            "mean_onset_abs_error_s": 9.983190384615382,
-            "misses": 33,
+            "hits": 51,
+            "mean_offset_abs_error_s": 22.972752941176477,
+            "mean_onset_abs_error_s": 10.510084313725487,
+            "misses": 34,
             "n_refs": 85,
-            "sensitivity": 0.611764705882353
+            "sensitivity": 0.6
           },
           "unannotated": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 440.71174377224196,
-            "false_positives": 258,
+            "false_alarms_per_24h": 444.12811387900354,
+            "false_positives": 260,
             "files": 99,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -961,16 +961,16 @@
           }
         },
         "pooled": {
-          "duplicate_detections": 9,
-          "false_alarms_per_24h": 437.86010414248284,
-          "false_positives": 764,
+          "duplicate_detections": 8,
+          "false_alarms_per_24h": 433.8482969055753,
+          "false_positives": 757,
           "files": 305,
-          "hits": 52,
-          "mean_offset_abs_error_s": 21.674044230769237,
-          "mean_onset_abs_error_s": 9.983190384615382,
-          "misses": 33,
+          "hits": 51,
+          "mean_offset_abs_error_s": 22.972752941176477,
+          "mean_onset_abs_error_s": 10.510084313725487,
+          "misses": 34,
           "n_refs": 85,
-          "sensitivity": 0.611764705882353
+          "sensitivity": 0.6
         },
         "threshold": 0.1
       },
@@ -978,8 +978,8 @@
         "by_cohort": {
           "nonseizure": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 537.0105372707168,
-            "false_positives": 430,
+            "false_alarms_per_24h": 534.5128138415506,
+            "false_positives": 428,
             "files": 162,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -989,21 +989,21 @@
             "sensitivity": null
           },
           "seizure": {
-            "duplicate_detections": 7,
-            "false_alarms_per_24h": 342.9013939081053,
-            "false_positives": 123,
+            "duplicate_detections": 6,
+            "false_alarms_per_24h": 340.1135776974703,
+            "false_positives": 122,
             "files": 44,
-            "hits": 57,
-            "mean_offset_abs_error_s": 21.271117543859656,
-            "mean_onset_abs_error_s": 9.825324561403509,
-            "misses": 28,
+            "hits": 59,
+            "mean_offset_abs_error_s": 19.102706779661023,
+            "mean_onset_abs_error_s": 10.289344067796607,
+            "misses": 26,
             "n_refs": 85,
-            "sensitivity": 0.6705882352941176
+            "sensitivity": 0.6941176470588235
           },
           "unannotated": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 481.70818505338076,
-            "false_positives": 282,
+            "false_alarms_per_24h": 474.8754448398576,
+            "false_positives": 278,
             "files": 99,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -1014,16 +1014,16 @@
           }
         },
         "pooled": {
-          "duplicate_detections": 7,
-          "false_alarms_per_24h": 478.5512918311167,
-          "false_positives": 835,
+          "duplicate_detections": 6,
+          "false_alarms_per_24h": 474.53948459420917,
+          "false_positives": 828,
           "files": 305,
-          "hits": 57,
-          "mean_offset_abs_error_s": 21.271117543859656,
-          "mean_onset_abs_error_s": 9.825324561403509,
-          "misses": 28,
+          "hits": 59,
+          "mean_offset_abs_error_s": 19.102706779661023,
+          "mean_onset_abs_error_s": 10.289344067796607,
+          "misses": 26,
           "n_refs": 85,
-          "sensitivity": 0.6705882352941176
+          "sensitivity": 0.6941176470588235
         },
         "threshold": 0.05
       },
@@ -1031,8 +1031,8 @@
         "by_cohort": {
           "nonseizure": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 653.1546767269416,
-            "false_positives": 523,
+            "false_alarms_per_24h": 663.1455704436061,
+            "false_positives": 531,
             "files": 162,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -1042,21 +1042,21 @@
             "sensitivity": null
           },
           "seizure": {
-            "duplicate_detections": 4,
-            "false_alarms_per_24h": 429.32369643779043,
-            "false_positives": 154,
+            "duplicate_detections": 5,
+            "false_alarms_per_24h": 437.6871450696954,
+            "false_positives": 157,
             "files": 44,
-            "hits": 62,
-            "mean_offset_abs_error_s": 21.380793548387103,
-            "mean_onset_abs_error_s": 14.219682258064513,
-            "misses": 23,
+            "hits": 64,
+            "mean_offset_abs_error_s": 20.062,
+            "mean_onset_abs_error_s": 14.979431250000001,
+            "misses": 21,
             "n_refs": 85,
-            "sensitivity": 0.7294117647058823
+            "sensitivity": 0.7529411764705882
           },
           "unannotated": {
             "duplicate_detections": 0,
-            "false_alarms_per_24h": 563.7010676156583,
-            "false_positives": 330,
+            "false_alarms_per_24h": 555.1601423487544,
+            "false_positives": 325,
             "files": 99,
             "hits": 0,
             "mean_offset_abs_error_s": null,
@@ -1067,16 +1067,16 @@
           }
         },
         "pooled": {
-          "duplicate_detections": 4,
-          "false_alarms_per_24h": 577.1271267951312,
-          "false_positives": 1007,
+          "duplicate_detections": 5,
+          "false_alarms_per_24h": 580.5658187124806,
+          "false_positives": 1013,
           "files": 305,
-          "hits": 62,
-          "mean_offset_abs_error_s": 21.380793548387103,
-          "mean_onset_abs_error_s": 14.219682258064513,
-          "misses": 23,
+          "hits": 64,
+          "mean_offset_abs_error_s": 20.062,
+          "mean_onset_abs_error_s": 14.979431250000001,
+          "misses": 21,
           "n_refs": 85,
-          "sensitivity": 0.7294117647058823
+          "sensitivity": 0.7529411764705882
         },
         "threshold": 0.01
       }
