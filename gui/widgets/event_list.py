@@ -22,7 +22,13 @@ STATUS_STYLE = {
     'accepted': ((35, 110, 200), '✓', 'You confirmed this as a seizure'),
     'rejected': ((180, 180, 180), '✗', 'You dismissed this — excluded from export'),
     'edited':   ((150, 80, 200), '✎', 'You adjusted the extent — included in export'),
+    'added':    ((0, 150, 160), '+', 'YOU found this — the detector did not propose it'),
 }
+
+
+def _fmt_score(p):
+    """Human-added events have no model score; show that rather than 0.00."""
+    return '—' if p is None else '{:.2f}'.format(float(p))
 
 
 class EventList(QtWidgets.QWidget):
@@ -70,10 +76,12 @@ class EventList(QtWidgets.QWidget):
         acc = sum(1 for e in events if e['status'] == 'accepted')
         rej = sum(1 for e in events if e['status'] == 'rejected')
         ed = sum(1 for e in events if e['status'] == 'edited')
-        prop = n - acc - rej - ed
+        added = sum(1 for e in events if e['status'] == 'added')
+        prop = n - acc - rej - ed - added
         self._summary.setText(
             '{} events — {} proposed · {} accepted · {} edited · {} rejected'
-            .format(n, prop, acc, ed, rej))
+            '{}'.format(n, prop, acc, ed, rej,
+                        ' · {} ADDED by you'.format(added) if added else ''))
         self._summary.setToolTip(
             'Only accepted and edited events are written on export.')
 
@@ -89,7 +97,7 @@ class EventList(QtWidgets.QWidget):
         self.table.setItem(row, 0, cell(ev['id']))
         self.table.setItem(row, 1, cell('{:.1f}'.format(ev['start'])))
         self.table.setItem(row, 2, cell('{:.1f}'.format(ev['stop'])))
-        self.table.setItem(row, 3, cell('{:.2f}'.format(ev['prob'])))
+        self.table.setItem(row, 3, cell(_fmt_score(ev.get('prob'))))
         self.table.setItem(row, 4, self._status_cell(ev['status']))
 
         btns = QtWidgets.QWidget()
@@ -131,7 +139,7 @@ class EventList(QtWidgets.QWidget):
             if int(self.table.item(row, 0).text()) == event_id:
                 self.table.item(row, 1).setText('{:.1f}'.format(ev['start']))
                 self.table.item(row, 2).setText('{:.1f}'.format(ev['stop']))
-                self.table.item(row, 3).setText('{:.2f}'.format(ev['prob']))
+                self.table.item(row, 3).setText(_fmt_score(ev.get('prob')))
                 self.table.setItem(row, 4, self._status_cell(ev['status']))
                 return
 

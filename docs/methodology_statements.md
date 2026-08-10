@@ -75,6 +75,19 @@ Concretely, the figure plots, per file (and pooled across the public TUSZ subset
 
 This figure is the right thesis centrepiece precisely because it binds together the three parts of the work into one argument. The detector is deliberately weak and is acknowledged as such; the GUI presents that weak detector's output as inspectable, navigable candidates through the SignalView, ProbStrip, and EventList; and the usability story is what lets a reviewer convert raw, low-sensitivity model output into a clinically more complete event set. The contribution is the human-in-the-loop interface, and event recovery is the metric that makes that contribution visible: it shows the interface adding value *on top of* the detector, which is the claim the thesis is actually entitled to make.
 
+> **Implementation note (2026-08-10).** This figure was unmeasurable until now. The GUI derived
+> its entire worklist from suprathreshold runs and exported only `accepted`/`edited`, so a
+> reviewer could only ever *subtract* from the detector's list — "recovered" could never mean more
+> than an extent correction on something the AI had already found. With 49 % event sensitivity and
+> 22 % of seizures scoring essentially zero, the most important half of the figure was
+> unreachable. A reviewer can now originate an event (**N**), it carries the distinct status
+> `added` with no model score, it survives threshold rebuilds, and it is exported and flagged
+> `human_originated: true` in the provenance ledger. The figure's three counts are therefore:
+> (i) `accepted` + `edited` — the AI proposed it and the human confirmed it; (ii) `added` — **the
+> human found it and the AI missed it entirely**, which is the recovery term; (iii) `rejected` —
+> the human removed a false alarm. Undo is **Ctrl+Z**; **Ctrl+R** reverts an extent to the
+> detector's.
+
 The figure is defensible and consistent with the inference-only policy. It requires no retraining and no change to the model; the detector weights are frozen and the probabilities are produced exactly as in normal operation. It is computed entirely on public TUSZ data and ground truth. It does not depend on the detector being good — indeed it is most informative when the detector is mediocre, because the recovery gap is what the interface is for. And because it is derived from the exported reviewed `.csv_bi`, it measures a real reviewer's real decisions through the real GUI, which is the artefact under evaluation, rather than a simulated or idealised oracle.
 
 ---

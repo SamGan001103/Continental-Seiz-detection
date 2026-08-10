@@ -5,7 +5,22 @@ convert those windows into reviewer-facing event intervals and keep reviewed
 state stable when the threshold changes.
 """
 
-REVIEWED_STATUSES = ('accepted', 'edited', 'rejected')
+# A status is "reviewed" if a human has acted on it. merge_review_state carries
+# exactly these through a threshold rebuild, so anything the reviewer created or
+# decided survives moving the slider.
+#
+# 'added' is human-ORIGINATED: a seizure the detector never proposed. It is kept
+# distinct from 'accepted' (detector proposed, human confirmed) because the
+# thesis's primary figure — reviewer-in-the-loop event recovery — is exactly the
+# count of events in one class and not the other. Collapsing them would make
+# that figure unmeasurable, which is the state the GUI was in before: with no
+# way to originate an event, a reviewer could only ever subtract from the
+# detector's list, so the tool inherited the model's sensitivity ceiling and
+# "recovery" could never exceed extent corrections.
+REVIEWED_STATUSES = ('accepted', 'edited', 'rejected', 'added')
+
+# Statuses that end up in an exported .csv_bi as asserted seizures.
+EXPORTED_STATUSES = ('accepted', 'edited', 'added')
 
 
 def clamp_interval(start, stop, duration_s=None, min_len_s=0.1):
@@ -159,8 +174,12 @@ def merge_review_state(proposals, previous_events, duration_s=None,
             ev['id'] = old.get('id')
             ev['status'] = old.get('status', 'proposed')
             ev['review_note'] = old.get('review_note')
-            ev['prob'] = max(float(ev.get('prob', 0.0)),
-                             float(old.get('prob', 0.0)))
+            # A human-added event carries prob=None — the detector never scored
+            # it. Keep None rather than coercing to 0.0, which would read as a
+            # confident negative in the list and in the provenance ledger.
+            probs = [p for p in (ev.get('prob'), old.get('prob'))
+                     if p is not None]
+            ev['prob'] = max(float(p) for p in probs) if probs else None
             if ev['status'] in REVIEWED_STATUSES:
                 ev['start'], ev['stop'] = clamp_interval(
                     old['start'], old['stop'], duration_s)

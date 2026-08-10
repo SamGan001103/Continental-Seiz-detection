@@ -8,6 +8,9 @@ Keyboard shortcuts:
     Space     accept selected event
     X         reject selected event
     Shift+X   reject and record a reason
+    N         add an event the detector missed
+    Ctrl+Z    undo the last review action
+    Ctrl+R    revert an edited event to the detector's extent
     Enter     jump to selected event and frame it
     J / K     next / prev event
     ← / →     pan half a screen
@@ -32,7 +35,8 @@ from gui.io.cache import (load_probs, load_probability_file,
 from gui.io import csv_bi as csv_bi_module
 from gui.io.csv_bi import read_csv_bi, write_csv_bi
 from gui.io.zuna import ZunaFullRunner, zuna_session_paths
-from gui.events import clamp_interval, rebuild_events
+from gui.events import (clamp_interval, rebuild_events, assign_event_ids,
+                        EXPORTED_STATUSES)
 from gui.processing import (apply_montage, apply_filters, MONTAGES)
 from gui.widgets.signal_view import SignalView
 from gui.widgets.prob_strip import ProbStrip
@@ -369,6 +373,21 @@ class MainWindow(QtWidgets.QMainWindow):
         a_quit.setShortcut(QtGui.QKeySequence.Quit)
         a_quit.triggered.connect(self.close)
 
+        m_edit = mb.addMenu('&Edit')
+        a_undo = m_edit.addAction('&Undo')
+        a_undo.setShortcut('Ctrl+Z')
+        a_undo.triggered.connect(self._undo)
+        m_edit.addSeparator()
+        a_add = m_edit.addAction('&Add event the detector missed')
+        a_add.setShortcut('N')
+        a_add.setToolTip('Record a seizure the detector did not propose. '
+                         'Without this the reviewer can only remove events, '
+                         'never add one.')
+        a_add.triggered.connect(self._add_event_at_view)
+        a_rev = m_edit.addAction('&Revert extent to detector')
+        a_rev.setShortcut('Ctrl+R')
+        a_rev.triggered.connect(self._revert_extent)
+
         m_view = mb.addMenu('&View')
         self.a_inspector = m_view.addAction('&Channel inspector…')
         self.a_inspector.setShortcut('Ctrl+I')
@@ -454,6 +473,9 @@ class MainWindow(QtWidgets.QMainWindow):
         add('Space', self._shortcut_accept)
         add('X', self._shortcut_reject)
         add('Shift+X', self._reject_with_reason)
+        add('N', self._add_event_at_view)
+        add('Ctrl+Z', self._undo)
+        add('Ctrl+R', self._revert_extent)
         add('Return', self._shortcut_jump)
         add('Enter', self._shortcut_jump)
         add('J', lambda: self._cycle_selection(+1))
@@ -525,6 +547,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._duration_s = dur
         self._events = []
         self._events_by_source = {}
+        self._undo_stack = []
         self._dirty = False
         self._prob_sources = {}
         self._prob_source = 'baseline'
@@ -1177,6 +1200,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_accept(self, event_id):
         ev = self._find(event_id)
         if ev:
+            self._push_undo('accept')
             ev['status'] = 'accepted'
             self.signal_view.update_event_status(event_id, 'accepted')
             self.event_list.update_row(event_id, ev)
@@ -1202,6 +1226,7 @@ class MainWindow(QtWidgets.QMainWindow):
         ev = self._find(event_id)
         if not ev:
             return
+        self._push_undo('reject')
         ev['status'] = 'rejected'
         if reason:
             ev['review_note'] = reason
@@ -1234,6 +1259,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_region_edited(self, event_id, s, e):
         ev = self._find(event_id)
         if ev:
+            self._push_undo('edit extent')
             s, e = clamp_interval(s, e, self._duration_s)
             ev['start'] = float(s)
             ev['stop'] = float(e)
@@ -1254,6 +1280,107 @@ class MainWindow(QtWidgets.QMainWindow):
             pass
         if event_id > 0:
             self._on_jump(event_id)
+
+    # ==================================================================
+    # Human-originated events, and undo
+    #
+    # Until this existed the worklist derived entirely from suprathreshold runs
+    # and export filtered to accepted/edited, so a reviewer could only ever
+    # SUBTRACT from the detector's list. With 49 % event sensitivity and 22 % of
+    # seizures scoring essentially zero, a reader who saw a clear seizure the
+    # model ignored had no way to record it — and exported a file asserting it
+    # did not happen, under their own reviewer id. That made the tool a filter
+    # rather than human-in-the-loop review, capped it at the model's
+    # sensitivity, and left the thesis's primary figure (reviewer-in-the-loop
+    # event recovery) unmeasurable, since "recovered" could only ever mean an
+    # extent correction on something the AI had already found.
+    # ==================================================================
+    DEFAULT_ADDED_EVENT_S = 10.0
+
+    def _add_event_at_view(self):
+        """Create a seizure the detector did not propose. Bound to N."""
+        # The precondition is an open recording, NOT the presence of
+        # probabilities: the whole point is to record a seizure on a file where
+        # the detector proposed nothing, which is exactly when _probs may be
+        # empty or the strip flat.
+        if not self._edf_path:
+            self.statusBar().showMessage('Open a recording first.', 4000)
+            return
+        x0, x1 = self.signal_view.current_span()
+        centre = 0.5 * (x0 + x1)
+        half = min(self.DEFAULT_ADDED_EVENT_S, max(1.0, (x1 - x0) * 0.4)) / 2.0
+        s, e = clamp_interval(centre - half, centre + half, self._duration_s)
+
+        self._push_undo('add event')
+        ev = {
+            'start': float(s), 'stop': float(e),
+            'source_start': float(s), 'source_stop': float(e),
+            'prob': None,               # the detector never scored this
+            'status': 'added',
+            'review_note': None,
+        }
+        self._events = assign_event_ids(list(self._events) + [ev])
+        self.signal_view.set_events(self._events)
+        self.event_list.set_events(self._events)
+        new_id = next((x['id'] for x in self._events
+                       if x['status'] == 'added'
+                       and abs(x['start'] - s) < 1e-6), None)
+        if new_id:
+            self.event_list.select_by_id(new_id)
+        self._mark_dirty()
+        self.statusBar().showMessage(
+            'Added an event at {:.1f}–{:.1f}s. Drag its edges to adjust, or '
+            'Ctrl+Z to undo.'.format(s, e), 8000)
+
+    # ---- undo -------------------------------------------------------
+    UNDO_DEPTH = 50
+
+    def _push_undo(self, label):
+        """Snapshot the event list before a change. Cheap: tens of dicts."""
+        if not hasattr(self, '_undo_stack'):
+            self._undo_stack = []
+        self._undo_stack.append((label, [dict(e) for e in self._events]))
+        del self._undo_stack[:-self.UNDO_DEPTH]
+
+    def _undo(self):
+        stack = getattr(self, '_undo_stack', None)
+        if not stack:
+            self.statusBar().showMessage('Nothing to undo.', 3000)
+            return
+        label, events = stack.pop()
+        self._events = events
+        self.signal_view.set_events(self._events)
+        self.event_list.set_events(self._events)
+        self._mark_discarded_runs()
+        self._autosave_review()
+        self._update_title()
+        self.statusBar().showMessage('Undid: {}'.format(label), 5000)
+
+    def _revert_extent(self, event_id=None):
+        """Restore an event to the extent the detector proposed.
+
+        source_start/source_stop have been preserved through every rebuild
+        since the beginning (gui/events.py) and were never exposed, so an
+        accidental drag was irreversible.
+        """
+        if event_id is None:
+            event_id = self.event_list.selected_event_id()
+        ev = self._find(event_id) if event_id > 0 else None
+        if not ev:
+            return
+        if ev.get('source_start') is None or ev['status'] == 'added':
+            self.statusBar().showMessage(
+                'No detector extent to revert to.', 4000)
+            return
+        self._push_undo('revert extent')
+        ev['start'], ev['stop'] = clamp_interval(
+            ev['source_start'], ev['source_stop'], self._duration_s)
+        if ev['status'] == 'edited':
+            ev['status'] = 'proposed'
+        self.signal_view.set_events(self._events)
+        self.event_list.set_events(self._events)
+        self._mark_dirty()
+        self.statusBar().showMessage('Reverted to the detector extent.', 5000)
 
     # ==================================================================
     # Unsaved-review protection (B3)
@@ -1303,7 +1430,9 @@ class MainWindow(QtWidgets.QMainWindow):
                     {'start': float(ev['start']), 'stop': float(ev['stop']),
                      'status': ev['status'],
                      'review_note': ev.get('review_note'),
-                     'model_score_uncalibrated': float(ev.get('prob', 0.0))}
+                     'model_score_uncalibrated': (
+                         None if ev.get('prob') is None
+                         else float(ev['prob']))}
                     for ev in self._reviewed_events()],
                 'note': 'Autosaved reviewer decisions. Not an annotation file.',
             }
@@ -1610,7 +1739,7 @@ class MainWindow(QtWidgets.QMainWindow):
         events = []
         exported_scores = []
         for ev in self._events:
-            if ev['status'] not in ('accepted', 'edited'):
+            if ev['status'] not in EXPORTED_STATUSES:
                 continue
             s, e = clamp_interval(ev['start'], ev['stop'], self._duration_s)
             # confidence = 1.0, not the model score. Only human-confirmed events
@@ -1626,7 +1755,10 @@ class MainWindow(QtWidgets.QMainWindow):
             exported_scores.append({
                 'start': round(float(s), 4), 'stop': round(float(e), 4),
                 'status': ev['status'],
-                'model_score_uncalibrated': round(float(ev['prob']), 6),
+                'model_score_uncalibrated': (
+                    None if ev.get('prob') is None
+                    else round(float(ev['prob']), 6)),
+                'human_originated': ev['status'] == 'added',
                 'review_note': ev.get('review_note'),
             })
         write_csv_bi(path,
@@ -1698,7 +1830,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 {'start': round(float(e['start']), 4),
                  'stop': round(float(e['stop']), 4),
                  'status': e['status'],
-                 'model_score_uncalibrated': round(float(e.get('prob', 0.0)), 6),
+                 'model_score_uncalibrated': (
+                     None if e.get('prob') is None
+                     else round(float(e['prob']), 6)),
                  'review_note': e.get('review_note')}
                 for e in self._events],
             'windows_not_assessed': self._unscored_count(),

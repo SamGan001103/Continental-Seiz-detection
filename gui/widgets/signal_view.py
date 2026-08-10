@@ -499,6 +499,7 @@ class SignalView(QtWidgets.QWidget):
         'accepted': (35, 110, 200, 95),     # blue   — reviewer confirmed
         'rejected': (180, 180, 180, 40),    # grey   — reviewer dismissed
         'edited':   (150, 80, 200, 90),     # purple — extent adjusted
+        'added':    (0, 150, 160, 110),     # teal   — human found it, AI missed
     }
 
     def _brush_for(self, status):
