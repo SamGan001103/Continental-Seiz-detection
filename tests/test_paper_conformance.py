@@ -153,10 +153,42 @@ class DocumentedEnvironmentDeviation(unittest.TestCase):
     the weights were fitted to whatever the authors ran. The requirement is
     that the mismatch stays *disclosed*, so it cannot quietly stop being
     mentioned.
+
+    The same rule governs the Python version, which is why the check below
+    asserts disclosure rather than a version number.
     """
 
-    def test_python_version_matches_the_paper(self):
-        self.assertTrue(sys.version.startswith('3.6'))
+    def test_python_version_deviation_is_documented(self):
+        """The paper ran Python 3.6; Apple Silicon cannot.
+
+        This asserted `sys.version.startswith('3.6')` until 2026-08-10, which
+        made it a test of *which machine the suite happened to run on* rather
+        than of conformance to the paper — and one that no arm64 machine can
+        ever satisfy, because CPython gained arm64 support in 3.9.1 and the 3.6
+        branch ended first (`docs/BUILD_ON_MAC.md` §1). It failed on every
+        modern-stack platform, Linux included, not just macOS.
+
+        Deleting it would lose the check outright. The contract this class
+        exists to enforce is the one its docstring states and
+        `test_mne_version_deviation_is_documented` implements: a deviation from
+        the paper is permitted, and must stay written down. So the deviation
+        is now pinned *as a deviation* — matching the paper passes trivially,
+        and departing from it requires the departure to remain disclosed.
+
+        Keyed to '3.6' and '3.11' rather than to a sentence, so that rewording
+        `portability.md` does not fail the build.
+        """
+        if sys.version.startswith('3.6'):
+            return          # no deviation to document
+        port = os.path.join(REPO, 'docs', 'portability.md')
+        with open(port, encoding='utf-8') as f:
+            text = f.read()
+        self.assertIn('3.6', text,
+                      'Python differs from the paper 3.6 but portability.md '
+                      'no longer records the version the paper used')
+        self.assertIn('3.11', text,
+                      'portability.md no longer states the modern Python '
+                      'that replaces 3.6 on Apple Silicon')
 
     def test_mne_version_deviation_is_documented(self):
         import mne
