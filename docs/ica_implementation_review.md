@@ -24,6 +24,18 @@ from a closer pass over **98 windows from 2 recordings**.
 
 ## 1. What the paper specifies
 
+> **Provenance of this quote.** The repository contains **no copy of this paper** — only the two
+> two-channel SPMB PDFs and the ZUNA preprint. The specification below was therefore re-verified
+> on **2026-08-10 against the arXiv source itself** (arXiv:2103.10900, rendered full text), and
+> the wording reproduced here matches that source verbatim. Before this check, the single
+> most load-bearing statement in the whole reproduction argument could not be confirmed from
+> anything in the repo. **Keep a copy of the paper in the repository.**
+>
+> Note also that **Omid Kavehei is an author** (Yang, Truong, Maher, Nikpour, Kavehei), so the
+> questions this section cannot resolve from the text — chiefly the MNE version used to generate
+> the *training* features, and whether the top-1 component restriction was intended — are
+> answerable by asking the supervisor rather than by inference.
+
 Yang et al. 2022, §2.3 (arXiv:2103.10900v2):
 
 > "First, we split EEG signals into 12-second segments and applied the ICA algorithm to
@@ -55,6 +67,59 @@ if ica.exclude:
     ica.apply(reconst_raw); return reconst_raw.get_data()*1e6   # filtered + cleaned
 return data                                            # <- RAW, UNFILTERED
 ```
+
+## 2b. Point-by-point conformance to the published pipeline
+
+Every row verified against running code on 2026-08-10. "Spec" is the paper's own wording.
+
+| # | Paper specifies | Code does | |
+|---|---|---|---|
+| 1 | "12-second segments" | `SEGMENT_S = 12`, 3000 samples @ 250 Hz | **match** |
+| 2 | "decompose the signal into 19 independent components" | `ICA(n_components=19)`; measured `n_components_ == 19`, no PCA reduction | **match** |
+| 3 | eye movement "detected from two EEG channels, namely 'FP1' and 'FP2'" | `find_bads_eog(..., ch_name='Fp1')` and `'Fp2'` | **match** |
+| 4 | "Pearson correlation to identify which independent sources are highly related" | `find_bads_eog` correlates each source with the channel, then **z-scores** the correlations and thresholds the z-score | **match in kind** — the paper does not say the scores are z-scored |
+| 5 | "**We remove those independent sources**" (plural — every correlated source) | appends only `e1[0]` and `e2[0]` — the **single top** component per channel. Measured: **212 flagged, 106 removed** | **DEVIATION** |
+| 6 | *no threshold given* | `threshold=2.0`, against MNE's default of 3.0 — flags more aggressively, then removes conservatively (see 5) | **unspecified + non-default** |
+| 7 | *no filter mentioned anywhere* | `filter(l_freq=0.1, h_freq=None)` before ICA. MNE designs an **8251-sample (33.0 s) filter for a 3000-sample (12 s) window**, warns `distortion is likely`, applies it anyway | **DEVIATION** |
+| 8 | *silent on the no-EOG-found case* | returns the **raw, unfiltered** input — so ~10 % of windows reach the STFT with different preprocessing from their neighbours | **DEVIATION (bug)** |
+| 9 | "Python 3.6" | 3.6.15 | **match** |
+| 10 | "library **MNE v0.20**" | **0.19.2**, pinned in `environment-seiz36.yml` and `requirements-seiz36.txt` | **VERSION MISMATCH** |
+| 11 | STFT "window length of 250 (or 1 second) and 50 % overlapping" | `framelength=250`; produces **23 time frames**, which is only possible at hop 125 = 50 % | **match** |
+| 12 | "remove the DC component" | `d[:, :, 1:]` — 126 bins → **125** | **match** |
+| 13 | "data shape will become (n×23×125)" | `(23, 19, 125)` — same content, axes ordered (time, electrode, freq) for the ConvLSTM input | **match** |
+
+### What to conclude from this table
+
+**The signal path either side of ICA is a faithful implementation.** Segmentation, component
+count, EOG channels, and every STFT parameter match the paper exactly, and rows 11–13 were
+confirmed by running the code rather than by reading it.
+
+**Four deviations are all inside `ica_arti_remove`**, and rows 5–8 are the same four defects
+already ranked in §3 — this table just re-frames them as *departures from the published method*
+rather than as *code smells*. Row 5 is the sharpest: the paper says remove **those** sources,
+plural; the code removes one per channel, discarding half of what it flagged.
+
+**Row 10 is new and needs disclosure.** The paper names MNE v0.20; this project pins 0.19.2.
+
+### The trap in "make the pipeline the same"
+
+Rows 5–8 cannot simply be "fixed", and this is the central tension of the whole reproduction:
+
+> The **paper** describes what the authors intended. The **code** describes what they did. The
+> **weights encode what they did.**
+
+`utils/ICA_load_data_elec.py` imports this same `ica_arti_remove`, so the training features were
+generated *with* the top-1 restriction, *with* the 0.1 Hz filter, and *with* the raw-passthrough
+branch. Editing the function to match the paper's prose would produce a preprocessing chain the
+released weights were never fitted to — closer to the paper, further from a working system. The
+existing evidence for how violently that can move is §3.5's max_iter experiment, where a single
+convergence change flipped one window from p = 0.902 to p = 0.0014.
+
+So the correct action is **not** to change the code. It is to (a) keep inference bit-faithful to
+the training-time function, (b) disclose every row above, and (c) *measure* what each deviation
+is worth, which is a thesis result rather than a bug fix.
+
+---
 
 ## 3. The defects, ranked
 
