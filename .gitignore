@@ -168,3 +168,10 @@ Thumbs.db
 # thesis figures are generated, not hand-edited
 !docs/figures/*.png
 !docs/figures/*.pdf
+
+# USB staging area: a 1.2 GB copy of the frozen application, assembled by
+# packaging/make_usb.py. Regenerable from dist/, and far too large for git.
+USB_STAGING/
+build_log.txt
+build_modern.log
+regen_shard_*.log
