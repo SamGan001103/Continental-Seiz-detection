@@ -49,6 +49,16 @@ if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
 
+def _sha256(path, chunk=1 << 20):
+    """Fingerprint of a recording, so two machines can prove they scored the same one."""
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for b in iter(lambda: f.read(chunk), b''):
+            h.update(b)
+    return h.hexdigest()
+
+
 def _manifest_rows():
     p = os.path.join(REPO, 'artifacts', 'zuna_thesis', 'manifest_full.csv')
     if not os.path.exists(p):
@@ -159,6 +169,7 @@ def export(out_path):
     rows = _manifest_rows()
     stems, starts, probs, skips, offsets, envs = [], [], [], [], [0], []
     edfs = []
+    edf_sha = []
     inexact = []
     for row in rows:
         stem = row['stem']
@@ -187,6 +198,21 @@ def export(out_path):
             inexact.append(stem)
         stems.append(stem)
         edfs.append(row['edf'])
+        # The recording's own fingerprint, not just its name.
+        #
+        # This comparison assumes both machines score the SAME signal, and
+        # nothing was checking it. The two corpora in use are separate
+        # downloads of TUSZ: on this machine the five stems that appear twice
+        # are byte-identical copies, and on the other they are not - one of
+        # them produced 22 window flips, which identical files cannot do. So
+        # the corpora demonstrably disagree somewhere, and every disagreement
+        # is indistinguishable from platform drift once it reaches the
+        # probabilities. Window-grid alignment cannot catch it: two different
+        # recordings of the same duration have the same window count.
+        #
+        # Hashing 300-odd EDFs costs a few minutes once. Reporting a data
+        # difference as a portability finding would cost considerably more.
+        edf_sha.append(_sha256(edf))
         starts.append(s)
         probs.append(p)
         skips.append(sk)
@@ -210,6 +236,7 @@ def export(out_path):
         out_path,
         stems=np.array(stems),
         edfs=np.array(edfs),
+        edf_sha256=np.array(edf_sha),
         offsets=np.array(offsets, dtype=np.int64),
         window_starts=np.concatenate(starts),
         probs=np.concatenate(probs),
@@ -266,7 +293,13 @@ def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None,
 
     deltas = []
     per_rec = []
-    missing, misaligned, ambiguous = [], [], []
+    missing, misaligned, ambiguous, different_data = [], [], [], []
+    ref_sha = ([str(x) for x in z['edf_sha256']]
+               if 'edf_sha256' in z.files else None)
+    if ref_sha is None:
+        print('NOTE: this reference predates recording fingerprints, so it '
+              'cannot prove both machines scored the same signal.')
+        print()
     ev_totals = {'ref': 0, 'local': 0, 'matched': 0, 'lost': 0, 'gained': 0,
                  'recordings_changed': 0, 'max_shift_s': 0.0}
 
@@ -311,6 +344,20 @@ def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None,
         if edf is None:
             missing.append(stem)
             continue
+        # Prove it is the same recording before attributing anything to the
+        # platform. Two separate downloads of TUSZ are in use and they are known
+        # to disagree on at least one file; a differing signal produces a
+        # differing probability, and nothing downstream can tell that apart from
+        # drift. Same duration means same window count, so the grid check is
+        # blind to it.
+        if ref_sha is not None:
+            try:
+                if _sha256(edf) != ref_sha[i]:
+                    different_data.append(stem)
+                    continue
+            except Exception:
+                pass
+
         lo, hi = offsets[i], offsets[i + 1]
         rs, rp, rk = ref_starts[lo:hi], ref_probs[lo:hi], ref_skip[lo:hi]
         try:
@@ -397,6 +444,7 @@ def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None,
         'not_found': len(missing),
         'misaligned': misaligned,
         'ambiguous_stems': sorted(set(ambiguous)),
+        'different_data_stems': sorted(set(different_data)),
         'events': dict(ev_totals),
     }
     print()
@@ -427,6 +475,11 @@ def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None,
     if misaligned:
         print('MISALIGNED (dropped): {} -> {}'.format(
             len(misaligned), ', '.join(misaligned[:5])))
+    if different_data:
+        print('DIFFERENT RECORDING (dropped): {} -> {}'.format(
+            len(different_data), ', '.join(different_data[:5])))
+        print('   the local file is not the one the reference was built from;')
+        print('   comparing them would report a data difference as drift.')
     if ambiguous:
         print('AMBIGUOUS  (dropped): {} -> {}'.format(
             len(set(ambiguous)), ', '.join(sorted(set(ambiguous))[:5])))
