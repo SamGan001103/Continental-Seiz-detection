@@ -173,12 +173,22 @@ NOT_BUILT = """This platform has NOT been built yet.
 The application cannot be cross-compiled: a {plat} build has to be produced
 on a {plat} machine. The full source is in the "source" folder of this USB.
 
-    conda create -n seizmodern python=3.11
-    conda activate seizmodern
-    pip install -r requirements-modern.txt pyinstaller
+    python3 -m venv ~/seizmodern
+    source ~/seizmodern/bin/activate      (Windows: seizmodern\\Scripts\\activate)
+    pip install -r requirements-modern.txt pyinstaller==6.22.0
     {cmd}
 
 Then re-run packaging/make_usb.py on that machine, pointing at this USB.
+
+Two things that are easy to get wrong:
+
+  * Use a venv, NOT conda. Every packaging failure recorded in
+    docs/known_issues.md came from conda's library layout, and both builds
+    that do work were made with a plain venv.
+
+  * Python 3.11 or newer. The pinned scipy requires it, so 3.10 cannot
+    install the stack at all. On Ubuntu 22.04 the python3.11 package is a
+    release candidate - use 24.04, which ships 3.12, or the deadsnakes PPA.
 """
 
 
