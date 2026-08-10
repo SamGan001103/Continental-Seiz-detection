@@ -73,14 +73,25 @@ def _local_edf(stem):
 
 
 def _walk_index(root):
-    """stem -> path for every EDF under a directory. For an out-of-tree corpus."""
+    """stem -> sorted list of every EDF with that stem under a directory.
+
+    A list, not a single path, because the stem is not unique. TUH records some
+    sessions under two montages, so
+    `.../s010_2015_08_27/01_tcp_ar/aaaaaqvx_s010_t004.edf` and
+    `.../s010_2015_08_27/03_tcp_ar_a/aaaaaqvx_s010_t004.edf` are different
+    recordings with the same stem — five such collisions are in
+    manifest_full.csv, and two of them differ in duration (600 s against 601 s).
+    Keeping the first match silently compared one montage's cached
+    probabilities against the other montage's signal and reported the result as
+    platform drift.
+    """
     index = {}
     for dirpath, _dirs, files in os.walk(root):
         for fn in files:
             if fn.lower().endswith('.edf'):
-                index.setdefault(os.path.splitext(fn)[0],
-                                 os.path.join(dirpath, fn))
-    return index
+                index.setdefault(os.path.splitext(fn)[0], []).append(
+                    os.path.join(dirpath, fn))
+    return {k: sorted(v) for k, v in index.items()}
 
 
 # ---------------------------------------------------------------- export
@@ -92,12 +103,20 @@ def export(out_path):
 
     rows = _manifest_rows()
     stems, starts, probs, skips, offsets, envs = [], [], [], [], [0], []
+    edfs = []
     inexact = []
     for row in rows:
         stem = row['stem']
-        edf = _local_edf(stem)
-        if edf is None:
+        # This row's own path, not a lookup by stem. _local_edf returns the
+        # FIRST manifest row carrying the stem, and five stems appear twice —
+        # the same session under the 01_tcp_ar and 03_tcp_ar_a montages. Going
+        # through it exported one montage's cache twice under one stem and
+        # never exported the other recording at all, which is why the two
+        # entries for aaaaaqvx_s010_t004 were numerically identical.
+        edf = os.path.join(REPO, row['edf'])
+        if not os.path.exists(edf):
             continue
+        edf = os.path.abspath(edf)
         try:
             rec = load_probs(edf)
         except Exception:
@@ -112,6 +131,7 @@ def export(out_path):
         if not rec.get('skip_code_is_exact', False):
             inexact.append(stem)
         stems.append(stem)
+        edfs.append(row['edf'])
         starts.append(s)
         probs.append(p)
         skips.append(sk)
@@ -134,6 +154,7 @@ def export(out_path):
     np.savez_compressed(
         out_path,
         stems=np.array(stems),
+        edfs=np.array(edfs),
         offsets=np.array(offsets, dtype=np.int64),
         window_starts=np.concatenate(starts),
         probs=np.concatenate(probs),
@@ -190,7 +211,7 @@ def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None,
 
     deltas = []
     per_rec = []
-    missing, misaligned = [], []
+    missing, misaligned, ambiguous = [], [], []
 
     # Iterate over positions in `stems`, never over a reordered copy of it.
     # `offsets` is indexed by a recording's position in the export, so pairing
@@ -209,9 +230,27 @@ def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None,
     if limit is not None:
         order = order[:limit]
 
+    # A stem that is not unique cannot be resolved to one recording, and the
+    # export records stems only. Refusing is the sole correct option: guessing
+    # compares one montage's cached probabilities against the other montage's
+    # signal, and the grid check waves that through whenever the two happen to
+    # have the same window count — which is usual, since the montages cover the
+    # same minutes. Before this, the five colliding stems supplied 22 of 72
+    # apparent decision changes.
+    stem_counts = {}
+    for s in stems:
+        stem_counts[s] = stem_counts.get(s, 0) + 1
+
     for i in order:
         stem = stems[i]
-        edf = index.get(stem) or _local_edf(stem)
+        found = index.get(stem)
+        if found is None:
+            one = _local_edf(stem)
+            found = [one] if one else []
+        if stem_counts[stem] > 1 or len(found) > 1:
+            ambiguous.append(stem)
+            continue
+        edf = found[0] if found else None
         if edf is None:
             missing.append(stem)
             continue
@@ -272,6 +311,7 @@ def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None,
                                          platform.machine()),
         'not_found': len(missing),
         'misaligned': misaligned,
+        'ambiguous_stems': sorted(set(ambiguous)),
     }
     print()
     print('=' * 62)
@@ -288,6 +328,11 @@ def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None,
     if misaligned:
         print('MISALIGNED (dropped): {} -> {}'.format(
             len(misaligned), ', '.join(misaligned[:5])))
+    if ambiguous:
+        print('AMBIGUOUS  (dropped): {} -> {}'.format(
+            len(set(ambiguous)), ', '.join(sorted(set(ambiguous))[:5])))
+        print('                      stem maps to more than one recording; '
+              'the export records stems only, so it cannot be resolved')
     print('=' * 62)
 
     if out_json:
