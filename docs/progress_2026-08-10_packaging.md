@@ -157,7 +157,7 @@ success until the frozen executable has actually run.
 1. **Weights hash** — checked against `eval_config.WEIGHTS_SHA256` *before*
    building. Fatal, not a warning: a build carrying the wrong weights is
    indistinguishable from a correct one at run time.
-2. **Test suite** — 114 tests. A release is not built from a failing tree.
+2. **Test suite** — 130 tests. A release is not built from a failing tree.
 3. **`SeizureReview.exe --gui-self-test`** — constructs the real `MainWindow`
    offscreen and pumps the event loop, catching a missing PyQt5 or pyqtgraph
    submodule.
@@ -276,6 +276,9 @@ new   packaging/SeizureReview.spec       the build definition + build stamp
 new   packaging/build_app.bat            verify -> test -> freeze -> smoke test
 new   packaging/smoke_test.py            runs the frozen exe before shipping it
 new   tests/test_deployment_paths.py     20 tests for target-machine failures
+new   tests/test_doc_numbers.py          16 tests pinning the shipped docs to
+                                         RESULTS.md, and the derived percentages
+                                         to the counts they come from
 new   docs/DEPLOYMENT.md
 new   docs/INTENDED_USE.md
 new   docs/progress_2026-08-10_packaging.md
@@ -296,4 +299,4 @@ mod   tests/test_review_guards.py        +3 autosave-fallback cases
 mod   README.md, INSTALL.md              frozen build promoted to Route A
 ```
 
-Tests: 91 → 114, all passing.
+Tests: 91 → 130, all passing.
