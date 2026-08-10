@@ -126,8 +126,8 @@ electrodes" but publishes **no 19-channel number**, so there is nothing to repli
 |---|---|---|---|---|
 | raw windows (no decision stage) | 0.565 | 48/85 | 478.0 | 32 |
 | \+ event shaping (concat <10 s, discard <5 s) | 0.553 | 47/85 | 314.6 | 11 |
-| per-second averaging only | 0.494 | 42/85 | 237.8 | 13 |
-| **full source method (averaging + shaping)** | **0.494** | **42/85** | **222.9** | **10** |
+| per-second averaging only | 0.482 | 41/85 | 234.4 | 12 |
+| **full source method (averaging + shaping)** | **0.482** | **41/85** | **219.5** | **9** |
 
 Reproducing the paper's *decision stage* — not its model — cuts the false-alarm rate **2.1×**
 for 7 percentage points of sensitivity.
@@ -136,7 +136,7 @@ for 7 percentage points of sensitivity.
 
 | Threshold | Sensitivity | Hits | FP | FP/24 h |
 |---|---|---|---|---|
-| 0.50 | 0.494 | 42/85 | 237 | 204.4 |
+| 0.50 | 0.482 | 41/85 | 237 | 204.4 |
 | 0.30 | 0.565 | 48/85 | 352 | 303.6 |
 | 0.10 | 0.588 | 50/85 | 457 | 394.2 |
 | 0.05 | 0.647 | 55/85 | 522 | 450.2 |

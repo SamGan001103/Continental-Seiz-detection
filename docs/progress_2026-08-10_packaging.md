@@ -245,8 +245,8 @@ development machine and does not hold on the target.
   to install on a hospital PC, SmartScreen and antivirus expectations, where the
   app writes, performance expectations, troubleshooting, known gaps.
 - **`docs/INTENDED_USE.md`** — what the software is and is not, intended users
-  and data, measured performance stated plainly (49.4 % sensitivity, 204 FA/24 h,
-  and that 19 of 85 seizures produce no model response at all), populations not
+  and data, measured performance stated plainly (48.2 % sensitivity, 204 FA/24 h,
+  and that 16 of 85 seizures produce no model response at all), populations not
   evaluated, failure modes, provenance, privacy. Written for the clinician,
   the supervisor and an ethics reviewer. Bundled into the application.
 - **`INSTALL.md`** — restructured so the frozen build is Route A and Miniconda

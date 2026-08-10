@@ -172,7 +172,7 @@ there. Same corpus family and same detector configuration, but not the same file
 >
 > The earlier `manifest.csv` (26 seizure-enriched files, 1.7 h) gave 0.82 [0.67, 0.93] under the
 > paper protocol — an interval too wide to distinguish anything. It was also **pessimistic on
-> sensitivity and optimistic on false alarms**: 25.0 % and 57.2 FP/24 h, against 49.4 % and
+> sensitivity and optimistic on false alarms**: 25.0 % and 57.2 FP/24 h, against 48.2 % and
 > 204.4 FP/24 h on the annotated corpus. A seizure-enriched subset has almost no background time
 > in which to raise a false alarm, so its false-alarm rate is not interpretable.
 > **Use `manifest_full.csv` for every reported number.**
@@ -193,18 +193,18 @@ reproduce anything. 206 annotated files, 85 reference seizures, 27.8 h.
 
 | configuration | sensitivity | hits | FP/24 h | duplicates |
 |---|---|---|---|---|
-| raw windows | 0.565 | 48/85 | 478.0 | 32 |
-| \+ event shaping (concatenate <10 s, discard <5 s) | 0.553 | 47/85 | 314.6 | 11 |
-| per-second averaging only | 0.482 | 41/85 | 237.8 | 13 |
-| **source method (averaging + shaping)** | **0.494** | **42/85** | **222.9** | **10** |
+| raw windows | 0.553 | 47/85 | 484.3 | 34 |
+| \+ event shaping (concatenate <10 s, discard <5 s) | 0.541 | 46/85 | 319.8 | 12 |
+| per-second averaging only | 0.482 | 41/85 | 234.4 | 12 |
+| **source method (averaging + shaping)** | **0.482** | **41/85** | **219.5** | **9** |
 
 Reproducing the source method's decision stage — not its model — cuts the false-alarm rate
-**2.1×** (478.0 → 222.9) for 7 percentage points of sensitivity. Note this is the *decision
+**2.2×** (484.3 → 219.5) for 7 percentage points of sensitivity. Note this is the *decision
 stage* alone; the separate FP-counting bug fix is described in `reproduction_status.md` §3 and
 must not be folded into the same multiplier.
 
-With this sample, **shaping alone is arguably the better triage operating point**: 55.3 % at
-314.6 FP/24 h against 49.4 % at 222.9 — five more seizures caught for an alarm burden a reviewer
+With this sample, **shaping alone is arguably the better triage operating point**: 54.1 % at
+319.8 FP/24 h against 48.2 % at 219.5 — five more seizures caught for an alarm burden a reviewer
 can dismiss. Switch with `USE_PER_SECOND_AVERAGING` in `eval_config.py`.
 
 ### Threshold sweep, source method
@@ -354,7 +354,7 @@ the sweep*.
 windows, since inference cannot separate background from seizure. At the 85th percentile a
 seizure-heavy recording inflates its own reference and suppresses the events it should surface:
 the recordings tightened at pct 85 hold **30 of the 85 seizures (35 %)**, and event sensitivity
-collapses from 49.4 % to 20.0 % by threshold 0.6. At the median a recording needs more than half
+collapses from 48.2 % to 20.0 % by threshold 0.6. At the median a recording needs more than half
 its windows above threshold to be touched at all, which seizures cannot cause — they occupy ~4 %
 of recorded time. Recordings tightened at the median hold **2 of 85 seizures (2 %)**.
 
@@ -726,7 +726,7 @@ validates it** rather than exposing a defect.
 
 Reported as analysis only, for three reasons: the calibrator is fitted on windows while the GUI
 thresholds their per-second mean; thresholding calibrated scores at 0.5 collapses event
-sensitivity (0.494 → 0.32 isotonic / 0.14 Platt) so every event-level number in §3 would need
+sensitivity (0.482 → 0.32 isotonic / 0.14 Platt) so every event-level number in §3 would need
 re-measuring; and the fitted map is specific to this corpus's prevalence.
 
 ### Caveats

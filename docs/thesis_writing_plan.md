@@ -22,7 +22,7 @@ Six things in the report are now **wrong** and must not be carried forward.
 | Progress Report said | Now |
 |---|---|
 | "not a reproduction of the paper" | **Reproduces it.** Window AUC 0.89 vs 0.84 published |
-| Sensitivity 26.3 %, FP/24 h 328.7 | 49.4 % and 204.4 (26-file set was misleading in both directions) |
+| Sensitivity 26.3 %, FP/24 h 328.7 | 48.2 % and 204.4 (26-file set was misleading in both directions) |
 | ZUNA 26.3 % → 31.6 %, 328.7 → 205.4 | 21.1 % → 26.3 %, 41.1 → 0.0 |
 | 26 files, 1.7 h | **206 annotated files, 27.8 h**, 28 patients |
 | Window AUC 0.723 | 0.80 (project protocol) / **0.89** (paper protocol) |
@@ -156,8 +156,8 @@ recording.
 |---|---|---|---|
 | raw windows | 0.565 | 48/85 | 478.0 |
 | \+ event shaping | 0.553 | 47/85 | 314.6 |
-| \+ per-second averaging | 0.494 | 42/85 | 237.8 |
-| **source method** | **0.494** | **42/85** | **222.9** |
+| \+ per-second averaging | 0.482 | 41/85 | 234.4 |
+| **source method** | **0.482** | **41/85** | **219.5** |
 
 The decision stage — *not the model* — cuts false alarms **2.1×** for 7 points of sensitivity.
 

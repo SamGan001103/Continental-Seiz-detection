@@ -141,8 +141,8 @@ same four configurations at threshold 0.5 give:
 |---|---|---|---|
 | raw windows | 0.565 | 478.0 | 32 |
 | \+ event shaping | 0.553 | 314.6 | 11 |
-| \+ per-second averaging | 0.494 | 237.8 | 13 |
-| **the source method** | **0.494** | **222.9** | **10** |
+| \+ per-second averaging | 0.482 | 234.4 | 12 |
+| **the source method** | **0.482** | **219.5** | **9** |
 
 **The reported false-alarm rate falls sharply with no change to the model.** On the 206-file
 annotated corpus the decision stage alone accounts for 478.0 → 222.9 per 24 h (**2.1×**); the

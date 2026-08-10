@@ -1,8 +1,8 @@
 """Does per-recording adaptive normalisation beat a global threshold?
 
 This is the falsifiable question posed in `docs/RESULTS.md` §3b. Raising the
-global threshold already reduces false alarms — 0.80 gives 67.3 FA/24 h at
-42.4 % sensitivity against 204.4 at 49.4 % — so any adaptive scheme has to beat
+global threshold already reduces false alarms — 0.80 gives 66.4 FA/24 h at
+43.5 % sensitivity against 204.4 at 48.2 % — so any adaptive scheme has to beat
 *that curve*, not merely reduce false alarms.
 
 The comparison is therefore **at matched sensitivity**, never at matched
@@ -123,7 +123,7 @@ def main(argv=None):
         'sensitivity', 'RAW FA/24h', 'ADAPTIVE FA/24h', 'change'))
     print('-' * 56)
     verdict = []
-    for target in (0.25, 0.30, 0.35, 0.40, 0.45, 0.494):
+    for target in (0.25, 0.30, 0.35, 0.40, 0.45, 0.482):
         a = fa_at_sensitivity(c_raw, target)
         b = fa_at_sensitivity(c_ad, target)
         if a is None or b is None:
