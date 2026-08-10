@@ -1,0 +1,31 @@
+# Line endings
+#
+# This repository is checked out on Windows (core.autocrlf=true), macOS and
+# Linux, and the USB carries a `source/` copy taken from whichever machine
+# assembled it. Without the rule below, a shell script checked out on Windows
+# gets CRLF endings and then fails on the machine it was written for:
+#
+#     packaging/build_app.sh: line 30: set: pipefail
+#     : invalid option name
+#
+# bash reads the trailing carriage return as part of the argument. The failure
+# names the wrong thing - the option is spelled correctly - so it costs time to
+# recognise. Shell scripts are therefore pinned to LF everywhere.
+*.sh text eol=lf
+
+# Same reasoning for anything else executed by a POSIX shell or interpreter
+# through a shebang line, where a CRLF would corrupt the interpreter path.
+*.bash text eol=lf
+
+# Batch files are the mirror image: cmd.exe requires CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary payloads git must never touch. The weights in particular are hashed
+# against eval_config.WEIGHTS_SHA256, and any transformation would break that
+# check on the machine that ran it.
+*.h5 binary
+*.npz binary
+*.edf binary
+*.pdf binary
+*.png binary
