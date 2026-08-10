@@ -57,6 +57,38 @@ TensorFlow 2.x with PyInstaller on Windows is known-awkward. In rough order of e
 4. Check whether `_pywrap_tensorflow_internal.pyd` needs an MSVC redistributable DLL that is
    present on the build machine and absent from the bundle.
 
+### The same stack DOES freeze on macOS arm64 (2026-08-10)
+
+Built on Apple Silicon from `requirements-modern.txt` — the same pins, TF 2.21 — with
+**`python -m venv`, not conda**. All four gates pass, and the frozen binary loads TensorFlow and
+scores a real recording (`aaaaatao_s003_t000`, 17/17 windows). So *TF 2 + PyInstaller is not
+inherently broken*, which narrows the Windows problem to Windows.
+
+Two things came out of it, one of which applies directly to Windows:
+
+**a) A second, independent packaging bug — found only because macOS got far enough to hit it.**
+The spec excluded `tensorflow.python.debug` as size reduction "verified unused by the GUI". True
+under TF 1.15; under TF 2.x `tf.compat.v1.debugging.experimental` imports it *while `import
+tensorflow` is still running*, so the bundled TensorFlow is unimportable:
+
+```
+ModuleNotFoundError: No module named 'tensorflow.python.debug'
+```
+
+raised from `tensorflow/__init__.py`, not from anything the GUI calls. This is the identical shape
+to trap 3 (matplotlib under MNE 1.x): a module the application never references, pulled in by a
+dependency whose behaviour changed with its major version, excluded on evidence that expired.
+**Fixed** — conditioned on the TF major version, as matplotlib is on the MNE major version.
+
+This is almost certainly *latent on Windows too*, sitting behind the DLL failure exactly as the
+DLL failure sat behind traps 1–4. Expect it as the next error there once the native runtime loads.
+
+**b) The venv hypothesis is supported but NOT proven.** macOS never produced a dylib equivalent of
+the DLL error at any point, so there was nothing for the venv to fix — this is evidence that a
+pip-only environment freezes TF 2 cleanly, not a demonstration that it cures the Windows fault.
+Attempt 1 on the list above remains the right next move, now with a working reference build to
+compare against.
+
 ### Why it is not urgent
 
 The only thing lost is *identical library versions across platforms*. Measured, the practical
