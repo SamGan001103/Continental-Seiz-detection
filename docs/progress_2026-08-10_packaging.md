@@ -235,9 +235,15 @@ development machine and does not hold on the target.
 - **`INSTALL.md`** — restructured so the frozen build is Route A and Miniconda
   is Route B (development only).
 
-One correction made while writing: a first draft said "22 % of *missed* seizures
-produce no model response". Recomputed from the caches — it is 22 % of *all* 85
-reference seizures (19 of them), which is 53 % of the missed ones. Corrected
+Two corrections made while writing, both about denominators. A first draft said
+"22 % of *missed* seizures produce no model response"; recomputed from the
+caches it is 22 % of *all* 85 reference seizures — 19 of them. The replacement
+then said those 19 were "over half of everything the detector misses", which
+was also wrong: that used the 36 seizures whose *peak window score* falls below
+0.5, while the reader of that section has just been told the detector "finds 42
+of 85", i.e. misses **43**. The correct figure against the event-level
+denominator the surrounding text establishes is **44 %**. Stating a proportion
+without naming its denominator is how both errors happened. Corrected
 before it went anywhere.
 
 ---

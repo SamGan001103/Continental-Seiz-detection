@@ -83,11 +83,11 @@ Measured on 206 annotated recordings from the TUH Seizure Corpus
 > fast rejection.
 
 **19 of the 85 reference seizures (22 %) produce no model response at all** —
-their peak window score never exceeds 0.01. That is over half of everything the
-detector misses. Lowering the threshold does not recover them: reaching them
-would require a setting that also floods the reviewer with background. This is
-a limitation of the model's discrimination, not of the chosen operating point,
-and no setting in the interface can work around it.
+their peak window score never exceeds 0.01. That is 44 % of the 43 seizures
+missed at the default threshold. Lowering the threshold does not recover them:
+reaching them would require a setting that also floods the reviewer with
+background. This is a limitation of the model's discrimination, not of the
+chosen operating point, and no setting in the interface can work around it.
 
 ### Calibration
 
