@@ -205,7 +205,24 @@ if _MNE_NEEDS_MPL:
 # --------------------------------------------------------------------------
 # Exclusions — pure size reduction, verified unused by the GUI
 # --------------------------------------------------------------------------
-excludes = ([] if _MNE_NEEDS_MPL else ['matplotlib']) + [
+# Excluding a module the GUI "never uses" is only safe while that stays true of
+# the whole dependency graph. Two entries here were size reductions under the
+# Python 3.6 stack and are fatal under the modern one, in the same way:
+#
+#   matplotlib             MNE 1.x imports it from mne.preprocessing.ica
+#   tensorflow.python.debug  TF 2.x imports it from
+#                            tf.compat.v1.debugging.experimental, at import
+#                            time — so excluding it makes `import tensorflow`
+#                            itself raise ModuleNotFoundError inside the bundle
+#
+# Both freeze cleanly and then die on the first window scored, which is the
+# expensive place to find out. Each is therefore conditioned on the version of
+# the library that decides it, not on what the GUI appears to call.
+_TF1_ONLY_EXCLUDES = ['tensorflow.python.debug'] if _TF_MAJOR < 2 else []
+print('spec: tensorflow.python.debug {} (TF major {})'.format(
+    'excluded' if _TF1_ONLY_EXCLUDES else 'bundled', _TF_MAJOR))
+
+excludes = ([] if _MNE_NEEDS_MPL else ['matplotlib']) + _TF1_ONLY_EXCLUDES + [
     'pandas',
     'tkinter',
     'IPython',
@@ -223,7 +240,6 @@ excludes = ([] if _MNE_NEEDS_MPL else ['matplotlib']) + [
     'PyQt5.Qt3DCore',
     'PyQt5.QtMultimedia',
     'PyQt5.QtDesigner',
-    'tensorflow.python.debug',
     'tensorboard',
 ]
 
