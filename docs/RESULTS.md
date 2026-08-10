@@ -255,7 +255,53 @@ lost its pair under the stricter matching, hence 12 files rather than 13.
 
 ---
 
-## 5. ZUNA side-study — corrected
+## 4b. The resolution floor — how large an effect this corpus can even detect
+
+```
+python experiments/diag_ica_paper_variant.py --variant as_trained     # the control
+python experiments/diag_ica_paper_variant.py --variant all_components
+```
+
+§9 records that inference is **not bit-reproducible**: `random_state=13` does not pin FastICA,
+so re-running an unchanged file moves individual window probabilities. That has a consequence
+nobody had measured — **it puts a floor under every comparison in this document.**
+
+Running the *identical* configuration twice and comparing it to its own cache:
+
+| comparison | delta pooled AUC | 95 % CI (cluster bootstrap by recording) | vs floor |
+|---|---|---|---|
+| **noise floor — identical config re-run** | **−0.0057** | **[−0.019, +0.003]** | — |
+| paper-literal: remove **all** flagged components | −0.0200 | [−0.049, +0.004] | 3.5× |
+| ICA off vs on | +0.0203 | [−0.030, +0.057] | 3.5× |
+| ZUNA vs baseline | −0.0421 | [−0.149, +0.038] | 7.3× |
+
+All on 12 recordings except ZUNA (10), pooled window AUC, arms matched window-by-window.
+
+> **Read this table before quoting any secondary result.** Two of the three effects are ~3.5×
+> the noise *point estimate*, but the noise **interval** is itself ±0.02 — comparable to the
+> effects being measured. **This corpus cannot resolve differences of this size.** Every interval
+> crosses zero, and that is a statement about the sample, not about the interventions.
+>
+> The fix is more recordings, not more analysis. The full corpus has 206 annotated files against
+> the 10–13 used here, and the headline replication (§2) is on all 206 — which is exactly why
+> that result is solid and these are not. **Do not put §4, §4b and §5 numbers in the same table
+> as the §2 AUC without saying they come from a 20× smaller sample.**
+
+### What the paper-literal variant shows
+
+The paper says "we remove **those** independent sources" — every source correlated with Fp1/Fp2.
+The code removes only the top-scoring component per channel. Forcing the paper's literal reading
+(907 components flagged, 907 removed, against roughly half that under top-1) moves pooled AUC
+from 0.7214 to **0.7014**.
+
+So the deviation is, if anything, *load-bearing in the code's favour*: being more literally
+faithful to the paper's wording makes the point estimate **worse**. At 3.5× the noise floor with
+an interval that grazes zero this is **suggestive, not established** — but it is a concrete
+argument against "fixing" the top-1 restriction, and it is measured rather than assumed.
+
+**This is the correct use of these experiments.** They are not a route to a better detector;
+they are evidence about how much the documented deviations matter, produced without touching the
+function that generated the training features.
 
 ```
 python experiments/rescore_zuna_compare.py --dir artifacts/zuna_thesis/compare_first10

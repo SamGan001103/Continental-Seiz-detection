@@ -77,7 +77,7 @@ Every row verified against running code on 2026-08-10. "Spec" is the paper's own
 | 1 | "12-second segments" | `SEGMENT_S = 12`, 3000 samples @ 250 Hz | **match** |
 | 2 | "decompose the signal into 19 independent components" | `ICA(n_components=19)`; measured `n_components_ == 19`, no PCA reduction | **match** |
 | 3 | eye movement "detected from two EEG channels, namely 'FP1' and 'FP2'" | `find_bads_eog(..., ch_name='Fp1')` and `'Fp2'` | **match** |
-| 4 | "Pearson correlation to identify which independent sources are highly related" | `find_bads_eog` correlates each source with the channel, then **z-scores** the correlations and thresholds the z-score | **match in kind** — the paper does not say the scores are z-scored |
+| 4 | "Pearson correlation to identify which independent sources are highly related" | `find_bads_eog` correlates each source with the channel, then **z-scores** the correlations and thresholds the z-score. It also **band-passes the channel 1–10 Hz first** (`l_freq=1, h_freq=10` defaults), which needs a 4096-sample filter over the 3000-sample window — a *second* unrealisable filter, on top of row 7 | **match in kind**, but with two undocumented steps |
 | 5 | "**We remove those independent sources**" (plural — every correlated source) | appends only `e1[0]` and `e2[0]` — the **single top** component per channel. Measured: **212 flagged, 106 removed** | **DEVIATION** |
 | 6 | *no threshold given* | `threshold=2.0`, against MNE's default of 3.0 — flags more aggressively, then removes conservatively (see 5) | **unspecified + non-default** |
 | 7 | *no filter mentioned anywhere* | `filter(l_freq=0.1, h_freq=None)` before ICA. MNE designs an **8251-sample (33.0 s) filter for a 3000-sample (12 s) window**, warns `distortion is likely`, applies it anyway | **DEVIATION** |
@@ -87,6 +87,21 @@ Every row verified against running code on 2026-08-10. "Spec" is the paper's own
 | 11 | STFT "window length of 250 (or 1 second) and 50 % overlapping" | `framelength=250`; produces **23 time frames**, which is only possible at hop 125 = 50 % | **match** |
 | 12 | "remove the DC component" | `d[:, :, 1:]` — 126 bins → **125** | **match** |
 | 13 | "data shape will become (n×23×125)" | `(23, 19, 125)` — same content, axes ordered (time, electrode, freq) for the ConvLSTM input | **match** |
+
+### The MNE defaults the paper does not mention
+
+Verified by introspection on the installed MNE 0.19.2, because "Pearson correlation" in the paper
+becomes several concrete choices in practice, and a methods section should state them:
+
+| | value | note |
+|---|---|---|
+| `ICA(method=...)` | `'fastica'` | the default; consistent with the paper's "BSS approach" |
+| `ICA(max_iter=...)` | `200` | never raised, and FastICA hits it on most windows (§3.5) |
+| `find_bads_eog(l_freq, h_freq)` | `1, 10` | the EOG channel is **band-passed 1–10 Hz** before correlating — not mentioned in the paper |
+| `find_bads_eog(threshold)` | code passes `2.0` | this is a **z-score of the correlations**, not a Pearson *r*. An *r* of 2.0 is impossible, so quoting "threshold 2.0" without saying "z-score" is misleading |
+
+The `threshold=2.0` point matters for writing up: it is 2 standard deviations above the mean
+correlation across components, not a correlation of 2.
 
 ### What to conclude from this table
 
