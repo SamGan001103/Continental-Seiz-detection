@@ -145,17 +145,50 @@ Probing the ICA stage directly, MNE 0.19.2 vs 1.12.1 on the same window:
 | **FastICA unmixing matrix** | **6.76** |
 
 > **The input to FastICA is identical to machine precision. The output is completely different —
-> with the same pinned algorithm.**
->
-> That is chaotic amplification. FastICA **does not converge** on most windows of this corpus
-> (`docs/ica_implementation_review.md` §3.5), so the returned unmixing is wherever the fixed-point
-> iteration happened to stop after 200 steps. A 10⁻¹⁵ perturbation in the whitening — the
-> unavoidable difference between two scipy `eigh`/`svd` builds — compounds into a different
-> stopping point.
+> with the same pinned algorithm and the same fixed seed (`random_state=13`).**
 
-**No amount of pinning fixes this.** It would require bit-identical linear algebra across
-platforms, which is not achievable. It is a property of running a non-convergent iterative
-algorithm, not a defect in any library.
+### The amplification, measured directly
+
+Inferring this from two stacks disagreeing conflates the perturbation with everything else that
+differs between them. Perturbing the whitened input by hand, at the scale two BLAS builds differ
+by, on three windows of one recording:
+
+| window | FastICA converged? | input Δ | unmixing Δ |
+|---|---|---|---|
+| t=18 | yes, 42 iterations | 9.8 × 10⁻¹⁵ | **0.0000** |
+| t=30 | **no**, still running at 20 000 | 1.2 × 10⁻¹⁴ | **0.9546** |
+| t=36 | yes, 124 iterations | 1.2 × 10⁻¹⁴ | **0.7337** |
+
+Roughly fourteen orders of magnitude of amplification, on two windows out of three.
+
+**An earlier version of this section blamed non-convergence, and that is not what the measurement
+shows.** `t=36` converged in 124 iterations and amplified 10⁻¹⁴ into 0.73 regardless; `t=18`
+converged in 42 and was perfectly stable. Non-convergence and instability are both symptoms of
+the same thing — the ICA solution is **ill-conditioned on most windows of this data** — and
+convergence does not confer stability.
+
+Nor is more compute a remedy. `t=30` returns a unmixing **identical to three decimals** at
+`max_iter` of 200, 1 000 and 20 000. The iteration is not wandering; it is parked, changing by
+slightly more than `tol=1e-4` per step. Raising the budget buys nothing.
+
+**No amount of pinning fixes this.** With fourteen orders of magnitude of amplification, agreement
+would require the whitening to be bit-identical, which means no BLAS anywhere in the chain. It is
+a property of the conditioning of this decomposition on this data, not a defect in any library.
+
+### Three routes to a fix, and why none is taken
+
+| route | verdict |
+|---|---|
+| raise `max_iter` so it converges | **Measured, no.** The unmixing is unchanged at 20 000 iterations, and a window that *did* converge amplified anyway. |
+| drop the ICA | **No.** It is worth ~2.2× on detection, and the released weights were fitted to features generated with it (`utils/ICA_load_data_elec.py` imports the same `ica_arti_remove`). |
+| bit-identical linear algebra | **Not achievable.** A research project, not a fix. |
+
+The remaining option is the one already in force: **treat the machine as part of the provenance.**
+Each machine is exactly self-consistent — the drift harness returns 0.000000 comparing a machine
+to itself — so a recording analysed once, on one machine, by one reviewer is reproducible. What is
+not reproducible is the same recording analysed on two machines, and no clinical workflow requires
+that. It is the *thesis tables* that require it, which is why the handling rule is a reporting
+rule.
 
 This also unifies previously separate observations, all the same mechanism:
 
