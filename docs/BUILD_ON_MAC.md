@@ -95,6 +95,8 @@ Additive — it fills the `macos/` slot and leaves the Windows build alone.
 | Still refuses after right-click → Open | `xattr -dr com.apple.quarantine /path/to/SeizureReview` — anything from a USB is quarantined. |
 | Qt complains about a platform plugin | `export QT_QPA_PLATFORM=cocoa`, or run the GUI self-test first to isolate it. |
 | `stft` import fails on numpy | `requirements-modern.txt` pins `numpy<2` because `stft` 0.5.2 uses `np.lib.pad`, removed in numpy 2.0. |
+| **"The scipy install you are using seems to be broken"** | **Do not believe it — scipy is fine.** The real error is above it in the traceback: `_ctypes` failed to load because its `libffi` was not bundled. conda keeps shared libraries somewhere PyInstaller does not scan. The spec already handles the Windows case (`Library/bin`); if it happens on macOS, find the library with `find $CONDA_PREFIX -name "libffi*"` and add it to the `binaries` list in `packaging/SeizureReview.spec`. This cost an hour on Windows by pointing at the wrong package. |
+| Bundled files "missing" but the build succeeded | PyInstaller 6 puts data in `dist/SeizureReview/_internal/` rather than beside the executable. The smoke test accepts either layout. Copy the **whole** `SeizureReview` folder — the `_internal` directory is part of the application. |
 
 ## What will differ from the Windows build, and why
 

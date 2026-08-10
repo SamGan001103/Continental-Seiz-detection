@@ -71,64 +71,101 @@ def sha256(path, chunk=1 << 20):
 START_HERE = """SEIZURE REVIEW - START HERE
 ===========================================================================
 
-Research prototype for human-in-the-loop EEG seizure review.
-NOT a medical device. Read docs/INTENDED_USE.md before using it on any
-recording. Every proposed event must be checked by a qualified reviewer.
+YOU DO NOT NEED TO INSTALL ANYTHING.
+
+No Python. No downloads. No internet. No programming. No VS Code.
+Everything the program needs is already inside the folder on this USB.
+
+Copy a folder. Double-click it. That is the whole installation.
 
 ---------------------------------------------------------------------------
-WINDOWS
+WHAT THIS IS
 ---------------------------------------------------------------------------
-1. Copy the whole "windows\\SeizureReview" folder off this USB, onto the PC.
-   Somewhere the logged-in user can write - Documents is fine.
-   Do NOT run it from the USB: it is slow, and the app needs to write.
-2. Open the copied folder and double-click SeizureReview.exe
-3. Windows will say "Windows protected your PC" because the app is not
-   code-signed. Click "More info" then "Run anyway". This is expected.
+A research tool that reads an EEG recording, marks where it thinks a
+seizure may be, and lets you accept or reject each one. The saved result
+is YOUR annotation, not the computer's.
+
+It is NOT a medical device and must not be used unsupervised. It misses
+about half of all seizures, so a recording with no marks has NOT been
+shown to be seizure-free. Please read docs/INTENDED_USE.md.
 
 ---------------------------------------------------------------------------
-macOS (Apple Silicon)
+WINDOWS  -  three steps
 ---------------------------------------------------------------------------
-1. Copy the whole "macos/SeizureReview" folder off this USB, onto the Mac.
-2. RIGHT-CLICK SeizureReview and choose "Open" - do not double-click.
-   Choose "Open" again in the dialog. The app is not notarised, and
-   double-clicking gives a dead end with no "open anyway" button.
-   You only need to do this once.
-3. If macOS still refuses:
-       xattr -dr com.apple.quarantine /path/to/SeizureReview
+1. Open the "windows" folder on this USB. Copy the "SeizureReview" folder
+   into your Documents. (Copy the WHOLE folder, not just one file.)
+   Wait for the copy to finish - it is large, about 1.2 GB.
+
+2. Open the copied folder in Documents. Double-click SeizureReview
+
+3. A blue box may say "Windows protected your PC".
+   This is normal and expected. Click "More info", then "Run anyway".
+
+   (It appears because the program has no purchased security
+   certificate, not because anything is wrong with it.)
+
+---------------------------------------------------------------------------
+macOS  -  three steps
+---------------------------------------------------------------------------
+1. Open the "macos" folder on this USB. Copy the "SeizureReview" folder
+   into your Documents. Wait for the copy to finish.
+
+2. Open the copied folder. RIGHT-CLICK on SeizureReview and choose "Open".
+   DO NOT double-click it the first time - double-clicking gives a message
+   with no way to continue.
+
+3. A box says the developer cannot be verified. Click "Open".
+   You only ever have to do this once.
+
+   If macOS still refuses, open the Terminal app and paste this line,
+   then drag the SeizureReview folder onto the window and press Enter:
+       xattr -dr com.apple.quarantine
 
 ---------------------------------------------------------------------------
 LINUX
 ---------------------------------------------------------------------------
-1. Copy the whole "linux/SeizureReview" folder off this USB.
-2. chmod +x SeizureReview
-3. ./SeizureReview
+1. Copy the "linux/SeizureReview" folder off this USB.
+2. In a terminal:   chmod +x SeizureReview
+3. Run:             ./SeizureReview
 
 ---------------------------------------------------------------------------
-IF A PLATFORM FOLDER IS MISSING OR SAYS "NOT BUILT"
+USING IT
 ---------------------------------------------------------------------------
+* Open your own EEG file: File > Open, and choose a .edf recording.
+  No recordings are included on this USB.
+  The recording must have all 19 standard electrodes.
+
+* The FIRST time you open a recording it has to be analysed. This takes
+  a few minutes and the window will show progress. Every time after that
+  it opens instantly.
+
+* Press F1 at any time for the list of keyboard shortcuts.
+* Help > Intended use and limitations explains what it can and cannot do.
+
+* Nothing leaves your computer. There is no internet connection, no
+  upload, and no cloud. The recording stays on the machine you opened it on.
+
+---------------------------------------------------------------------------
+IF SOMETHING GOES WRONG
+---------------------------------------------------------------------------
+The program writes a log file. Send this file to whoever gave you the USB:
+
+  Windows  %LOCALAPPDATA%\SeizureReview\logs\seizure_review.log
+  macOS    ~/Library/Application Support/SeizureReview/logs/
+  Linux    ~/.local/share/SeizureReview/logs/
+
+Nothing happens when you double-click it?
+  -> The folder was probably copied incompletely. Copy it again, in full.
+
+---------------------------------------------------------------------------
+FOR WHOEVER MAINTAINS THIS  (not needed by reviewers)
+---------------------------------------------------------------------------
+If a platform folder says NOT_BUILT, that platform has not been built yet.
 The application cannot be built for one operating system from another.
-Each build must be made on that kind of machine. The full source is in
-"source/" - see source/docs/portability.md, then:
-
-    conda create -n seizmodern python=3.11
-    conda activate seizmodern
-    pip install -r requirements-modern.txt pyinstaller
-    bash packaging/build_app.sh          (macOS / Linux)
-    packaging\\build_app.bat             (Windows)
-
----------------------------------------------------------------------------
-FIRST RUN
----------------------------------------------------------------------------
-* You need EEG recordings in EDF format with all 19 channels of the
-  standard 10-20 montage. None are included on this USB.
-* The first time a recording is opened it is scored, which takes a few
-  minutes. After that it is instant, because the result is cached.
-* Nothing is sent anywhere. All computation is local. No network is used.
-
-Problems: %LOCALAPPDATA%\\SeizureReview\\logs\\seizure_review.log   (Windows)
-          ~/Library/Application Support/SeizureReview/logs/         (macOS)
-          ~/.local/share/SeizureReview/logs/                        (Linux)
+Full source and instructions are in "source/" - see docs/BUILD_ON_MAC.md
+and docs/portability.md.
 """
+
 
 NOT_BUILT = """This platform has NOT been built yet.
 

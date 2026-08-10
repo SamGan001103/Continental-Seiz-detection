@@ -1,27 +1,41 @@
-# Portable stack: Windows x86-64, macOS Apple Silicon (arm64), Linux x86-64.
+# The portable stack: identical versions on Windows, macOS Apple Silicon and Linux.
 #
-# Validated 2026-08-10 end-to-end against the frozen Python 3.6 build:
-# the released convlstm_ICA_12_train.h5 loads and scores real recordings, with
-# no detection decision changing over 74 windows. See docs/portability.md for
-# what does and does not reproduce, and why bit-identity is not achievable.
+# EXACT PINS ON PURPOSE. Unpinned, pip resolves differently on each machine and
+# the two platforms drift apart — which defeats the point of having one app that
+# behaves the same everywhere. These are the versions validated end-to-end on
+# 2026-08-10: the released convlstm_ICA_12_train.h5 loads and scores real
+# recordings, with no detection decision changing against the Python 3.6 build.
 #
 #   conda create -n seizmodern python=3.11
 #   conda activate seizmodern
 #   pip install -r requirements-modern.txt
+#   pip install pyinstaller==6.22.0        # only needed to BUILD the app
 #
-# scikit-learn is deliberately UNPINNED. The ICA decomposition is vendored in
-# utils/fastica_pinned.py precisely so this project no longer depends on which
-# scikit-learn is installed — that dependency was the single thing preventing
-# the application from running on Apple Silicon, since 0.22.2 has no arm64
-# wheel.
+# NOTE FOR ANYONE READING THIS WHO IS NOT BUILDING THE APP:
+# none of this is needed to USE the application. The frozen build bundles its
+# own Python and every library below. A clinician copies a folder and runs it.
 
-# numpy must stay below 2: the `stft` package uses np.lib.pad, removed in 2.0.
-numpy<2
-scipy
-scikit-learn
-mne
-tensorflow
-pyedflib
-stft
-PyQt5
-pyqtgraph
+# --- numeric core -------------------------------------------------------
+# numpy MUST stay below 2: the `stft` package calls np.lib.pad, removed in 2.0.
+numpy==1.26.4
+scipy==1.17.1
+
+# scikit-learn's version is no longer load-bearing: utils/fastica_pinned.py
+# vendors the FastICA that MNE would otherwise call, because that dependency
+# was what tied the pipeline to one machine. Pinned anyway so two platforms
+# resolve to the same thing.
+scikit-learn==1.9.0
+
+# --- EEG / signal -------------------------------------------------------
+mne==1.12.1
+pyEDFlib==0.1.42
+stft==0.5.2
+
+# --- model --------------------------------------------------------------
+# TF 2.x rather than the paper's 1.15, which has no Apple Silicon wheel and
+# never will. Verified to agree with TF 1.15 to 6.8e-09 on real windows.
+tensorflow==2.21.0
+
+# --- interface ----------------------------------------------------------
+PyQt5==5.15.11
+pyqtgraph==0.14.0

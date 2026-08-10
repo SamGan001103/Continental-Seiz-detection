@@ -212,10 +212,29 @@ excludes = [
     'tensorboard',
 ]
 
+# --------------------------------------------------------------------------
+# conda runtime DLLs (Windows)
+# --------------------------------------------------------------------------
+# conda puts shared libraries in <env>/Library/bin, which PyInstaller does not
+# scan. The one that matters is ffi-8.dll: _ctypes.pyd links against it, and
+# without it the frozen application dies on `import ctypes`. scipy then reports
+# "The scipy install you are using seems to be broken", which points at
+# entirely the wrong library and costs an hour if you believe it.
+binaries = []
+if sys.platform.startswith('win'):
+    _conda_bin = os.path.join(sys.prefix, 'Library', 'bin')
+    if os.path.isdir(_conda_bin):
+        for _dll in ('ffi-8.dll', 'ffi-7.dll', 'ffi.dll',
+                     'libcrypto-3-x64.dll', 'libssl-3-x64.dll'):
+            _p = os.path.join(_conda_bin, _dll)
+            if os.path.exists(_p):
+                binaries.append((_p, '.'))
+                print('spec: bundling conda DLL {}'.format(_dll))
+
 a = Analysis(
     [os.path.join(REPO, 'gui', 'main.py')],
     pathex=[REPO],
-    binaries=[],
+    binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],

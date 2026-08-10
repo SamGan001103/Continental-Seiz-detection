@@ -75,10 +75,22 @@ def main(argv=None):
     print('checking {}'.format(dist))
 
     # 1 -------------------------------------------------------------- layout
+    # PyInstaller 6 moved bundled data into an _internal/ subdirectory; 4.x
+    # put it beside the executable. Accept either, so the same check works
+    # across the versions used on different platforms.
+    roots = [dist, os.path.join(dist, '_internal')]
+
+    def bundled(*parts):
+        for r in roots:
+            p = os.path.join(r, *parts)
+            if os.path.exists(p):
+                return p
+        return os.path.join(dist, *parts)
+
     required = [
         exe,
-        os.path.join(dist, 'convlstm_ICA_12_train.h5'),
-        os.path.join(dist, 'utils', 'params_common_electrodes.txt'),
+        bundled('convlstm_ICA_12_train.h5'),
+        bundled('utils', 'params_common_electrodes.txt'),
     ]
     for p in required:
         ok = os.path.exists(p)
@@ -92,9 +104,9 @@ def main(argv=None):
         return 1
 
     # 2 ------------------------------------------------------------- weights
-    bundled = os.path.join(dist, 'convlstm_ICA_12_train.h5')
-    if os.path.exists(bundled):
-        got = sha256(bundled)
+    weights = bundled('convlstm_ICA_12_train.h5')
+    if os.path.exists(weights):
+        got = sha256(weights)
         ok = (got == cfg.WEIGHTS_SHA256)
         print('  [{}] bundled weights hash {}'.format('ok' if ok else 'XX',
                                                       got[:16]))
