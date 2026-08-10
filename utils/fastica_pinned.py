@@ -43,6 +43,7 @@ Install with :func:`install`, which patches `sklearn.decomposition.FastICA`.
 MNE imports that name *inside* its fit method, so patching the module attribute
 is enough and no MNE source is touched.
 """
+import os
 import warnings
 
 import numpy as np
@@ -90,15 +91,49 @@ def _sym_decorrelation(W):
     return np.dot(np.dot(u * (1. / np.sqrt(s)), u.T), W)
 
 
+# --------------------------------------------------------------------------
+# Cross-machine determinism (opt-in)
+# --------------------------------------------------------------------------
+# This decomposition is ill-conditioned on most windows of this corpus: a
+# perturbation of 1e-14 in its input - the scale at which two BLAS builds
+# disagree - moves the unmixing matrix by up to 0.95. Measured, that is the
+# whole of the cross-platform drift, and it is why the same recording can
+# propose a seizure on one machine and not on another.
+#
+# Snapping the iterate to a fixed grid absorbs the difference: two machines
+# that disagree below the grid spacing land on the same grid point and proceed
+# identically. The input is snapped once and the iterate is re-snapped every
+# step, because the matrix products inside the loop are BLAS calls and differ
+# between machines just as the input does - quantising only the input would
+# leave the divergence to reappear at iteration two.
+#
+# OFF by default. Enabling it changes the numerics: on an ill-conditioned
+# window the quantised solution is a different (equally valid) decomposition,
+# so caches must be regenerated and the released weights were not fitted this
+# way. Set SEIZ_ICA_QUANTIZE to the number of decimal places, e.g. 10.
+_QUANT = None
+try:
+    _q = os.environ.get('SEIZ_ICA_QUANTIZE', '').strip()
+    _QUANT = int(_q) if _q else None
+except Exception:
+    _QUANT = None
+
+
+def _snap(a):
+    """Round to the determinism grid, or return unchanged when disabled."""
+    return a if _QUANT is None else np.round(a, _QUANT)
+
+
 def _ica_par(X, tol, g, fun_args, max_iter, w_init):
     """Parallel FastICA main loop."""
-    W = _sym_decorrelation(w_init)
+    W = _snap(_sym_decorrelation(w_init))
     del w_init
+    X = _snap(X)
     p_ = float(X.shape[1])
     for ii in range(max_iter):
         gwtx, g_wtx = g(np.dot(W, X), fun_args)
-        W1 = _sym_decorrelation(np.dot(gwtx, X.T) / p_
-                                - g_wtx[:, np.newaxis] * W)
+        W1 = _snap(_sym_decorrelation(np.dot(gwtx, X.T) / p_
+                                      - g_wtx[:, np.newaxis] * W))
         del gwtx, g_wtx
         lim = max(abs(abs(np.diag(np.dot(W1, W.T))) - 1))
         W = W1

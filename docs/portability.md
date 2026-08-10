@@ -5,6 +5,32 @@ release notes.*
 
 ## Result
 
+> **CORRECTION, 2026-08-11.** Everything below that attributes cross-machine drift to the ICA is
+> wrong, and the error survived three rewrites of this document because the mechanism was never
+> tested end to end. Feeding **byte-identical input** to the two stacks isolates it completely:
+>
+> ```
+> input sha256 2f606aea42c9a296   (the same array on both machines)
+> TF 1.15.0  (Windows legacy)   p(seizure) = 0.9779213071
+> TF 2.21.0  (Linux modern)     p(seizure) = 0.9663650393
+> ```
+>
+> Those are the *same two numbers* the full pipeline produces for that window, to the last digit.
+> Checksums of every earlier stage agree: the EDF read is identical, the ICA output agrees to 14
+> significant figures, the STFT to 13. **The whole of the drift is the TensorFlow version.**
+>
+> This explains what the ICA story never could: macOS on arm64 and Linux on x86-64 share no CPU,
+> no BLAS and no operating system, yet agree to four decimals — because they share TensorFlow
+> 2.21. Both differ from Windows, which runs 1.15.
+>
+> **It is therefore fixable, and the fix is to run one TensorFlow version everywhere.** The
+> obstacle is `docs/known_issues.md` §1, the modern stack not freezing on Windows, which this
+> promotes from a tidiness issue to the critical path for cross-machine consistency.
+>
+> The measurements of drift *magnitude* in this document stand — they were measured, not inferred.
+> Only the attribution was wrong. The sections below are kept, marked, rather than deleted,
+> because the reasoning that produced the wrong answer is worth seeing.
+
 **A modern stack runs the pipeline on all three platforms. It does not agree with the frozen
 Windows build closely enough to leave the reviewer's event list unchanged.**
 
