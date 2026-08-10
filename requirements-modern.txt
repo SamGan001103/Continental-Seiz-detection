@@ -39,3 +39,10 @@ tensorflow==2.21.0
 # --- interface ----------------------------------------------------------
 PyQt5==5.15.11
 pyqtgraph==0.14.0
+
+# --- required by MNE 1.x, not by the GUI --------------------------------
+# MNE 0.19 did not need this. MNE 1.x imports mne.viz.topomap from
+# mne.preprocessing.ica, so matplotlib became a hard runtime dependency of the
+# ICA stage itself. A build that excludes it freezes cleanly and then dies on
+# the first window scored.
+matplotlib==3.11.1

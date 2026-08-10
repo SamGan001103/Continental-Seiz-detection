@@ -114,6 +114,19 @@ for doc in ('RESULTS.md', 'INTENDED_USE.md', 'DEPLOYMENT.md'):
 # run time without them, and only on the packaged build.
 datas += collect_data_files('mne')
 
+# matplotlib: excluded under MNE 0.19 (used only by experiments/thesis_figures.py),
+# but MNE 1.x imports mne.viz.topomap from mne.preprocessing.ica, so on the
+# modern stack it is a hard runtime dependency of the ICA stage itself. Excluding
+# it there produces a build that freezes cleanly and dies on the first window.
+_MNE_NEEDS_MPL = False
+try:
+    import mne as _mne
+    _MNE_NEEDS_MPL = int(str(_mne.__version__).split('.')[0]) >= 1
+except Exception:
+    pass
+print('spec: matplotlib {} (MNE requires it: {})'.format(
+    'bundled' if _MNE_NEEDS_MPL else 'excluded', _MNE_NEEDS_MPL))
+
 # --------------------------------------------------------------------------
 # Hidden imports
 # --------------------------------------------------------------------------
@@ -185,12 +198,14 @@ for _m in ('sklearn.utils._cython_blas', 'sklearn.neighbors.typedefs',
 
 hiddenimports += collect_submodules('pyqtgraph')
 hiddenimports += collect_submodules('mne')
+if _MNE_NEEDS_MPL:
+    hiddenimports += ['matplotlib', 'matplotlib.pyplot']
+
 
 # --------------------------------------------------------------------------
 # Exclusions — pure size reduction, verified unused by the GUI
 # --------------------------------------------------------------------------
-excludes = [
-    'matplotlib',        # experiments/thesis_figures.py only, never the GUI
+excludes = ([] if _MNE_NEEDS_MPL else ['matplotlib']) + [
     'pandas',
     'tkinter',
     'IPython',
@@ -216,20 +231,27 @@ excludes = [
 # conda runtime DLLs (Windows)
 # --------------------------------------------------------------------------
 # conda puts shared libraries in <env>/Library/bin, which PyInstaller does not
-# scan. The one that matters is ffi-8.dll: _ctypes.pyd links against it, and
-# without it the frozen application dies on `import ctypes`. scipy then reports
-# "The scipy install you are using seems to be broken", which points at
-# entirely the wrong library and costs an hour if you believe it.
+# scan. Several CPython stdlib extension modules link against them, and each
+# missing one fails only at run time, in a different place, with an error that
+# names the wrong package:
+#
+#   _ctypes.pyd  -> ffi-8.dll     reported as "your scipy install is broken"
+#   pyexpat.pyd  -> libexpat.dll  surfaced through matplotlib's font manager
+#   _ssl, _hashlib, _sqlite3, _bz2, _lzma -> more of the same
+#
+# Chasing them individually means finding the next one when a clinician opens a
+# recording. The whole directory is ~19 MB against a ~1.4 GB bundle, so the
+# entire class of failure is bought out for a rounding error in size.
 binaries = []
 if sys.platform.startswith('win'):
     _conda_bin = os.path.join(sys.prefix, 'Library', 'bin')
     if os.path.isdir(_conda_bin):
-        for _dll in ('ffi-8.dll', 'ffi-7.dll', 'ffi.dll',
-                     'libcrypto-3-x64.dll', 'libssl-3-x64.dll'):
-            _p = os.path.join(_conda_bin, _dll)
-            if os.path.exists(_p):
-                binaries.append((_p, '.'))
-                print('spec: bundling conda DLL {}'.format(_dll))
+        _n = 0
+        for _f in sorted(os.listdir(_conda_bin)):
+            if _f.lower().endswith('.dll'):
+                binaries.append((os.path.join(_conda_bin, _f), '.'))
+                _n += 1
+        print('spec: bundling {} conda DLLs from Library/bin'.format(_n))
 
 a = Analysis(
     [os.path.join(REPO, 'gui', 'main.py')],
