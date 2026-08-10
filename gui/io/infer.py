@@ -36,17 +36,45 @@ def _calc_stft(s_):
 
 
 def _build_model():
-    # No os.chdir here. The old code changed the working directory into utils/
-    # with the comment "keras import paths expect this cwd", but models/ sits at
-    # the repository root and resolves through sys.path — the chdir was doing
-    # nothing except mutating global state that a frozen build cannot satisfy.
-    from models.deep_conv_lstm import ConvLstmNet
-    m = ConvLstmNet(epochs=1).setup(
-        (-1, 2 * SEGMENT_S - 1, len(CHANNELS_19), 125, 1))
+    """Build the detector and load the released weights.
+
+    Two graph builders, because the runtime differs by platform and both must
+    produce the *same* graph so the same `.h5` loads into either:
+
+    * `models/deep_conv_lstm.py` — the original authors' file, untouched. It is
+      what generated the training features, and it is what the reproduction
+      argument refers to. It needs Keras ≤ 2.5.
+    * `models/convlstm_tf2.py` — the identical graph in `tf.keras`, for
+      TensorFlow 2. Required on Apple Silicon, where TF 1.15 has no wheel.
+
+    Verified equivalent: same 384,846 parameters, predictions agreeing to
+    6.8 × 10⁻⁹ (`docs/portability.md`).
+
+    No os.chdir here. The old code changed the working directory into utils/
+    with the comment "keras import paths expect this cwd", but models/ sits at
+    the repository root and resolves through sys.path — the chdir was doing
+    nothing except mutating global state that a frozen build cannot satisfy.
+    """
     if not os.path.exists(WEIGHTS):
         raise RuntimeError(
             'Model weights not found at {}. The application folder is '
             'incomplete — re-copy it in full.'.format(WEIGHTS))
+
+    try:
+        from models.deep_conv_lstm import ConvLstmNet
+    except ImportError:
+        # Keras 2.6+ removed keras.layers.core and the Keras 1 style
+        # Model(input=..., output=...), so the legacy module cannot even be
+        # imported on a modern stack. Fall through rather than fail: the
+        # tf.keras graph is equivalent and loads the same weights.
+        from models.convlstm_tf2 import build_convlstm
+        model = build_convlstm(n_time=2 * SEGMENT_S - 1,
+                               n_electrodes=len(CHANNELS_19), n_freq=125)
+        model.load_weights(WEIGHTS)
+        return model
+
+    m = ConvLstmNet(epochs=1).setup(
+        (-1, 2 * SEGMENT_S - 1, len(CHANNELS_19), 125, 1))
     m.model.load_weights(WEIGHTS)
     return m.model
 

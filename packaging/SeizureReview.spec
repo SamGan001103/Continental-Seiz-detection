@@ -123,11 +123,10 @@ datas += collect_data_files('mne')
 hiddenimports = [
     'eval_config',
     'models',
-    'models.deep_conv_lstm',
-    'models.customCallbacks',
     'utils',
     'utils.pyst',
     'utils.preprocessing',
+    'utils.fastica_pinned',
     'gui.io.infer',
     'gui.io.cache',
     'gui.postprocess',
@@ -136,28 +135,53 @@ hiddenimports = [
     'pyedflib',
 ]
 
-# Keras 2.2.5 loads its backend by name at import time.
-hiddenimports += collect_submodules('keras')
-hiddenimports += ['keras.backend.tensorflow_backend']
+# The graph builder differs by runtime, so both are declared and the one that
+# imports wins at run time (see gui/io/infer._build_model).
+hiddenimports += ['models.convlstm_tf2']
 
-# TensorFlow 1.15's Python layer is heavily lazy-imported.
-hiddenimports += [
-    'tensorflow',
-    'tensorflow.python',
-    'tensorflow.python.ops',
-    'tensorflow.python.keras',
-    'tensorflow.python.platform',
-    'tensorflow_core',
-]
+# Which Keras/TensorFlow to pull in depends on what is installed. TF 1.15 with
+# standalone Keras is the Windows build; TF 2 with tf.keras is what runs on
+# Apple Silicon, where TF 1.15 has no wheel. Declaring TF 1 hidden imports on a
+# TF 2 machine makes PyInstaller fail on modules that do not exist.
+try:
+    import tensorflow as _tf
+    _TF_MAJOR = int(str(_tf.__version__).split('.')[0])
+except Exception:
+    _TF_MAJOR = 1
+print('spec: building against TensorFlow major version {}'.format(_TF_MAJOR))
+
+if _TF_MAJOR >= 2:
+    hiddenimports += collect_submodules('tensorflow.python.keras')
+    hiddenimports += ['tensorflow', 'tensorflow.python']
+    # models/deep_conv_lstm.py imports keras.layers.core, which TF2 removed, so
+    # declaring it here would only produce an unresolvable-import warning.
+else:
+    hiddenimports += ['models.deep_conv_lstm', 'models.customCallbacks']
+    # Keras 2.2.5 loads its backend by name at import time.
+    hiddenimports += collect_submodules('keras')
+    hiddenimports += ['keras.backend.tensorflow_backend']
+    # TensorFlow 1.15's Python layer is heavily lazy-imported.
+    hiddenimports += [
+        'tensorflow',
+        'tensorflow.python',
+        'tensorflow.python.ops',
+        'tensorflow.python.keras',
+        'tensorflow.python.platform',
+        'tensorflow_core',
+    ]
 
 # scipy/sklearn compiled helpers pulled in dynamically.
-hiddenimports += [
-    'scipy.special.cython_special',
-    'scipy._lib.messagestream',
-    'sklearn.utils._cython_blas',
-    'sklearn.neighbors.typedefs',
-    'sklearn.tree._utils',
-]
+hiddenimports += ['scipy.special.cython_special', 'scipy._lib.messagestream']
+# Private sklearn modules that existed in 0.22 and were removed later. Declaring
+# a module that does not exist only produces warnings, but a clean build log is
+# worth more than the two lines saved.
+for _m in ('sklearn.utils._cython_blas', 'sklearn.neighbors.typedefs',
+           'sklearn.tree._utils'):
+    try:
+        __import__(_m)
+        hiddenimports.append(_m)
+    except Exception:
+        pass
 
 hiddenimports += collect_submodules('pyqtgraph')
 hiddenimports += collect_submodules('mne')
@@ -221,8 +245,10 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    # .ico is Windows-only; PyInstaller rejects it on macOS/Linux.
     icon=(os.path.join(REPO, 'packaging', 'app.ico')
-          if os.path.exists(os.path.join(REPO, 'packaging', 'app.ico'))
+          if (sys.platform.startswith('win')
+              and os.path.exists(os.path.join(REPO, 'packaging', 'app.ico')))
           else None),
 )
 
