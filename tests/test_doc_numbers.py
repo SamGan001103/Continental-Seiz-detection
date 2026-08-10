@@ -66,14 +66,14 @@ class NumbersAgreeWithResults(unittest.TestCase):
 
     # -- event level ----------------------------------------------------
     def test_event_sensitivity(self):
-        self._both('event sensitivity', self.intended, '49.4')
+        self._both('event sensitivity', self.intended, '48.2')
 
     def test_false_alarm_rate(self):
         self._both('false alarms', self.intended, '204.4')
 
     def test_detected_count(self):
-        self.assertIn('42 of 85', self.intended)
-        self.assertIn('42/85', self.results)
+        self.assertIn('41 of 85', self.intended)
+        self.assertIn('41/85', self.results)
 
     # -- corpus ---------------------------------------------------------
     def test_corpus_description(self):
@@ -103,8 +103,8 @@ class DerivedProportionsAreConsistent(unittest.TestCase):
     """
 
     TOTAL_SEIZURES = 85
-    DETECTED_AT_DEFAULT = 42
-    NO_MODEL_RESPONSE = 19        # peak window score < 0.01
+    DETECTED_AT_DEFAULT = 41
+    NO_MODEL_RESPONSE = 16        # peak window score < 0.01
 
     @classmethod
     def setUpClass(cls):
@@ -112,15 +112,15 @@ class DerivedProportionsAreConsistent(unittest.TestCase):
 
     def test_share_of_all_seizures(self):
         pct = 100.0 * self.NO_MODEL_RESPONSE / self.TOTAL_SEIZURES
-        self.assertAlmostEqual(pct, 22.4, places=1)
-        self.assertIn('22 %', self.intended)
+        self.assertAlmostEqual(pct, 18.8, places=1)
+        self.assertIn('19 %', self.intended)
 
     def test_share_of_missed_seizures_uses_the_event_level_denominator(self):
         missed = self.TOTAL_SEIZURES - self.DETECTED_AT_DEFAULT
-        self.assertEqual(missed, 43)
+        self.assertEqual(missed, 44)
         pct = 100.0 * self.NO_MODEL_RESPONSE / missed
-        self.assertAlmostEqual(pct, 44.2, places=1)
-        self.assertIn('44 %', self.intended)
+        self.assertAlmostEqual(pct, 36.4, places=1)
+        self.assertIn('36 %', self.intended)
 
     def test_the_superseded_claim_is_gone(self):
         """'over half' was computed against a window-level denominator."""
@@ -128,7 +128,7 @@ class DerivedProportionsAreConsistent(unittest.TestCase):
 
     def test_the_document_names_the_denominator(self):
         """The fix is not the number, it is saying what it is a share of."""
-        self.assertIn('43 seizures', self.intended)
+        self.assertIn('44 seizures', self.intended)
 
 
 class ShippedDocumentsExist(unittest.TestCase):

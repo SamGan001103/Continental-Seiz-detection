@@ -46,8 +46,16 @@ Yang et al. 2022, §2.3 (arXiv:2103.10900v2):
 > artifact-free signals. […] Our artifact removal is implemented in Python 3.6 with the use of
 > library MNE v0.20."
 
-That is the entire specification. Note what it does **not** mention: any high-pass filter before
-ICA, any correlation threshold, and any limit on how many components to remove.
+That is the entire specification **in §2.3**. Note what it does not mention: any high-pass filter
+before ICA, any correlation threshold, and any limit on how many components to remove.
+
+> **But Appendix B.1 does contain an ICA ablation**, verified from the PDF on 2026-08-10:
+> *"We have trained a model without applying ICA and test on a small scale of the RPAH patient
+> (2011), the AUC score for non-ICA VS ICA is **0.8089 vs. 0.8993**."* An earlier version of this
+> document said the paper offered no evidence for the ICA step. That was wrong — it came from an
+> automated retrieval that never surfaced the appendix. The ablation compares *models trained*
+> with and without ICA; this project's ICA on/off experiment removes ICA from *inference only*,
+> which is a different question. See `docs/RESULTS.md` §4.
 
 ## 2. What the code does
 

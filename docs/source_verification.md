@@ -1,115 +1,143 @@
-# Source verification — what is checked against the papers, and what is not
+# Source verification — every external claim traced to the published paper
 
-*BMET4111 Thesis — Sam Gan. Verification pass 2026-08-10.*
+*BMET4111 Thesis — Sam Gan. Verified 2026-08-10 against the published PDF.*
 
-Every externally-sourced number in this repository, traced to its source and marked
-**VERIFIED**, **UNVERIFIED**, or **CONFLICTING**. The purpose is that no claim reaches the
-thesis whose provenance nobody has checked.
+Source: Yang, Truong, Maher, Nikpour, **Kavehei**, *Continental generalization of a human-in-the-loop
+AI system for clinical seizure recognition*, **Expert Systems With Applications 207 (2022) 118083**.
 
-> ### The single biggest gap: no papers are in the repository
->
-> The repo contains only the two two-channel SPMB PDFs and the ZUNA preprint. It does **not**
-> contain the source paper — Yang et al. 2022 — on which the entire reproduction argument rests.
-> Every check below was therefore done against the arXiv rendering, over the network, and cannot
-> be repeated offline or audited by an examiner working from this repository alone.
->
-> **Action: commit a PDF of arXiv:2103.10900 and of each comparator paper.** Until that is done,
-> the rows marked CONFLICTING below cannot be closed.
+> **This pass was done against the PDF, not an online rendering.** An earlier pass used automated
+> retrieval of the arXiv HTML and produced **two errors of its own**, both recorded below. The
+> lesson is in the record: automated extraction of tables and appendices from a rendered preprint
+> is not a substitute for reading the paper. **Commit the PDF to the repository.**
 
 ---
 
-## 1. Verified — consistent across independent retrievals
+## 1. Architecture — verified against §2.4.1 and Fig. 4
 
-These were extracted twice, in separate queries, and agreed both times.
+Every layer, checked by building the model and printing shapes.
 
-| claim in this repo | source | status |
+| paper (§2.4.1 / Fig. 4) | our model | |
 |---|---|---|
-| ICA: "12-second segments", "19 independent components", BSS approach | Yang §2.3 | **VERIFIED** verbatim |
-| ICA: eye movement "detected from two EEG channels, namely 'FP1' and 'FP2'" | Yang §2.3 | **VERIFIED** verbatim |
-| ICA: "We remove **those** independent sources" (plural) | Yang §2.3 | **VERIFIED** verbatim — the basis of deviation row 5 |
-| ICA: "implemented in Python 3.6 with the use of library **MNE v0.20**" | Yang §2.3 | **VERIFIED** verbatim |
-| STFT: "window length of 250 (or 1 second) and 50 % overlapping" | Yang §2.3 | **VERIFIED** verbatim |
-| STFT: "remove the DC component", shape "(n×23×125)" | Yang §2.3 | **VERIFIED** verbatim |
-| The paper offers **no ablation or evidence** that ICA improves performance | Yang, whole text | **VERIFIED** — only a general motivating sentence exists |
-| RPAH 1,006 sessions: **76.68 %**, **56.55** FA/24 h | Yang Table 2 | **VERIFIED** |
-| RPAH 66-session pilot + human arbiter: **92.19 %**, **0** FA | Yang Table 2 | **VERIFIED** |
-| RPAH AUC **0.82** | Yang, body text + Fig. 5 | **VERIFIED** — "An inference of the method on 14,590 hours of RPAH set achieved an AUC of 0.82 (Fig. 5)" |
-| Fig. 5 "TUH-TUH" = trained on TUH **train**, tested on TUH **development** | Yang Fig. 5 caption | **VERIFIED** verbatim — this is what licenses calling 0.84 a *dev-split* number |
-| SDR "combines the false alarms within 30 seconds into one" | Yang, footnote | **VERIFIED** — the basis for refusing to compare our FA/24 h to their 56.55 |
-| PWI/PEI lens: "the 85-percentile of PWI and PEI values for each frequency band over the **last two hours** as adaptive thresholds" | Yang §2.5 | **VERIFIED** verbatim |
-| The lens is **PWI**/PEI, not "PWA"/PEI | Yang §2.5 | **VERIFIED** — six documents in this repo had the wrong name; corrected |
+| input `23 × 19 × 125` | `(None, 23, 19, 125, 1)` | **match** |
+| batch normalisation ("BN" in Fig. 4) | `normal1` | **match** |
+| ConvLSTM 1: **16** kernels, `(n×19×3)`, stride `(1×2)` | `filters=16, kernel_size=(19,3), strides=(1,2)` | **match** |
+| ConvLSTM 2: **32** kernels, `(1×3)`, stride `(1×2)` | `filters=32, kernel_size=(1,3), strides=(1,2)` | **match** |
+| ConvLSTM 3: **64** kernels, `(1×3)`, stride `(1×2)` | `filters=64, kernel_size=(1,3), strides=(1,2)` | **match** |
+| Fig. 4 flatten width **896** | `flatten_1 → (None, 896)` | **match** — a very specific number to hit by accident |
+| FC **256**, sigmoid | `Dense(256, activation='sigmoid')` | **match** |
+| FC **2** (output) | `Dense(2)` → softmax | **match** |
+| dropout **0.5** on all FC layers | `Dropout(0.5)` ×2 | **match** |
+| Adam, lr **5 × 10⁻⁴** | `Adam(lr=5e-4)` | **match** |
 
-## 2. Conflicting — do not cite until resolved from a PDF
+Total parameters **384,846**. The architecture is a faithful implementation.
 
-Two independent retrievals of the *same* arXiv rendering returned **contradictory** answers.
-Automated extraction is not reliable here, and no correction has been made on the strength of it.
+**One environment deviation:** the paper states **Keras 2.0 and TensorFlow 1.4.0**; this project
+pins **Keras 2.2.5 / TF 1.15**. Untested, unlike the MNE gap. Lower priority than MNE because the
+forward pass was independently re-implemented in numpy and matched TF to 2.7 × 10⁻⁷, but it
+should be disclosed alongside the MNE row.
 
-| question | retrieval A | retrieval B | consequence |
+## 2. Numbers — verified from Table 3, Table 1, Table 7 and body text
+
+| claim in this repo | paper | |
+|---|---|---|
+| TUH v1.5.1, this work, AUC **0.84** | Table 3 **and** Table 2; body: "achieving a 0.84 AUROC score (see Table 3)" | **verified** |
+| RPAH 1,006 sessions: **0.82**, SDR, **76.68 %**, **56.55** | Table 3; Table 7 "Overall" row | **verified** |
+| RPAH 66-session pilot + arbiter: **92.19 %**, **0** FA | Table 3 | **verified** |
+| EPILEPSIAE **0.81** | Table 3 | **verified** |
+| TUH **dev** split = **170.3 h** | Table 1 | **verified** |
+| TUH is ~**83×** more seizure-dense than RPAH | body: "0.038" vs "3.16" seizures/hour → 3.16/0.038 = **83.2** | **verified** — our figure is right |
+| SDR "combines the false alarms within 30 s into one" | Table 3, footnote e | **verified** |
+| OVLP = "Any Overlap Metric" (Ziyabari et al. 2017) | Table 3 note + footnote 1 | **verified** |
+| Fig. 5 TUH-TUH = trained TUH **train**, tested TUH **development** | Fig. 5 caption | **verified** — licenses calling 0.84 a dev-split number |
+
+### Comparator attribution — settled, and our code was right
+
+| dataset | sensitivity | FA/24 h | reference **per Table 3** |
 |---|---|---|---|
-| Does Table 2 have an **AUC column**? | column list ends `… Reference, Sensitivity, FA/24 hours` — **no AUC** | column list includes `… Seizure length, AUC, Evaluation method, …` — **has AUC** | `RESULTS.md` §1 presents its table as "Table 2" *including* an AUC column. If retrieval A is right, that citation is wrong and 0.84 belongs to Fig. 5 / body text. |
-| Where does **0.84** appear? | body text, Fig. 5 | body text **and Table 2**; one quoted sentence says "achieving a 0.84 AUROC score (**see Table 3**)" | The paper may itself point at Table 3, not Table 2. |
+| TUH v1.1.0 | 39.15 % | 22.83 | **Shah et al. (2017)** |
+| TUH v1.4.0 | 30.83 % | 6.75 | **Golmohammadi et al. (2020)** |
 
-**Resolution required:** open the PDF and read Table 2's header row. This is a two-minute check for
-someone holding the paper, and it cannot be done reliably any other way. **Omid Kavehei is an
-author** (Yang, Truong, Maher, Nikpour, Kavehei) — the fastest route is to ask.
+This confirms `experiments/comparable_scoring.py`'s **code** and `thesis_writing_plan.md`, and
+refutes that file's own **docstring**, which said "Golmohammadi" for both and gave v1.4.**1**.
+Fixed. The earlier automated retrieval had reported Table 3's Reference column as "Golmohammadi
+et al." for both rows — it was wrong.
 
-Until then, `RESULTS.md` §1 should say "Table 2 and Fig. 5" rather than "Table 2" alone, and the
-0.84 should be attributed to the text.
+## 3. Two errors the automated pass introduced, now corrected
 
-## 3. Attribution inconsistency inside this repository
+**(a) "The paper provides no ablation that ICA improves performance."** **False.** Appendix B.1:
 
-`experiments/comparable_scoring.py` disagrees with **itself**:
+> "We have trained a model without applying ICA and test on a small scale of the RPAH patient
+> (2011), the AUC score for non-ICA VS ICA is **0.8089 vs. 0.8993**"
 
-| | TUH v1.1.0 · 39.15 % · 22.83 | TUH v1.4.x · 30.83 % · 6.75 |
-|---|---|---|
-| its own docstring (lines 9–10) | "Golmohammadi et al." | "Golmohammadi et al." |
-| its own code (lines 56–57) | **"Shah et al. 2017"** | "Golmohammadi et al. 2020" |
-| `docs/thesis_writing_plan.md` | "Shah et al. 2017" | "Golmohammadi et al. 2020 (TUH **v1.4.0**)" |
-| Yang et al. Table 2 | "Golmohammadi et al." | "Golmohammadi et al." (TUH **v1.4.1**) |
+The retrieval never surfaced the appendix. See `RESULTS.md` §4 for why this does **not** conflict
+with our own ICA on/off result — theirs compares *models trained* with and without ICA, ours
+removes ICA from *inference only* using ICA-trained weights. Different questions.
 
-External evidence is genuinely split. A literature search surfaced *"Shah et al. … reported the
-best results of **39 %** on using all 22 channels"* — consistent with 39.15 % being Shah — and
-*"Golmohammadi … delivers **30 %** sensitivity at **7** false alarms per 24 hours"* — consistent
-with 30.83 % / 6.75 being Golmohammadi. So the code's labelling may well be more accurate than
-the source paper's own table.
+**(b) "The lens is PWI/PEI, not PWA/PEI."** **False, and the repo was right before I changed it.**
+§2.5:
 
-**Not silently "fixed" in either direction.** Both are plausible and the thesis will be cited
-against whichever is written. Resolve by reading the two comparator papers directly, then make
-the docstring, the code and the writing plan agree. Note also the **v1.4.0 vs v1.4.1**
-discrepancy, which is a separate error in `thesis_writing_plan.md`.
+> "The lens is a real-time signal processing method called **periodic waveform analysis (PWA)**…
+> **Periodic energy index (PEI)** and **periodic waveform index (PWI)** values … were calculated"
 
-## 4. Verified from this repository's own code, not from the paper
+PWA is the *method*; PEI and PWI are the two *indices*. The paper itself writes "deterministic
+methods PWA and PEI". Seven documents were renamed on the strength of a bad retrieval and have
+been reverted.
 
-Claims where the *evidence is our code*, and which the paper does not state. These are honest as
-long as they are attributed to the code and not to the publication.
+## 4. The lens — full specification, now available (§2.5, Appendix B.3)
 
-| claim | evidence | note |
-|---|---|---|
-| The RPAH model is **20-channel** (19 EEG + ECG) | `utils/ICA_load_data_elec.py:285` | The paper does **not** state the RPAH channel count. `RESULTS.md` §1 already cites the code line rather than the paper — keep it that way. |
-| Training features came from the same `ica_arti_remove` as inference | `utils/ICA_load_data_elec.py:15` imports it; `None` → skip handled identically | **VERIFIED** by test (`tests/test_paper_conformance.py`) |
-| `threshold=2.0` is a **z-score**, not a Pearson *r* | MNE 0.19.2 `find_bads_eog` introspection | The paper says only "Pearson correlation" |
-| `find_bads_eog` band-passes the channel **1–10 Hz** first | MNE defaults | Not mentioned in the paper |
-| MNE **0.19.2 and 0.20.0 are bit-identical** on this pipeline | `experiments/diag_mne_version.py`, 25/25 exact | So the version deviation from the paper is numerically immaterial |
+More detail than was previously known, and it changes what a reimplementation would have to do:
 
-## 5. Method references cited in this repository
+- It is a **second stage** applied to regions the network already flags at **probability ≥ 10 %**
+  — not at 0.5.
+- PWI = *E<sub>τ</sub> / N<sub>τ</sub>*, the ratio of total harmonic energy to signal energy;
+  PEI = max *E<sub>τ</sub>* over the period. Both computed on the **raw signal**, per band.
+- Bands: **0–3, 4–7, 8–12, 13–30, > 31 Hz**.
+- Threshold: "the **85-percentile** of PWI and PEI values for each frequency band over the **last
+  two hours**".
+- **Firing rule: "If the PWI and PEI values are higher than the corresponding adaptive thresholds
+  in *all* frequency bands, the period will be reported."** An AND across all five bands and both
+  indices — far stricter than a single adaptive threshold, and the detail most likely to be missed
+  by a casual reimplementation.
 
-| reference | used for | status |
-|---|---|---|
-| Naeini et al. 2015; Bröcker 2009 | ECE in positive-class reliability form | cited in `experiments/calibration.py`; **not independently re-checked** |
-| Guo et al. | the confidence-vs-accuracy ECE form we *reject* | **not independently re-checked** |
-| Murphy | Brier REL − RES + UNC decomposition | **not independently re-checked** |
-| Winkler et al. 2015 | 1–2 Hz as the standard ICA pre-filter | quoted in `ica_implementation_review.md`; **not independently re-checked** |
-| Wharton et al. 1994 | cognitive walkthrough method | **not independently re-checked** |
-| kN², k ≥ 20 samples-per-component heuristic | ICA window-length adequacy | **not independently re-checked** — this one underpins §3.4 and should be |
+This confirms the `RESULTS.md` §3b analysis: the lens is a *confirmation filter*, and our
+`gui/adaptive.py` is explicitly **not** a reimplementation of it.
 
-**These are the next verification target.** They are used to *justify method choices*, so an
-examiner may well check them, and none has been read in this pass.
+## 5. Internal inconsistencies in the paper itself
+
+Worth knowing before quoting, since an examiner may hit them:
+
+| | |
+|---|---|
+| **FA/24 h: 56.22 vs 56.55** | Body §3 says "56.22 false alarms per 24 hours"; the abstract, Table 3 and Table 7 all say **56.55**. Quote **56.55**. |
+| **RPAH seizure count: 565 vs 536** | Body §1.3 says "The RPAH dataset has 565 seizures"; Fig. 1(a) says **536**. |
+| **"three fully connected layers"** | §2.4.1 says three, then describes **two** ("output sizes of 256 and 2"), which is what Fig. 4 shows and what the code implements. |
+
+## 6. Claims resting on our code, not the paper
+
+| claim | status |
+|---|---|
+| The RPAH model is **20-channel** (19 EEG + ECG) | **The paper does not state this.** Fig. 3(a) shows a 19-electrode 10–20 layout; Table 4's caption calls EPILEPSIAE a "scalp-EEG (ECG)" dataset. `RESULTS.md` cites `utils/ICA_load_data_elec.py:285` — keep it attributed to the code, never to the publication. |
+| Training used the same `ica_arti_remove` as inference | **verified** by test |
+| `threshold=2.0` is a z-score, not a Pearson *r* | MNE introspection; paper says only "Pearson correlation" |
+| MNE 0.19.2 ≡ 0.20.0, bit-identical | `experiments/diag_mne_version.py`, 25/25 exact |
+
+## 7. Still not independently checked
+
+The method references that justify *our* analytical choices. None read in either pass.
+
+Naeini et al. 2015 / Bröcker 2009 (ECE form) · Guo et al. (the form we reject) · Murphy (Brier
+decomposition) · Winkler et al. 2015 (1–2 Hz ICA pre-filter) · Wharton et al. 1994 (cognitive
+walkthrough) · the *kN²*, *k ≥ 20* samples-per-component heuristic underpinning
+`ica_implementation_review.md` §3.4.
+
+**Next verification target.**
 
 ---
 
-## What this pass changed
+## Also confirmed
 
-Nothing in the numbers. It changed what is *claimed to be known*: the §1 rows are now backed by
-verbatim quotes retrieved twice, the §2 rows are flagged as unresolved rather than presented as
-fact, and §3 documents an internal contradiction that had been sitting in the code and the
-writing plan simultaneously.
+The paper's **code availability** statement points at
+`https://github.com/NeuroSyd/Continental-Seiz-detection` — the upstream of this repository. The
+implementation being reproduced here is the authors' own released code, which is why the ICA
+deviations in §2b of `ica_implementation_review.md` are *the authors' code disagreeing with the
+authors' prose*, not a transcription error by this project.

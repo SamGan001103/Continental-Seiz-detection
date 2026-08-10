@@ -2,12 +2,17 @@
 
 WHY THIS EXISTS
 
-The source paper's Table 2 reports **no sensitivity and no FA/24 h for its own TUH row** — only
-AUC 0.84. But the same table cites two published TUH event-level results as comparators, and
-those ARE the numbers this project can legitimately be measured against:
+The source paper's **Table 3** reports **no sensitivity and no FA/24 h for its own TUH row** —
+only AUC 0.84. But the same table cites two published TUH event-level results as comparators,
+and those ARE the numbers this project can legitimately be measured against:
 
-    TUH v1.1.0   Golmohammadi et al.   OVLP   39.15 %   22.83 FA/24 h
-    TUH v1.4.1   Golmohammadi et al.   OVLP   30.83 %    6.75 FA/24 h
+    TUH v1.1.0   Shah et al. (2017)            OVLP   39.15 %   22.83 FA/24 h
+    TUH v1.4.0   Golmohammadi et al. (2020)    OVLP   30.83 %    6.75 FA/24 h
+
+Corrected 2026-08-10 against the published PDF. This docstring previously attributed both rows
+to Golmohammadi and gave v1.4.1, contradicting the labels used in the code below; Table 3 shows
+the code was right. It also said "Table 2" — Table 2 is a different table (baseline model
+comparison on TUH, columns Model / Reference / Input Domain / AUC).
 
 Both use **OVLP** (any-overlap) scoring. The paper's own RPAH figures (76.68 % @ 56.55) use
 **SDR**, whose footnote states it "combines the false alarms within 30 seconds into one".

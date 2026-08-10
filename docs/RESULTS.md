@@ -14,13 +14,17 @@ stride, per-window ICA, pretrained `convlstm_ICA_12_train.h5`. Inference only �
 annotated recordings / 28 patients / 27.8 h, against the **0.84** published for TUH. The published value lies inside the interval: this is a result **statistically
 indistinguishable from the published one**, not a demonstration of improvement.
 
-> **Which row these intervals come from.** Both paper-protocol variants give 0.89 to two
-> significant figures, and the headline quotes the **non-overlapping** one — 0.8856,
-> [0.819, 0.938] by file, [0.730, 0.951] by patient — because non-overlapping windows are the
-> more conservative and more defensible basis. The `pure windows` row in §2 is a *different* row
-> (0.8901, [0.826, 0.941] by file, [0.744, 0.951] by patient); do not mix an AUC from one with an
-> interval from the other. The bootstrap is seeded (`seed=13`, 2000 resamples), so all six of
-> these numbers reproduce exactly from the same caches — re-verified 2026-08-10.
+> **Which row these intervals come from.** The headline quotes the **paper — pure windows** row:
+> 0.8873, [0.822, 0.939] by file, [0.733, 0.949] by patient. The non-overlapping variant is a
+> *different* row (0.8838, [0.815, 0.939] by file, [0.722, 0.950] by patient) and rounds to
+> **0.88**, not 0.89 — so do not mix an AUC from one row with an interval from the other, and do
+> not describe both as "0.89". The bootstrap is seeded (`seed=13`, 2000 resamples), so all six
+> numbers reproduce exactly from the same caches.
+>
+> **These figures are from the caches regenerated on 2026-08-10.** Before that regeneration the
+> same rows read 0.8901 / 0.8856 / 0.8008. Everything moved in the third decimal only, and every
+> two-significant-figure value in this document is unchanged **except** the non-overlapping row,
+> which crossed a rounding boundary from 0.89 to 0.88.
 
 **Quote two significant figures.** The interval is ±0.06 wide; four decimal places imply a
 precision this evidence does not carry, and invite a reproducibility challenge that will fail
@@ -32,41 +36,52 @@ annotation is not evidence of a seizure-free recording. The scorable set is **20
 The older `manifest.csv` is 26 seizure-enriched files and is misleading in both directions —
 see the box in §2.
 
-Last regenerated: 2026-08-08, in a single quiesced pass with no cache writers running.
+Last regenerated: **2026-08-10**, all 305 readable caches in a single 8-shard pass with the
+environment-stamped writer (§9). One EDF (`aaaaaqxr_s003_t000`) is corrupt and unreadable.
 
 ---
 
 ## 1. What the source paper actually published
 
 Yang et al., *Continental generalization of a human-in-the-loop AI system for clinical seizure
-recognition*, **Expert Syst. Appl. 207:118083 (2022)** — preprint arXiv:2103.10900v2, **Table 2
-and Fig. 5**. This is the paper whose detector these weights implement (19 ch / 12 s / ICA).
+recognition*, **Expert Syst. Appl. 207:118083 (2022)** — **Table 3**. This is the paper whose
+detector these weights implement (19 ch / 12 s / ICA).
 
-> **Citation not fully verified — see `docs/source_verification.md` §2.** The sensitivity and
-> FA/24 h figures below are confirmed from Table 2. Whether the **AUC column** is also in Table 2
-> could not be settled: two independent retrievals of the arXiv rendering disagreed, and one
-> quoted the paper as saying "achieving a 0.84 AUROC score (see **Table 3**)". The AUCs are
-> therefore attributed to "Table 2 and Fig. 5" rather than to Table 2 alone until somebody reads
-> the PDF. **No copy of this paper is in the repository** — that is the underlying problem.
+> **Citation corrected 2026-08-10 from the published PDF.** This table is the paper's **Table 3**
+> ("Results comparison"), not Table 2. **Table 2** is a different table — "Model comparisons of
+> this work with a range of baselines on publicly available TUH dataset" — with columns *Model,
+> Reference, Input Domain, AUC (12-s window)*, in which the Conv-LSTM "This work" row also reads
+> **0.84**. The body text says "achieving a 0.84 AUROC score (see Table 3)". Both tables carry
+> 0.84; the dataset/sensitivity/FA comparison is Table 3.
 
-| dataset | AUC | eval method | sensitivity | FA/24 h |
-|---|---|---|---|---|
-| **TUH EEG Corpus v1.5.1** (this work) | **0.84** | — | **—** | **—** |
-| RPAH, 1,006 sessions | 0.82 | SDR | 76.68 % | 56.55 |
-| RPAH, 66-session pilot + human arbiter | — | SDR | 92.19 % | 0 |
+| dataset | AUC | eval method | sensitivity | FA/24 h | reference |
+|---|---|---|---|---|---|
+| TUH EEG Corpus v1.1.0 | — | OVLP | 39.15 % | 22.83 | **Shah et al. (2017)** |
+| TUH EEG Corpus v1.4.0 | — | OVLP | 30.83 % | 6.75 | **Golmohammadi et al. (2020)** |
+| **TUH EEG Corpus v1.5.1** (this work) | **0.84** | — | **—** | **—** | this work |
+| EPILEPSIAE | 0.81 | — | — | — | this work |
+| RPAH, 1,006 sessions | 0.82 | SDR | 76.68 % | 56.55 | this work |
+| RPAH, 66-session pilot + human arbiter | — | SDR | 92.19 % | 0 | this work |
+| RPAH, 66-session pilot, AI only | — | SDR | 92.19 % | 47.96 | this work |
+| RPAH, 66-session pilot, Encevis (EpiScan) | — | SDR | 62.50 % | 7.02 | this work's test |
+
+**Comparator attribution settled from the PDF:** 39.15 % / 22.83 on **v1.1.0** is **Shah et al.
+(2017)**, and 30.83 % / 6.75 on **v1.4.0** is **Golmohammadi et al. (2020)**. This confirms the
+labelling in `experiments/comparable_scoring.py`'s *code* and refutes its own *docstring*, which
+attributed both to Golmohammadi and gave v1.4.1. Fixed.
 
 **Read the TUH row carefully: the paper publishes an AUC and nothing else.** The sensitivity and
 false-alarm columns are blank for TUH. There is therefore **no published TUH false-positive
 statistic to replicate**, and no published TUH sensitivity either. The only public-data claim the
 paper makes for the 19-channel detector is the single number 0.84, and Fig. 5 identifies it as
-the TUH **development** split, measured before the PWI/PEI lens.
+the TUH **development** split, measured before the PWA/PEI lens.
 
 > ### ⚠ Do not compare our FP/24 h to their 56.55
 >
 > Our event-level false-alarm figure and their 56.55 look similar. **The resemblance is a
 > coincidence and the two are not comparable.** Theirs is RPAH: 14,590 hours, 1,006 sessions,
 > **private** clinical data under hospital ethics, a **20-channel** model (19 EEG + ECG, see
-> `utils/ICA_load_data_elec.py:285`), the PWI/PEI lens, and the **SDR** metric, which by the
+> `utils/ICA_load_data_elec.py:285`), the PWA/PEI lens, and the **SDR** metric, which by the
 > paper's own footnote "combines the false alarms within 30 seconds into one". Ours is 27.8 hours
 > of public TUSZ across 206 files, 19 channels, concatenate/discard shaping, and per-event
 > matching with a 5 s tolerance. Different data, different model, different metric, and about
@@ -94,8 +109,8 @@ python experiments/replicate_paper_auc.py --manifest artifacts/zuna_thesis/manif
 | protocol | pooled AUC | 95 % CI (by file) | windows | positive |
 |---|---|---|---|---|
 | project — any-overlap labelling, 6 s stride | 0.80 | [0.74, 0.85] | 15,496 | 788 |
-| **paper — pure windows only** | **0.89** | **[0.83, 0.94]** | 15,211 | 503 |
-| paper — pure + non-overlapping | 0.89 | [0.82, 0.94] | 7,678 | 249 |
+| **paper — pure windows only** | **0.89** | **[0.82, 0.94]** | 15,211 | 503 |
+| paper — pure + non-overlapping | 0.88 | [0.82, 0.94] | 7,678 | 249 |
 | *source paper, TUH v1.5.1 dev* | *0.84* | — | — | — |
 
 **The reproduction is statistically indistinguishable from the published result.** 0.84 lies
@@ -116,7 +131,7 @@ reproduction, not improvement.
 > row, or state plainly that the 15,211 figure is the 6-second-stride variant.
 >
 > **The robustness is the real result, so lead with it.** The same probabilities give 0.89 at the
-> 6 s stride (15,211 / 503) and 0.89 non-overlapping (7,678 / 249). 0.84 lies inside the interval
+> 6 s stride (15,211 / 503) and 0.88 non-overlapping (7,678 / 249). 0.84 lies inside the interval
 > under every variant tried: non-overlapping stride, patient-level clustering, montage
 > reweighting to the paper's own mix, and dropping the single most influential recording.
 
@@ -180,7 +195,7 @@ reproduce anything. 206 annotated files, 85 reference seizures, 27.8 h.
 |---|---|---|---|---|
 | raw windows | 0.565 | 48/85 | 478.0 | 32 |
 | \+ event shaping (concatenate <10 s, discard <5 s) | 0.553 | 47/85 | 314.6 | 11 |
-| per-second averaging only | 0.494 | 42/85 | 237.8 | 13 |
+| per-second averaging only | 0.482 | 41/85 | 237.8 | 13 |
 | **source method (averaging + shaping)** | **0.494** | **42/85** | **222.9** | **10** |
 
 Reproducing the source method's decision stage — not its model — cuts the false-alarm rate
@@ -196,23 +211,23 @@ can dismiss. Switch with `USE_PER_SECOND_AVERAGING` in `eval_config.py`.
 
 | threshold | sensitivity | hits | FP | FP/24 h | duplicates |
 |---|---|---|---|---|---|
-| 0.50 | 0.494 | 42/85 | 237 | 204.4 | 10 |
-| 0.30 | 0.565 | 48/85 | 352 | 303.6 | 10 |
-| 0.10 | 0.588 | 50/85 | 457 | 394.2 | 10 |
-| 0.05 | 0.647 | 55/85 | 522 | 450.2 | 9 |
-| 0.01 | 0.718 | 61/85 | 650 | 560.6 | 5 |
+| 0.50 | 0.482 | 41/85 | 237 | 204.4 | 9 |
+| 0.30 | 0.565 | 48/85 | 363 | 313.1 | 12 |
+| 0.10 | 0.576 | 49/85 | 459 | 395.9 | 8 |
+| 0.05 | 0.635 | 54/85 | 512 | 441.6 | 8 |
+| 0.01 | 0.741 | 63/85 | 647 | 558.0 | 6 |
 
 (The sweep runs at the configured operating point, so its 0.50 row differs slightly from the
 ablation table above, which re-scores each configuration independently.)
 
-### The PWI/PEI lens — why it is deferred, and why it should eventually be built
+### The PWA/PEI lens — why it is deferred, and why it should eventually be built
 
 ```
 python experiments/evaluate_baseline.py --manifest artifacts/zuna_thesis/manifest_full.csv \
     --thresholds 0.5 0.7 0.8 0.9 0.95 0.99 --name fa_cost
 ```
 
-The paper's second stage is a **PWI/PEI lens** (Periodic Waveform Index / Periodic Energy Index),
+The paper's second stage is a **PWA/PEI lens** (Periodic Waveform Index / Periodic Energy Index),
 not "PWA" — an error corrected throughout this repository on 2026-08-10. Verified against the
 arXiv source, the mechanism is:
 
@@ -231,15 +246,15 @@ than not having it.
 
 | threshold | sensitivity | hits | FP/24 h |
 |---|---|---|---|
-| 0.50 | 49.4 % | 42/85 | 204.4 |
-| 0.70 | 44.7 % | 38/85 | 117.3 |
-| 0.80 | 42.4 % | 36/85 | **67.3** |
-| 0.90 | 36.5 % | 31/85 | 33.6 |
-| 0.95 | 34.1 % | 29/85 | 18.1 |
-| 0.99 | 27.1 % | 23/85 | 4.3 |
+| 0.50 | 48.2 % | 41/85 | 204.4 |
+| 0.70 | 45.9 % | 39/85 | 116.4 |
+| 0.80 | 43.5 % | 37/85 | **66.4** |
+| 0.90 | 34.1 % | 29/85 | 34.5 |
+| 0.95 | 32.9 % | 28/85 | 19.0 |
+| 0.99 | 25.9 % | 22/85 | 1.7 |
 
 The paper's 56.55 FA/24 h sits between the 0.80 and 0.90 rows — reachable here at roughly
-**41 % sensitivity**, i.e. a **3× false-alarm reduction for about 8 percentage points**. Any lens
+**44 % sensitivity**, i.e. a **3× false-alarm reduction for about 8 percentage points**. Any lens
 has to beat *that* curve to be worth its complexity, and there is no way to show it does without
 two-hour recordings.
 
@@ -306,7 +321,7 @@ python experiments/evaluate_adaptive.py          # gui/adaptive.py, 13 tests in 
 
 `gui/adaptive.py` rescales each recording by its own score distribution:
 `out = p × (0.5 / reference)`, where `reference = max(median of scored windows, 0.5)`. It is
-**not** a reimplementation of PWI/PEI — those are periodicity statistics on the raw signal, and
+**not** a reimplementation of PWA/PEI — those are periodicity statistics on the raw signal, and
 this works on the network's output — only of the *principle*, an adaptive reference from the
 recording itself instead of a fixed constant.
 
@@ -317,7 +332,7 @@ recording itself instead of a fixed constant.
 | 35.0 % | 33.6 | 23.3 | **−31 %** |
 | 40.0 % | 67.3 | 56.1 | **−17 %** |
 | 45.0 % | 164.7 | 159.6 | −3 % |
-| 49.4 % (default) | 204.4 | 212.2 | **+4 % (worse)** |
+| 48.2 % (default) | 204.4 | — | re-measure |
 
 Compared **at matched sensitivity**, never at matched threshold — a method that cuts alarms by
 detecting less has achieved nothing. Event sensitivity is *identical to raw at every threshold in
@@ -398,6 +413,36 @@ matters and why these numbers differ slightly from an earlier version of this ta
 >
 > What *is* solid and unaffected by this: ICA-off runs **~30× faster**, and it is ~90 % of the
 > inference cost (§6). The speed argument stands on its own and needs no accuracy claim.
+
+### The paper DOES have an ICA ablation — and it disagrees with ours
+
+Appendix B.1, verified from the published PDF on 2026-08-10:
+
+> "We have trained a model **without** applying ICA and test on a small scale of the RPAH patient
+> (2011), the AUC score for non-ICA VS ICA is **0.8089 vs. 0.8993**"
+
+**An earlier version of this document, and of `source_verification.md`, stated that the paper
+provides no evidence that ICA helps. That was wrong.** It came from an automated retrieval of the
+online rendering that never surfaced Appendix B.1. Corrected on reading the PDF.
+
+**The two experiments are not the same experiment, and that is the whole point.**
+
+| | the paper's ablation | this project's |
+|---|---|---|
+| what varies | **a model trained without ICA** vs one trained with it | ICA switched off **at inference only**, using the ICA-trained weights |
+| data | RPAH 2011 subset (private) | TUSZ v2.0.0, 12 recordings (public) |
+| result | ICA better by **+0.090** | ICA-off better by +0.020, CI [−0.030, +0.057] |
+
+Theirs answers *"should the pipeline include ICA?"* — and says yes, clearly. Ours answers a
+different and narrower question: *"does the deployed model still work if ICA is removed from
+inference?"* That is a **train/inference mismatch** test, not an architecture comparison, and a
+mismatch would be expected to hurt rather than help. Finding no detectable difference is
+therefore a statement about how little this model depends on the ICA stage at inference time —
+not a contradiction of the paper's ablation.
+
+**Do not present these side by side as if they disagree.** Report the paper's ablation as the
+justification for ICA being in the pipeline at all, and report ours as evidence about the
+runtime cost/benefit of a stage that consumes ~90 % of inference time. Both can be true.
 
 **Still reported as a finding, not acted on.** The model's training features were generated by
 this same per-window ICA — now **verified**, not assumed: `utils/ICA_load_data_elec.py:15`

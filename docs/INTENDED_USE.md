@@ -68,13 +68,13 @@ Measured on 206 annotated recordings from the TUH Seizure Corpus
 |---|---|
 | Window-level AUC | **0.89**, 95 % CI [0.73, 0.95] by patient |
 | Published AUC (source paper) | 0.84 — inside the interval |
-| Event sensitivity @ threshold 0.5 | **49.4 %** (42 of 85 seizures) |
+| Event sensitivity @ threshold 0.5 | **48.2 %** (41 of 85 seizures) |
 | False alarms | **204.4 per 24 h** |
 
 **The two numbers that matter to a reviewer:**
 
-> **About half of seizures are missed.** At the default threshold the detector
-> finds 42 of 85. A recording with no proposed event has **not** been shown to
+> **More than half of seizures are missed.** At the default threshold the detector
+> finds 41 of 85. A recording with no proposed event has **not** been shown to
 > be seizure-free. The software cannot be used to skip recordings.
 
 > **Most proposals are wrong.** At ~204 false alarms per 24 h, the large
@@ -82,8 +82,8 @@ Measured on 206 annotated recordings from the TUH Seizure Corpus
 > reviewer's job is to reject them. It is why the interface is built around
 > fast rejection.
 
-**19 of the 85 reference seizures (22 %) produce no model response at all** —
-their peak window score never exceeds 0.01. That is 44 % of the 43 seizures
+**16 of the 85 reference seizures (19 %) produce no model response at all** —
+their peak window score never exceeds 0.01. That is 36 % of the 44 seizures
 missed at the default threshold. Lowering the threshold does not recover them:
 reaching them would require a setting that also floods the reviewer with
 background. This is a limitation of the model's discrimination, not of the

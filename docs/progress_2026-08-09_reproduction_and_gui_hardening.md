@@ -34,7 +34,7 @@ superseded by this work.**
 `convlstm_ICA_12_train.h5` are 19-channel / 12-second / ICA — the configuration of the **2022
 continental-generalization** paper (ESWA 207:118083), not the two-channel SPMB 2020 paper the
 docs were measuring against. Read from arXiv:2103.10900v2 Table 2 and Fig. 5, that paper's one
-publicly checkable claim is **AUC 0.84 on TUH v1.5.1 dev**, before the PWI/PEI lens. Its
+publicly checkable claim is **AUC 0.84 on TUH v1.5.1 dev**, before the PWA/PEI lens. Its
 sensitivity and FA/24 h columns for TUH are **blank**, so no event-level number in this project
 has a published counterpart. Its RPAH figures need private data and a 20-channel model.
 

@@ -229,7 +229,7 @@ Our first-10 comparison used:
 - 12-second windows.
 - 6-second stride.
 - Direct event thresholding at `0.5`.
-- No paper-style PWI/PEI lens post-processing.
+- No paper-style PWA/PEI lens post-processing.
 - No human arbiter workflow.
 - Event-level `.csv_bi` matching.
 
