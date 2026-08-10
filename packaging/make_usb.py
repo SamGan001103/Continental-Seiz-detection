@@ -47,7 +47,8 @@ SOURCE_ITEMS = [
 ]
 DOC_ITEMS = [
     'DEPLOYMENT.md', 'INTENDED_USE.md', 'RESULTS.md', 'portability.md',
-    'source_verification.md', 'BUILD_ON_MAC.md', 'known_issues.md',
+    'source_verification.md', 'BUILD_ON_MAC.md', 'BUILD_ON_LINUX.md',
+    'known_issues.md',
 ]
 
 
