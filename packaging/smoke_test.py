@@ -107,24 +107,42 @@ def make_synthetic_edf(path, seconds=60, fs=250):
         x += 15.0 * rng.randn(n)
         sigs.append(x.astype(np.float64))
 
-    w = pyedflib.EdfWriter(path, len(labels),
-                           file_type=pyedflib.FILETYPE_EDFPLUS)
+    # The two stacks want mutually exclusive spellings of the sample rate, and
+    # supplying both does not satisfy either: pyedflib 0.1.22 (the Python 3.6
+    # environment) reads ch['sample_rate'] and raises KeyError without it,
+    # while 0.1.42 (the modern stack) raises FutureWarning if 'sample_rate' is
+    # present *at all*, whether or not 'sample_frequency' accompanies it —
+    # edfwriter.update_header, "raise exception, can be removed in later
+    # release". Feature-detected by attempt rather than by parsing a version
+    # string, so a future release that drops the legacy key needs no change
+    # here. The modern spelling is tried first; only the 3.6 stack reaches the
+    # retry.
+    def _write(rate_key):
+        w = pyedflib.EdfWriter(path, len(labels),
+                               file_type=pyedflib.FILETYPE_EDFPLUS)
+        try:
+            w.setSignalHeaders([{
+                'label': 'EEG {}-REF'.format(lab),  # TUH-style; montage is partial-match
+                'dimension': 'uV',
+                rate_key: fs,
+                'physical_max': 5000.0,
+                'physical_min': -5000.0,
+                'digital_max': 32767,
+                'digital_min': -32768,
+                'transducer': '',
+                'prefilter': '',
+            } for lab in labels])
+            w.writeSamples([s for s in sigs])
+        finally:
+            try:
+                w.close()
+            except Exception:              # noqa: BLE001 — already failing
+                pass
+
     try:
-        w.setSignalHeaders([{
-            'label': 'EEG {}-REF'.format(lab),   # TUH-style; montage is partial-match
-            'dimension': 'uV',
-            'sample_rate': fs,
-            'sample_frequency': fs,
-            'physical_max': 5000.0,
-            'physical_min': -5000.0,
-            'digital_max': 32767,
-            'digital_min': -32768,
-            'transducer': '',
-            'prefilter': '',
-        } for lab in labels])
-        w.writeSamples([s for s in sigs])
-    finally:
-        w.close()
+        _write('sample_frequency')
+    except (FutureWarning, KeyError, TypeError, ValueError):
+        _write('sample_rate')
     return path
 
 
