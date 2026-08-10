@@ -109,6 +109,103 @@ to rule that out before spending an hour on it.
 
 ---
 
+## 3b. Preparing the USB stick
+
+```
+packaging\build_app.bat            # or: bash packaging/build_app.sh
+python packaging/make_usb.py --dest E:/SeizureReview
+```
+
+`make_usb.py` is **additive**: run it once per platform, pointing at the same stick, and it adds
+that platform's build without disturbing the others. This is not a convenience — **PyInstaller
+cannot cross-compile**, so a macOS build has to be made on a Mac and a Linux build on Linux.
+There is no way to produce all three from one machine, and the script writes an explicit
+`NOT_BUILT.txt` into any slot it cannot fill rather than leaving an empty folder that looks like
+a copy failure.
+
+```
+SeizureReview/
+    START_HERE.txt      plain text, readable on any machine, no viewer needed
+    windows/            ~1.2 GB
+    macos/              built on the Mac
+    linux/              built on Linux
+    source/             the repository, so a missing platform can be built from the stick itself
+    docs/               DEPLOYMENT, INTENDED_USE, RESULTS, portability, source_verification
+    CHECKSUMS.txt       SHA-256 of every executable and of the model weights
+```
+
+Use a stick of **32 GB or more** to carry all three builds, and prefer USB 3.0 — copying 1.2 GB
+over USB 2.0 takes about ten minutes per platform.
+
+**Check the checksums after copying.** A truncated copy produces an application that starts and
+then fails somewhere unobvious; `CHECKSUMS.txt` is the cheap way to rule that out before spending
+an hour on it. `certutil -hashfile <file> SHA256` on Windows, `shasum -a 256 <file>` elsewhere.
+
+---
+
+## 3c. Setting up on the target machine, per platform
+
+**The one rule that applies everywhere: copy the folder off the USB first.** Do not run it from
+the stick. It is slow, USB drives are often mounted read-only or `noexec`, and the application
+needs somewhere to write its cache and logs.
+
+### Windows
+
+1. Copy `windows\SeizureReview` somewhere the logged-in user can write —
+   `C:\Users\<name>\SeizureReview` is ideal. **Not** `Program Files`, which needs admin.
+2. Double-click `SeizureReview.exe`.
+3. SmartScreen shows *"Windows protected your PC"* because the app is unsigned →
+   **More info → Run anyway**. Warn the clinician *before* they see this.
+4. Optional: right-click → *Send to* → *Desktop (create shortcut)*.
+
+### macOS (Apple Silicon)
+
+1. Copy `macos/SeizureReview` off the stick.
+2. **Right-click the app and choose Open — do not double-click.** Then *Open* again in the dialog.
+   Gatekeeper is stricter than SmartScreen: double-clicking an un-notarised app gives a dead end
+   with no "open anyway" button, whereas right-click → Open offers one. Once only.
+3. If macOS still refuses — common for anything that arrived on a USB, which sets the quarantine
+   attribute:
+   ```
+   xattr -dr com.apple.quarantine /path/to/SeizureReview
+   ```
+4. Notarisation removes both steps and needs a paid Apple Developer account.
+
+### Linux
+
+1. Copy `linux/SeizureReview` off the stick.
+2. `chmod +x SeizureReview` — the executable bit is lost on FAT32/exFAT sticks.
+3. `./SeizureReview`
+4. If Qt reports a missing platform plugin, install the system X11/xcb libraries. The bundle
+   carries Qt itself but not the OS-level display libraries.
+
+### Where each platform writes
+
+Nothing is written into the application folder, so it can live on a read-only share.
+
+| | per-user data directory |
+|---|---|
+| Windows | `%LOCALAPPDATA%\SeizureReview\` |
+| macOS | `~/Library/Application Support/SeizureReview/` |
+| Linux | `$XDG_DATA_HOME/SeizureReview/`, else `~/.local/share/SeizureReview/` |
+
+Each holds `logs/seizure_review.log` and, when the recording's own folder is not writable,
+`cache/`.
+
+### First run, on any platform
+
+- **Bring recordings.** None are on the USB — TUSZ needs its own free registration, and no
+  patient data may travel on a stick.
+- The first open of a recording scores it, which takes minutes; every open after that is instant,
+  because the result is cached beside the recording.
+- To make a demo instant, pre-score in advance and copy the `.probs.npz` sidecars alongside the
+  EDFs: `python precompute_probs.py <folder>`.
+- **Numbers differ slightly between platforms.** The ICA does not converge, so a 10^-15 difference
+  in linear algebra changes the decomposition — see `docs/portability.md`. No detection decision
+  changed across the 74 windows tested, but do not mix figures from two platforms in one table.
+
+---
+
 ## 4. Installing on a hospital PC
 
 **Requirements:** 64-bit Windows 10 or 11, ~2.5 GB free disk, 8 GB RAM.
