@@ -270,13 +270,79 @@ per-recording adaptive percentile fixes exactly it.
 > That is the form to build: adapting an autonomous-system component into a human-in-the-loop-safe
 > one, which is a contribution in itself rather than a reimplementation.
 
-**Verdict: build it, in the ranking form, once ≥ 2 h recordings exist.** The deployment target is
+**It was built and tested on this corpus — see §3c, which supersedes the verdict below.** The
+two-hour precondition turned out not to bind: the paper's window is two hours because its system
+*streams*, but a review tool opens a completed recording and can use the whole file.
+
+**Superseded verdict (kept for the record): build it, in the ranking form, once ≥ 2 h recordings
+exist.** The deployment target is
 ambulatory monitoring at 24–72 hours per study, where the two-hour window is comfortably
 available and where 204 FA/24 h compounds into hundreds of alarms per study. The evidence above
 says the mechanism has a genuine target in this data; the blocker is the evaluation corpus, not
 the idea. The falsifiable question to answer when that data exists is narrow and well-posed:
 **does per-recording adaptive normalisation beat a global threshold at matched sensitivity?**
 §3b's sweep is the curve it has to beat.
+
+### 3c. Adaptive normalisation — built, tested, and **not enabled by default**
+
+```
+python experiments/evaluate_adaptive.py          # gui/adaptive.py, 13 tests in tests/test_adaptive.py
+```
+
+`gui/adaptive.py` rescales each recording by its own score distribution:
+`out = p × (0.5 / reference)`, where `reference = max(median of scored windows, 0.5)`. It is
+**not** a reimplementation of PWI/PEI — those are periodicity statistics on the raw signal, and
+this works on the network's output — only of the *principle*, an adaptive reference from the
+recording itself instead of a fixed constant.
+
+| sensitivity | RAW FA/24 h | ADAPTIVE FA/24 h | change |
+|---|---|---|---|
+| 25.0 % | 4.3 | 0.9 | **−80 %** |
+| 30.0 % | 18.1 | 8.6 | **−52 %** |
+| 35.0 % | 33.6 | 23.3 | **−31 %** |
+| 40.0 % | 67.3 | 56.1 | **−17 %** |
+| 45.0 % | 164.7 | 159.6 | −3 % |
+| 49.4 % (default) | 204.4 | 212.2 | **+4 % (worse)** |
+
+Compared **at matched sensitivity**, never at matched threshold — a method that cuts alarms by
+detecting less has achieved nothing. Event sensitivity is *identical to raw at every threshold in
+the sweep*.
+
+> ### The result is real but rests on ONE recording, so do not deploy it
+>
+> At the median with a 20-window minimum, **exactly 1 of 206 recordings is tightened**
+> (`aaaaaqek_s011_t001`, reference 0.959 — 83 % of its windows fire). That recording contains **no
+> seizures**, which is why sensitivity is untouched: the mechanism is provably safe *here*
+> because it never touched a seizure-bearing recording. It is also why the evidence is **n = 1**.
+>
+> Generalising a false-alarm reduction from a single recording is not defensible, and at the
+> **default operating point it is slightly worse** (204.4 → 212.2). Left available and off.
+
+### Three design decisions, each forced by a measurement
+
+**The median, not the paper's 85th percentile.** The reference must be computed over *all*
+windows, since inference cannot separate background from seizure. At the 85th percentile a
+seizure-heavy recording inflates its own reference and suppresses the events it should surface:
+the recordings tightened at pct 85 hold **30 of the 85 seizures (35 %)**, and event sensitivity
+collapses from 49.4 % to 20.0 % by threshold 0.6. At the median a recording needs more than half
+its windows above threshold to be touched at all, which seizures cannot cause — they occupy ~4 %
+of recorded time. Recordings tightened at the median hold **2 of 85 seizures (2 %)**.
+
+**A 20-window minimum.** Two recordings in this corpus are 19 and 23 seconds — about two windows
+each. A median of two values is not an estimate of a background level.
+
+**Floored at the global threshold, so it can only tighten.** Without the floor, a recording whose
+scores are all near zero would be scaled *up* and would start proposing events the raw model
+never proposed, inventing false positives in the 54 % of recordings that currently produce none.
+
+### The earlier evidence for this was oracle-dependent — a lesson worth keeping
+
+§3b argued the mechanism had a large target: background 85th percentiles spanning 308×, 19 of 177
+recordings with background above threshold. **That statistic used ground-truth labels to isolate
+background windows.** Deployment has no such oracle, so the reference must be computed over
+everything — and once it is, most of the apparent opportunity disappears, because the recordings
+that look noisiest are partly noisy *because they contain seizures*. The gap between an
+oracle-measured opportunity and a deployable one was the whole story here.
 
 ### Reviewer-triage view, threshold 0.5
 
