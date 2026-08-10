@@ -38,21 +38,94 @@ def sha256(path):
 
 
 def find_sample_edf():
-    """Any local recording will do; the point is that inference runs."""
+    """The SHORTEST local recording; the point is that inference runs.
+
+    Shortest, not first: the manifest is ordered by subject, and its first row
+    is a 3337 s recording — roughly 278 windows and 21 minutes of inference,
+    against a 900 s timeout. The gate would then fail for being slow rather
+    than for being broken. Duration is already in the manifest, so preferring
+    the short end costs nothing and keeps the gate to about a minute.
+    """
     manifest = os.path.join(REPO, 'artifacts', 'zuna_thesis',
                             'manifest_full.csv')
+    found = []
     if os.path.exists(manifest):
         import csv
         with open(manifest) as f:
             for row in csv.DictReader(f):
                 p = os.path.join(REPO, row['edf'])
                 if os.path.exists(p):
-                    return os.path.abspath(p)
+                    try:
+                        dur = float(row.get('duration_s') or 0)
+                    except ValueError:
+                        dur = 0.0
+                    found.append((dur, os.path.abspath(p)))
+    if found:
+        # A recording still has to be longer than one 12 s window to score
+        # anything; below that the self-test reports FAIL for the wrong reason.
+        usable = [t for t in found if t[0] >= 30.0] or found
+        return min(usable)[1]
     for root, _dirs, files in os.walk(os.path.join(REPO, 'sample_data')):
         for fn in files:
             if fn.lower().endswith('.edf'):
                 return os.path.join(root, fn)
     return None
+
+
+def make_synthetic_edf(path, seconds=60, fs=250):
+    """Write a 19-channel EDF of noise, for machines that hold no recordings.
+
+    This exists because the check below must never be skipped. Gate 4 is the
+    only step that executes the bundled import graph, and every packaging trap
+    in `docs/known_issues.md` — the conda DLLs, matplotlib under MNE 1.x,
+    `tensorflow.python.debug` under TF 2 — froze cleanly and died here. A build
+    machine with no corpus is the normal case, not the exception, so skipping
+    on missing data made the gate report success on exactly the builds it was
+    written to catch.
+
+    The scores from noise are meaningless and are not checked. What is checked
+    is that the frozen binary reads an EDF, applies the montage, runs ICA and
+    the STFT, loads TensorFlow and returns finite numbers — which is the whole
+    of what this gate can establish even with a real recording.
+    """
+    import numpy as np
+    import pyedflib
+
+    rng = np.random.RandomState(0)
+    n = seconds * fs
+    t = np.arange(n) / float(fs)
+    # Pure noise trips the "almost DC" guard in the preprocessing and most
+    # windows get skipped, which weakens the check. A few microvolt-scale
+    # oscillations in the EEG band keep the windows scorable.
+    labels = ['FP1', 'FP2', 'F7', 'F3', 'FZ', 'F4', 'F8',
+              'T3', 'C3', 'CZ', 'C4', 'T4',
+              'T5', 'P3', 'PZ', 'P4', 'T6', 'O1', 'O2']
+    sigs = []
+    for i in range(len(labels)):
+        x = 20.0 * np.sin(2 * np.pi * (8.0 + 0.3 * i) * t)
+        x += 10.0 * np.sin(2 * np.pi * (1.0 + 0.1 * i) * t)
+        x += 15.0 * rng.randn(n)
+        sigs.append(x.astype(np.float64))
+
+    w = pyedflib.EdfWriter(path, len(labels),
+                           file_type=pyedflib.FILETYPE_EDFPLUS)
+    try:
+        w.setSignalHeaders([{
+            'label': 'EEG {}-REF'.format(lab),   # TUH-style; montage is partial-match
+            'dimension': 'uV',
+            'sample_rate': fs,
+            'sample_frequency': fs,
+            'physical_max': 5000.0,
+            'physical_min': -5000.0,
+            'digital_max': 32767,
+            'digital_min': -32768,
+            'transducer': '',
+            'prefilter': '',
+        } for lab in labels])
+        w.writeSamples([s for s in sigs])
+    finally:
+        w.close()
+    return path
 
 
 def main(argv=None):
@@ -136,11 +209,28 @@ def main(argv=None):
         failures.append('GUI self-test timed out')
 
     # 4 ------------------------------------------------------------ run it
+    # This step is never skipped. It used to print "[--] no local EDF found"
+    # and pass, which meant a build machine without a corpus got a green smoke
+    # test having never once executed the bundled TensorFlow — the single thing
+    # this script exists to prove. Real data if there is any, synthetic noise
+    # if there is not; only an unwritable temporary directory can stop it, and
+    # that is reported as a failure rather than a skip.
     edf = find_sample_edf()
+    synthetic = False
+    tmpdir = None
     if edf is None:
-        print('  [--] no local EDF found; skipping the inference run')
-        print('       (layout was checked, but the import graph was not)')
-    else:
+        import tempfile
+        try:
+            tmpdir = tempfile.mkdtemp(prefix='seizreview-smoke-')
+            edf = make_synthetic_edf(os.path.join(tmpdir, 'synthetic.edf'))
+            synthetic = True
+            print('  [--] no local recording; generated a synthetic one')
+            print('       the import graph IS checked; the scores are not')
+        except Exception as ex:                       # noqa: BLE001
+            failures.append('could not obtain any EDF to test with: {}'
+                            .format(ex))
+
+    if edf is not None:
         print('  ... running inference through the frozen app on {}'.format(
             os.path.basename(edf)))
         print('      this loads TensorFlow and takes a few minutes')
@@ -150,17 +240,23 @@ def main(argv=None):
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 timeout=args.timeout, env=env, cwd=dist)
             out = proc.stdout.decode('utf-8', 'replace')
-            if proc.returncode != 0:
+            if proc.returncode != 0 or 'self-test: PASS' not in out:
                 failures.append('self-test exited {}'.format(proc.returncode))
                 print(out[-4000:])
             else:
                 for line in out.splitlines():
                     if line.startswith('self-test'):
                         print('      {}'.format(line))
-                print('  [ok] frozen app scored a real recording')
+                print('  [ok] frozen app ran the full inference path on {}'
+                      .format('synthetic data' if synthetic
+                              else 'a real recording'))
         except subprocess.TimeoutExpired:
             failures.append('self-test timed out after {}s'.format(
                 args.timeout))
+        finally:
+            if tmpdir:
+                import shutil
+                shutil.rmtree(tmpdir, ignore_errors=True)
 
     print()
     if failures:
