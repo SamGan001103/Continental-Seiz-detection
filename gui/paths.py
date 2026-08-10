@@ -54,14 +54,27 @@ def writable_root():
     # version fell back to the home directory itself, which would have scattered
     # bare logs/, cache/ and autosave/ folders into the user's home — litter
     # with names generic enough that nobody could tell what had created them.
+    #
+    # Each platform gets its own convention first. Writing to %LOCALAPPDATA% on
+    # Linux is harmless only because the variable is unset there; relying on
+    # that is how an application ends up with a stray ~/SeizureReview on a Mac
+    # instead of the Application Support directory a user would think to look in.
+    # Branch on sys.platform throughout, not a mix of sys.platform and os.name.
+    # Mixing them means the Windows branch is still selected when only
+    # sys.platform is overridden, which makes the behaviour untestable and hid
+    # exactly that bug until a test faked a Linux run.
     import tempfile
-    candidates = [
-        os.environ.get('LOCALAPPDATA'),
-        os.environ.get('APPDATA'),
-        os.path.expanduser('~'),
-        tempfile.gettempdir(),
-    ]
-    for base in candidates:
+    home = os.path.expanduser('~')
+    if sys.platform == 'darwin':
+        preferred = [os.path.join(home, 'Library', 'Application Support')]
+    elif sys.platform.startswith('win'):
+        preferred = [os.environ.get('LOCALAPPDATA'),
+                     os.environ.get('APPDATA')]
+    else:                                   # Linux and other POSIX
+        preferred = [os.environ.get('XDG_DATA_HOME'),
+                     os.path.join(home, '.local', 'share')]
+
+    for base in list(preferred) + [home, tempfile.gettempdir()]:
         if not base:
             continue
         d = os.path.join(base, 'SeizureReview')

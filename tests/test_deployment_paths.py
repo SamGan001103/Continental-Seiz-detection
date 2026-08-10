@@ -128,6 +128,41 @@ class BundledResources(unittest.TestCase):
             if saved_app is not None:
                 os.environ['APPDATA'] = saved_app
 
+    def test_writable_root_follows_each_platform_convention(self):
+        """A Mac user looks in Application Support, not in a bare ~/SeizureReview.
+
+        Relying on %LOCALAPPDATA% being unset off Windows "works" only by
+        accident, and leaves the data somewhere no user would think to look.
+        """
+        import platform as _p
+        saved = sys.platform
+        try:
+            with frozen_as(tempfile.mkdtemp()):
+                sys.platform = 'darwin'
+                root = paths.writable_root()
+                self.assertIn('Application Support', root)
+                self.assertTrue(root.endswith('SeizureReview'))
+        finally:
+            sys.platform = saved
+
+    def test_writable_root_uses_xdg_on_linux(self):
+        saved_platform = sys.platform
+        saved_xdg = os.environ.get('XDG_DATA_HOME')
+        target = tempfile.mkdtemp()
+        try:
+            with frozen_as(tempfile.mkdtemp()):
+                sys.platform = 'linux'
+                os.environ['XDG_DATA_HOME'] = target
+                root = paths.writable_root()
+                self.assertTrue(root.startswith(target), root)
+                self.assertTrue(root.endswith('SeizureReview'))
+        finally:
+            sys.platform = saved_platform
+            if saved_xdg is None:
+                os.environ.pop('XDG_DATA_HOME', None)
+            else:
+                os.environ['XDG_DATA_HOME'] = saved_xdg
+
     def test_writable_root_is_never_the_bundle_when_frozen(self):
         """A review written into the bundle is lost, or cannot be written."""
         bundle = tempfile.mkdtemp()
