@@ -430,23 +430,55 @@ class MainWindow(QtWidgets.QMainWindow):
         a_about.triggered.connect(self._show_about)
 
     def _show_intended_use(self):
-        """Open the bundled INTENDED_USE.md.
+        """Show the bundled INTENDED_USE.md inside the application.
 
         It ships inside the application so a reviewer on an offline clinical PC
-        can reach it. A limitations document that only exists in the repository
-        is not available to the person who needs it.
+        can reach it — a limitations document that exists only in the
+        repository is not available to the person who needs it.
+
+        Rendered in-window rather than handed to the OS. A fresh Windows
+        install has no default handler for `.md`, so opening it externally
+        would either do nothing or raise a "how do you want to open this file?"
+        prompt — on the one machine where this document most needs to be
+        readable.
         """
         from gui.paths import resource
+        text = None
         for cand in (resource('doc', 'INTENDED_USE.md'),
                      os.path.join(REPO, 'docs', 'INTENDED_USE.md')):
             if os.path.exists(cand):
-                QtGui.QDesktopServices.openUrl(
-                    QtCore.QUrl.fromLocalFile(os.path.abspath(cand)))
-                return
-        QtWidgets.QMessageBox.warning(
-            self, 'Not found',
-            'INTENDED_USE.md is missing from this installation.\n\n'
-            'The application folder may have been copied incompletely.')
+                try:
+                    with open(cand, encoding='utf-8') as f:
+                        text = f.read()
+                    break
+                except OSError:
+                    continue
+        if text is None:
+            QtWidgets.QMessageBox.warning(
+                self, 'Not found',
+                'INTENDED_USE.md is missing from this installation.\n\n'
+                'The application folder may have been copied incompletely.')
+            return
+
+        dlg = QtWidgets.QDialog(self)
+        dlg.setWindowTitle('Intended use and limitations')
+        dlg.resize(820, 720)
+        view = QtWidgets.QTextBrowser(dlg)
+        view.setOpenExternalLinks(False)
+        try:
+            view.setMarkdown(text)
+        except AttributeError:
+            # Qt < 5.14 has no markdown renderer. Plain text keeps the content
+            # readable rather than showing raw markup as broken HTML.
+            view.setPlainText(text)
+        buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Close, parent=dlg)
+        buttons.rejected.connect(dlg.reject)
+        buttons.accepted.connect(dlg.accept)
+        lay = QtWidgets.QVBoxLayout(dlg)
+        lay.addWidget(view)
+        lay.addWidget(buttons)
+        dlg.exec_()
 
     def _show_shortcuts(self):
         # Reuses this module's docstring verbatim so the dialog cannot drift

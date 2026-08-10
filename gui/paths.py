@@ -1,8 +1,9 @@
 """Where the application's own files live, in source and when frozen.
 
 A PyInstaller build has no repository layout: modules are imported from an
-archive and data files are unpacked to a temporary directory named by
-``sys._MEIPASS``. Anything that located a resource by walking up from
+archive and data files live under ``sys._MEIPASS`` — the application directory
+in the one-folder build shipped here, a temporary extraction directory in a
+one-file build. Anything that located a resource by walking up from
 ``__file__``, or by ``os.chdir``-ing into ``utils/`` and opening a bare relative
 filename, therefore breaks the moment the app is packaged — and breaks at run
 time, on a hospital PC, not at build time.
