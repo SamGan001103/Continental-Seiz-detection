@@ -1,0 +1,185 @@
+{
+  "edf": "C:\\Users\\User\\Continental-Seiz-detection\\sample_data\\v2.0.0\\edf\\eval\\aaaaaraf\\s004_2014_09_23\\01_tcp_ar\\aaaaaraf_s004_t000.edf",
+  "reference_csv_bi": "C:\\Users\\User\\Continental-Seiz-detection\\sample_data\\v2.0.0\\edf\\eval\\aaaaaraf\\s004_2014_09_23\\01_tcp_ar\\aaaaaraf_s004_t000.csv_bi",
+  "rows": [
+    {
+      "duration_s": 298.0,
+      "false_alarms_per_24h": 869.7986577181208,
+      "false_positive_indexes": [
+        1,
+        2,
+        3
+      ],
+      "false_positives": 3,
+      "hits": 1,
+      "matches": [
+        {
+          "offset_abs_error_s": 15.636200000000002,
+          "onset_abs_error_s": 36.0145,
+          "overlap_s": 18.0,
+          "pred_index": 0,
+          "ref_index": 0
+        }
+      ],
+      "max_prob": 0.9247717261314392,
+      "mean_offset_abs_error_s": 15.636200000000002,
+      "mean_onset_abs_error_s": 36.0145,
+      "mean_prob": 0.11244659870862961,
+      "missed_reference_indexes": [],
+      "misses": 0,
+      "n_pred": 4,
+      "n_refs": 1,
+      "name": "baseline",
+      "p90_prob": 0.44790612459182877,
+      "pred_events": [
+        {
+          "id": 1,
+          "prob": 0.8555063605308533,
+          "source_start": 132.0,
+          "source_stop": 150.0,
+          "start": 132.0,
+          "status": "proposed",
+          "stop": 150.0
+        },
+        {
+          "id": 2,
+          "prob": 0.9247717261314392,
+          "source_start": 150.0,
+          "source_stop": 162.0,
+          "start": 150.0,
+          "status": "proposed",
+          "stop": 162.0
+        },
+        {
+          "id": 3,
+          "prob": 0.6716702580451965,
+          "source_start": 168.0,
+          "source_stop": 180.0,
+          "start": 168.0,
+          "status": "proposed",
+          "stop": 180.0
+        },
+        {
+          "id": 4,
+          "prob": 0.8322705626487732,
+          "source_start": 222.0,
+          "source_stop": 234.0,
+          "start": 222.0,
+          "status": "proposed",
+          "stop": 234.0
+        }
+      ],
+      "reference_events": [
+        {
+          "label": "seiz",
+          "start": 95.9855,
+          "stop": 165.6362
+        }
+      ],
+      "sensitivity": 1.0,
+      "source": {
+        "meta": {
+          "segment_s": 12,
+          "step_s": 6,
+          "use_ica": true
+        },
+        "mode": "computed in 11.0s",
+        "path": "C:\\Users\\User\\Continental-Seiz-detection\\sample_data\\v2.0.0\\edf\\eval\\aaaaaraf\\s004_2014_09_23\\01_tcp_ar\\aaaaaraf_s004_t000.edf"
+      },
+      "threshold": 0.5
+    },
+    {
+      "duration_s": 298.0,
+      "false_alarms_per_24h": 869.7986577181208,
+      "false_positive_indexes": [
+        1,
+        2,
+        3
+      ],
+      "false_positives": 3,
+      "hits": 1,
+      "matches": [
+        {
+          "offset_abs_error_s": 33.6362,
+          "onset_abs_error_s": 24.014499999999998,
+          "overlap_s": 12.0,
+          "pred_index": 0,
+          "ref_index": 0
+        }
+      ],
+      "max_prob": 0.934306263923645,
+      "mean_offset_abs_error_s": 33.6362,
+      "mean_onset_abs_error_s": 24.014499999999998,
+      "mean_prob": 0.13050352036952972,
+      "missed_reference_indexes": [],
+      "misses": 0,
+      "n_pred": 4,
+      "n_refs": 1,
+      "name": "zuna",
+      "p90_prob": 0.6811943292617804,
+      "pred_events": [
+        {
+          "id": 1,
+          "prob": 0.8176224231719971,
+          "source_start": 120.0,
+          "source_stop": 132.0,
+          "start": 120.0,
+          "status": "proposed",
+          "stop": 132.0
+        },
+        {
+          "id": 2,
+          "prob": 0.8385161757469177,
+          "source_start": 144.0,
+          "source_stop": 168.0,
+          "start": 144.0,
+          "status": "proposed",
+          "stop": 168.0
+        },
+        {
+          "id": 3,
+          "prob": 0.934306263923645,
+          "source_start": 168.0,
+          "source_stop": 180.0,
+          "start": 168.0,
+          "status": "proposed",
+          "stop": 180.0
+        },
+        {
+          "id": 4,
+          "prob": 0.7745324969291687,
+          "source_start": 198.0,
+          "source_stop": 210.0,
+          "start": 198.0,
+          "status": "proposed",
+          "stop": 210.0
+        }
+      ],
+      "reference_events": [
+        {
+          "label": "seiz",
+          "start": 95.9855,
+          "stop": 165.6362
+        }
+      ],
+      "sensitivity": 1.0,
+      "source": {
+        "meta": {
+          "duration_s": 295.0,
+          "fs": 250,
+          "segment_s": 12,
+          "source_npz": "artifacts\\zuna_thesis\\npz\\aaaaaraf_s004_t000.zuna_19ch.npz",
+          "step_s": 6,
+          "use_ica": true
+        },
+        "mode": "computed in 8.3s",
+        "path": "artifacts\\zuna_thesis\\npz\\aaaaaraf_s004_t000.zuna_19ch.npz"
+      },
+      "threshold": 0.5
+    }
+  ],
+  "segment_s": 12,
+  "step_s": 6,
+  "threshold": 0.5,
+  "tolerance_s": 5.0
+}

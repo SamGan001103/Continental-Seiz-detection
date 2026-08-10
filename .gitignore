@@ -135,7 +135,20 @@ dmypy.json
 .pyre/
 
 # Data / artefacts — local only, not tracked
-artifacts/
+#
+# `artifacts/*`, not `artifacts/`. Git cannot re-include a file whose parent
+# directory is excluded, so a directory-level ignore makes every negation below
+# silently inert — which is what happened: the tracked manifests and evaluation
+# JSONs all had to be force-added, and a new result file would have been
+# quietly left untracked. Each level is re-included and then re-excluded so the
+# exceptions at the bottom actually take effect.
+artifacts/*
+!artifacts/zuna_thesis/
+artifacts/zuna_thesis/*
+!artifacts/zuna_thesis/baseline_eval/
+artifacts/zuna_thesis/baseline_eval/*
+!artifacts/zuna_thesis/compare_first10/
+artifacts/zuna_thesis/compare_first10/*
 sample_data/
 *.probs.npz
 *.reviewed.csv_bi
@@ -149,11 +162,22 @@ sample_data/
 # recorded in eval_config.WEIGHTS_SHA256 and stamped into every export's provenance.
 !convlstm_ICA_12_train.h5
 
-# The evaluation manifests are small text indices, not data — they name which public
-# TUSZ files a reported number came from, so results cannot be regenerated without them.
-!artifacts/zuna_thesis/manifest.csv
+# The evaluation manifest is a small text index, not data — it names which public
+# TUSZ files a reported number came from, so results cannot be regenerated without it.
+# (There is no manifest.csv; only manifest_full.csv was ever produced.)
 !artifacts/zuna_thesis/manifest_full.csv
+
+# Reported results, as JSON rather than as prose in a document.
 !artifacts/zuna_thesis/baseline_eval/*.json
+!artifacts/zuna_thesis/baseline_eval/*.svg
+!artifacts/zuna_thesis/compare_first10/*.json
+
+# The cross-platform reference probabilities: 92 KB of float32, not a data set.
+# It is the only way another machine can measure its drift against this one
+# without shipping the corpus, and the figures in docs/portability.md are
+# regenerated from it. See experiments/platform_drift.py.
+!artifacts/drift_ref_windows.npz
+!artifacts/drift_*.json
 
 # IDE / OS
 .idea/

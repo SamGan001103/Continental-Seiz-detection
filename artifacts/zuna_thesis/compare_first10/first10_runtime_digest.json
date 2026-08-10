@@ -1,0 +1,112 @@
+{
+  "exports": [
+    {
+      "cohort": "seizure",
+      "event": "exported",
+      "manifest_index": "1",
+      "out_npz": "/mnt/research-data/work/Continental-Seiz-detection/artifacts/zuna_thesis/npz/aaaaatao_s003_t001.zuna_19ch.npz",
+      "peak_rss_kb": "11714324",
+      "runtime_s": "361",
+      "stem": "aaaaatao_s003_t001",
+      "timestamp": "2026-05-18T15:01:10+0000"
+    },
+    {
+      "cohort": "seizure",
+      "event": "exported",
+      "manifest_index": "2",
+      "out_npz": "/mnt/research-data/work/Continental-Seiz-detection/artifacts/zuna_thesis/npz/aaaaatao_s003_t000.zuna_19ch.npz",
+      "peak_rss_kb": "18894364",
+      "runtime_s": "680",
+      "stem": "aaaaatao_s003_t000",
+      "timestamp": "2026-05-18T15:12:31+0000"
+    },
+    {
+      "cohort": "seizure",
+      "event": "exported",
+      "manifest_index": "3",
+      "out_npz": "/mnt/research-data/work/Continental-Seiz-detection/artifacts/zuna_thesis/npz/aaaaaarq_s016_t007.zuna_19ch.npz",
+      "peak_rss_kb": "21772524",
+      "runtime_s": "801",
+      "stem": "aaaaaarq_s016_t007",
+      "timestamp": "2026-05-18T15:25:53+0000"
+    },
+    {
+      "cohort": "seizure",
+      "event": "exported",
+      "manifest_index": "4",
+      "out_npz": "/mnt/research-data/work/Continental-Seiz-detection/artifacts/zuna_thesis/npz/aaaaaqtw_s002_t001.zuna_19ch.npz",
+      "peak_rss_kb": "23070992",
+      "runtime_s": "860",
+      "stem": "aaaaaqtw_s002_t001",
+      "timestamp": "2026-05-18T15:40:14+0000"
+    },
+    {
+      "cohort": "seizure",
+      "event": "exported",
+      "manifest_index": "5",
+      "out_npz": "/mnt/research-data/work/Continental-Seiz-detection/artifacts/zuna_thesis/npz/aaaaaghb_s010_t000.zuna_19ch.npz",
+      "peak_rss_kb": "30615604",
+      "runtime_s": "1221",
+      "stem": "aaaaaghb_s010_t000",
+      "timestamp": "2026-05-18T16:00:36+0000"
+    },
+    {
+      "cohort": "seizure",
+      "event": "exported",
+      "manifest_index": "6",
+      "out_npz": "/mnt/research-data/work/Continental-Seiz-detection/artifacts/zuna_thesis/npz/aaaaahsi_s014_t000.zuna_19ch.npz",
+      "peak_rss_kb": "38560240",
+      "runtime_s": "1581",
+      "stem": "aaaaahsi_s014_t000",
+      "timestamp": "2026-05-18T16:26:58+0000"
+    },
+    {
+      "cohort": "seizure",
+      "event": "exported",
+      "manifest_index": "7",
+      "out_npz": "/mnt/research-data/work/Continental-Seiz-detection/artifacts/zuna_thesis/npz/aaaaaraf_s004_t000.zuna_19ch.npz",
+      "peak_rss_kb": "43262676",
+      "runtime_s": "1781",
+      "stem": "aaaaaraf_s004_t000",
+      "timestamp": "2026-05-18T16:56:41+0000"
+    },
+    {
+      "cohort": "seizure",
+      "event": "exported",
+      "manifest_index": "8",
+      "out_npz": "/mnt/research-data/work/Continental-Seiz-detection/artifacts/zuna_thesis/npz/aaaaaarq_s017_t000.zuna_19ch.npz",
+      "peak_rss_kb": "43789968",
+      "runtime_s": "1781",
+      "stem": "aaaaaarq_s017_t000",
+      "timestamp": "2026-05-18T17:26:23+0000"
+    },
+    {
+      "cohort": "seizure",
+      "event": "exported",
+      "manifest_index": "9",
+      "out_npz": "/mnt/research-data/work/Continental-Seiz-detection/artifacts/zuna_thesis/npz/aaaaaarq_s016_t002.zuna_19ch.npz",
+      "peak_rss_kb": "44264352",
+      "runtime_s": "1801",
+      "stem": "aaaaaarq_s016_t002",
+      "timestamp": "2026-05-18T17:56:25+0000"
+    },
+    {
+      "cohort": "seizure",
+      "event": "exported",
+      "manifest_index": "10",
+      "out_npz": "/mnt/research-data/work/Continental-Seiz-detection/artifacts/zuna_thesis/npz/aaaaaarq_s016_t003.zuna_19ch.npz",
+      "peak_rss_kb": "43905268",
+      "runtime_s": "1781",
+      "stem": "aaaaaarq_s016_t003",
+      "timestamp": "2026-05-18T18:26:07+0000"
+    }
+  ],
+  "first_start_utc": "2026-05-18T14:55:08+0000",
+  "last_export_utc": "2026-05-18T18:26:07+0000",
+  "n_completed_used": 10,
+  "original_eeg_duration_s": 2103.0,
+  "peak_rss_gib_max": 42.213775634765625,
+  "peak_rss_kb_max": 44264352,
+  "zuna_vm_inference_runtime_s_sum": 12648,
+  "zuna_vm_runtime_ratio_vs_eeg_duration": 6.014265335235378
+}
