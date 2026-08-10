@@ -165,7 +165,8 @@ def export(out_path):
 # --------------------------------------------------------------- compare
 
 
-def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None):
+def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None,
+            shortest_first=False):
     """Re-score locally and report the drift distribution against the export."""
     from gui.io.edf import load_edf_19ch
     from gui.io.infer import compute_probs_from_data
@@ -190,8 +191,26 @@ def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None):
     deltas = []
     per_rec = []
     missing, misaligned = [], []
-    todo = stems if limit is None else stems[:limit]
-    for i, stem in enumerate(todo):
+
+    # Iterate over positions in `stems`, never over a reordered copy of it.
+    # `offsets` is indexed by a recording's position in the export, so pairing
+    # it with a position in some other sequence hands each recording another
+    # recording's reference window — silently, whenever the two happen to have
+    # the same window count. That is the ZUNA mistake this file exists to avoid,
+    # and slicing a prefix only avoids it by accident.
+    order = list(range(len(stems)))
+    if shortest_first:
+        # Coverage of the drift *distribution* comes from many recordings, not
+        # from many windows in a few. Manifest order opens with a 3337 s
+        # recording (555 windows), so it buys the fewest recordings per hour of
+        # any possible ordering.
+        dur = {r['stem']: float(r['duration_s'] or 0) for r in _manifest_rows()}
+        order.sort(key=lambda j: dur.get(stems[j], float('inf')))
+    if limit is not None:
+        order = order[:limit]
+
+    for i in order:
+        stem = stems[i]
         edf = index.get(stem) or _local_edf(stem)
         if edf is None:
             missing.append(stem)
@@ -286,6 +305,10 @@ def main(argv=None):
     ap.add_argument('--corpus', help='root to search for EDFs, if the corpus '
                                      'is not under the repository')
     ap.add_argument('--limit', type=int)
+    ap.add_argument('--shortest-first', action='store_true',
+                    dest='shortest_first',
+                    help='compare the shortest recordings first, to cover more '
+                         'recordings per hour of compute')
     ap.add_argument('--threshold', type=float, default=0.5)
     ap.add_argument('--json', dest='out_json')
     a = ap.parse_args(argv)
@@ -293,7 +316,8 @@ def main(argv=None):
         return export(a.export)
     if a.compare:
         return compare(a.compare, corpus=a.corpus, limit=a.limit,
-                       threshold=a.threshold, out_json=a.out_json)
+                       threshold=a.threshold, out_json=a.out_json,
+                       shortest_first=a.shortest_first)
     ap.error('give --export or --compare')
 
 
