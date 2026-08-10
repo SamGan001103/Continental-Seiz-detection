@@ -5,6 +5,7 @@ hospital workstation with no repository checkout, no writable recording folder,
 and no working directory anyone controls. They cannot be caught by running the
 GUI from the repo root, which is why they are pinned here.
 """
+import contextlib
 import os
 import shutil
 import stat
@@ -14,12 +15,42 @@ import unittest
 
 import numpy as np
 
+
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
 from gui import paths                                       # noqa: E402
 from gui.io import cache                                    # noqa: E402
+
+
+@contextlib.contextmanager
+def frozen_as(bundle):
+    """Pretend to be a PyInstaller build rooted at ``bundle``.
+
+    ``sys.frozen`` and ``sys._MEIPASS`` are process-global and are *absent*
+    when running from source, not merely falsy. Restoring them means deleting
+    them again — setting ``sys.frozen = False`` would leave the attribute
+    present, and any later code that tests with ``hasattr`` would still see a
+    frozen build.
+    """
+    had_frozen = hasattr(sys, 'frozen')
+    had_meipass = hasattr(sys, '_MEIPASS')
+    old_frozen = getattr(sys, 'frozen', None)
+    old_meipass = getattr(sys, '_MEIPASS', None)
+    sys.frozen = True
+    sys._MEIPASS = bundle
+    try:
+        yield bundle
+    finally:
+        if had_frozen:
+            sys.frozen = old_frozen
+        else:
+            del sys.frozen
+        if had_meipass:
+            sys._MEIPASS = old_meipass
+        else:
+            del sys._MEIPASS
 
 
 class ForeignWorkingDirectory(unittest.TestCase):
@@ -79,22 +110,17 @@ class BundledResources(unittest.TestCase):
         Doing so would scatter generic logs/, cache/ and autosave/ folders into
         the user's home, with names too generic for anyone to attribute.
         """
-        saved_frozen = getattr(sys, 'frozen', None)
         saved_local = os.environ.get('LOCALAPPDATA')
         saved_app = os.environ.get('APPDATA')
         try:
-            sys.frozen = True
             os.environ['LOCALAPPDATA'] = os.path.join(
                 tempfile.mkdtemp(), 'nope', 'still-nope')
             os.environ.pop('APPDATA', None)
-            root = paths.writable_root()
+            with frozen_as(tempfile.mkdtemp()):
+                root = paths.writable_root()
             self.assertEqual(os.path.basename(root), 'SeizureReview')
             self.assertTrue(os.path.isdir(root))
         finally:
-            if saved_frozen is None:
-                del sys.frozen
-            else:
-                sys.frozen = saved_frozen
             if saved_local is None:
                 os.environ.pop('LOCALAPPDATA', None)
             else:
@@ -103,24 +129,12 @@ class BundledResources(unittest.TestCase):
                 os.environ['APPDATA'] = saved_app
 
     def test_writable_root_is_never_the_bundle_when_frozen(self):
-        """sys._MEIPASS is deleted on exit; writing a review there loses it."""
-        saved = getattr(sys, 'frozen', None)
-        saved_meipass = getattr(sys, '_MEIPASS', None)
-        try:
-            sys.frozen = True
-            sys._MEIPASS = tempfile.mkdtemp()
+        """A review written into the bundle is lost, or cannot be written."""
+        bundle = tempfile.mkdtemp()
+        with frozen_as(bundle):
             self.assertNotEqual(os.path.abspath(paths.writable_root()),
-                                os.path.abspath(sys._MEIPASS))
-        finally:
-            if saved is None:
-                del sys.frozen
-            else:
-                sys.frozen = saved
-            if saved_meipass is None:
-                if hasattr(sys, '_MEIPASS'):
-                    del sys._MEIPASS
-            else:
-                sys._MEIPASS = saved_meipass
+                                os.path.abspath(bundle))
+        shutil.rmtree(bundle, ignore_errors=True)
 
 
 class Provenance(unittest.TestCase):
@@ -142,44 +156,16 @@ class Provenance(unittest.TestCase):
         bundle = tempfile.mkdtemp()
         with open(os.path.join(bundle, 'build_info.json'), 'w') as f:
             json.dump({'commit': 'abc1234'}, f)
-        saved = getattr(sys, 'frozen', None)
-        saved_meipass = getattr(sys, '_MEIPASS', None)
-        try:
-            sys.frozen = True
-            sys._MEIPASS = bundle
+        with frozen_as(bundle):
             self.assertEqual(_git_commit(), 'abc1234')
-        finally:
-            if saved is None:
-                del sys.frozen
-            else:
-                sys.frozen = saved
-            if saved_meipass is None:
-                if hasattr(sys, '_MEIPASS'):
-                    del sys._MEIPASS
-            else:
-                sys._MEIPASS = saved_meipass
-            shutil.rmtree(bundle, ignore_errors=True)
+        shutil.rmtree(bundle, ignore_errors=True)
 
     def test_a_frozen_build_with_no_stamp_reports_none_rather_than_raising(self):
         from gui.app import _git_commit
         bundle = tempfile.mkdtemp()
-        saved = getattr(sys, 'frozen', None)
-        saved_meipass = getattr(sys, '_MEIPASS', None)
-        try:
-            sys.frozen = True
-            sys._MEIPASS = bundle
+        with frozen_as(bundle):
             self.assertIsNone(_git_commit())
-        finally:
-            if saved is None:
-                del sys.frozen
-            else:
-                sys.frozen = saved
-            if saved_meipass is None:
-                if hasattr(sys, '_MEIPASS'):
-                    del sys._MEIPASS
-            else:
-                sys._MEIPASS = saved_meipass
-            shutil.rmtree(bundle, ignore_errors=True)
+        shutil.rmtree(bundle, ignore_errors=True)
 
 
 class ReadOnlyRecordingDirectory(unittest.TestCase):

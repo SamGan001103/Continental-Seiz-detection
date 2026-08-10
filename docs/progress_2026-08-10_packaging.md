@@ -67,7 +67,13 @@ when the process exits, so a review saved there is destroyed on close. In the
 one-folder build actually shipped it is the application directory — which on a
 clinical workstation is frequently a read-only share. Either way the bundle is
 wrong, so `writable_root()` resolves to `%LOCALAPPDATA%\SeizureReview\`
-regardless of build shape.
+regardless of build shape, falling back through `%APPDATA%`, the home
+directory and the temp directory if that cannot be created.
+
+Every candidate stays *inside* a `SeizureReview\` directory. A first version
+fell back to the home directory itself, which would have scattered bare
+`logs\`, `cache\` and `autosave\` folders into the user's home — litter with
+names generic enough that nobody could tell what had created them.
 
 ### 2.3 The probability cache assumed a writable recording folder
 
@@ -132,7 +138,7 @@ success until the frozen executable has actually run.
 1. **Weights hash** — checked against `eval_config.WEIGHTS_SHA256` *before*
    building. Fatal, not a warning: a build carrying the wrong weights is
    indistinguishable from a correct one at run time.
-2. **Test suite** — 109 tests. A release is not built from a failing tree.
+2. **Test suite** — 110 tests. A release is not built from a failing tree.
 3. **`SeizureReview.exe --gui-self-test`** — constructs the real `MainWindow`
    offscreen and pumps the event loop, catching a missing PyQt5 or pyqtgraph
    submodule.
@@ -181,6 +187,19 @@ only in the repository is not available to the person who needs it — a
 clinician on an offline workstation. The menu item falls back to the repository
 copy when running from source, and says plainly that the installation is
 incomplete if neither is present.
+
+The first implementation handed the file to `QDesktopServices.openUrl()`, which
+was a defect: **a fresh Windows install has no default handler for `.md`**, so
+on a hospital PC the menu item would either do nothing or raise a "how do you
+want to open this file?" prompt — on the one machine where the document most
+needs to be readable, in front of an offline user with no way to fix the
+association. It now renders in-window through `QTextBrowser.setMarkdown()`
+(Qt 5.15), falling back to plain text on older Qt rather than displaying raw
+markup as broken HTML.
+
+This is the general shape of the whole session: the failure was not in the
+logic, it was in an assumption about the environment that holds on a
+development machine and does not hold on the target.
 
 ---
 
@@ -231,7 +250,7 @@ new   gui/paths.py                       resource resolution, frozen and source
 new   packaging/SeizureReview.spec       the build definition + build stamp
 new   packaging/build_app.bat            verify -> test -> freeze -> smoke test
 new   packaging/smoke_test.py            runs the frozen exe before shipping it
-new   tests/test_deployment_paths.py     15 tests for target-machine failures
+new   tests/test_deployment_paths.py     16 tests for target-machine failures
 new   docs/DEPLOYMENT.md
 new   docs/INTENDED_USE.md
 new   docs/progress_2026-08-10_packaging.md
@@ -242,10 +261,13 @@ mod   gui/io/infer.py                    chdir removed, weights via gui.paths
 mod   gui/io/cache.py                    read-only-share fallback
 mod   gui/main.py                        crash log, excepthook, self-tests, HiDPI
 mod   gui/app.py                         autosave fallback, frozen provenance,
-                                         file-dialog start directory
+                                         file-dialog start directory,
+                                         Help > intended use (rendered in-app)
+mod   docs/usability/cognitive_walkthrough_results.md
+                                         3d: U-10 closed after the 3c measurement
 mod   run_inference.py                   chdir removed
 mod   tests/test_review_guards.py        +3 autosave-fallback cases
 mod   README.md, INSTALL.md              frozen build promoted to Route A
 ```
 
-Tests: 91 → 109, all passing.
+Tests: 91 → 110, all passing.
