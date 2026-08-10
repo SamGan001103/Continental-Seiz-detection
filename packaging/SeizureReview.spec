@@ -232,26 +232,36 @@ excludes = ([] if _MNE_NEEDS_MPL else ['matplotlib']) + [
 # --------------------------------------------------------------------------
 # conda puts shared libraries in <env>/Library/bin, which PyInstaller does not
 # scan. Several CPython stdlib extension modules link against them, and each
-# missing one fails only at run time, in a different place, with an error that
-# names the wrong package:
+# missing one fails only at run time, in a different place, naming the wrong
+# package:
 #
-#   _ctypes.pyd  -> ffi-8.dll     reported as "your scipy install is broken"
-#   pyexpat.pyd  -> libexpat.dll  surfaced through matplotlib's font manager
-#   _ssl, _hashlib, _sqlite3, _bz2, _lzma -> more of the same
+#   _ctypes.pyd            -> ffi-8.dll     reported as "your scipy install is broken"
+#   pyexpat.pyd            -> libexpat.dll  surfaced through matplotlib's fonts
+#   _ssl / _hashlib        -> libcrypto, libssl
+#   _sqlite3 / _bz2/_lzma  -> sqlite3, libbz2, liblzma
 #
-# Chasing them individually means finding the next one when a clinician opens a
-# recording. The whole directory is ~19 MB against a ~1.4 GB bundle, so the
-# entire class of failure is bought out for a rounding error in size.
+# This list is deliberately NARROW. Bundling the whole directory does fix the
+# stdlib imports — and then breaks TensorFlow, whose native runtime fails with
+# "DLL initialization routine failed" because a conda library shadows one of
+# TF's own. Only the libraries CPython itself needs go in; the numerical stack
+# ships its own inside numpy.libs, scipy.libs and tensorflow.
+_STDLIB_DLLS = (
+    'ffi-8.dll', 'ffi-7.dll', 'ffi.dll',        # _ctypes
+    'libexpat.dll', 'expat.dll',                # pyexpat
+    'libcrypto-3-x64.dll', 'libssl-3-x64.dll',  # _ssl, _hashlib
+    'sqlite3.dll',                              # _sqlite3
+    'libbz2.dll', 'liblzma.dll',                # _bz2, _lzma
+)
+
 binaries = []
 if sys.platform.startswith('win'):
     _conda_bin = os.path.join(sys.prefix, 'Library', 'bin')
     if os.path.isdir(_conda_bin):
-        _n = 0
-        for _f in sorted(os.listdir(_conda_bin)):
-            if _f.lower().endswith('.dll'):
-                binaries.append((os.path.join(_conda_bin, _f), '.'))
-                _n += 1
-        print('spec: bundling {} conda DLLs from Library/bin'.format(_n))
+        for _dll in _STDLIB_DLLS:
+            _p = os.path.join(_conda_bin, _dll)
+            if os.path.exists(_p):
+                binaries.append((_p, '.'))
+        print('spec: bundling {} conda stdlib DLLs'.format(len(binaries)))
 
 a = Analysis(
     [os.path.join(REPO, 'gui', 'main.py')],
