@@ -190,7 +190,7 @@ can dismiss. Switch with `USE_PER_SECOND_AVERAGING` in `eval_config.py`.
 (The sweep runs at the configured operating point, so its 0.50 row differs slightly from the
 ablation table above, which re-scores each configuration independently.)
 
-### The PWI/PEI lens — why it is not implemented
+### The PWI/PEI lens — why it is deferred, and why it should eventually be built
 
 ```
 python experiments/evaluate_baseline.py --manifest artifacts/zuna_thesis/manifest_full.csv \
@@ -204,7 +204,7 @@ arXiv source, the mechanism is:
 > "We use the 85-percentile of PWI and PEI values for each frequency band over the **last two
 > hours** as adaptive thresholds."
 
-Three independent reasons it is absent, in order of how decisive they are.
+Three considerations, in order of how decisive they are. The first two are reasons it is **deferred**; the third was initially written as a reason to reject it outright and is corrected below — the evidence does not support that.
 
 **1. It cannot run on this corpus, let alone be validated on it.** The adaptive thresholds need
 two hours of preceding signal. Of **306 recordings, zero reach two hours**; the longest is
@@ -228,27 +228,55 @@ The paper's 56.55 FA/24 h sits between the 0.80 and 0.90 rows — reachable here
 has to beat *that* curve to be worth its complexity, and there is no way to show it does without
 two-hour recordings.
 
-**3. It optimises the wrong objective for a human-in-the-loop tool.** The lens is a
-*suppression* stage: it removes detections. In an autonomous system screening 14,590 hours that
-is exactly right. In a review assistant it is close to backwards.
+**3. As a *filter* it is wrong for a human-in-the-loop tool — but that is not the only way to
+use it, and the underlying mechanism addresses a real, measured defect here.**
 
-> A **false positive** costs the reviewer a few seconds to reject — the interface is built around
-> fast rejection for precisely this reason. A **false negative** is a seizure the reviewer is
-> never shown. The detector already misses about half of them, and 22 % of all seizures produce
-> no model response at all (§4.4 figure). Adding a stage whose job is to discard candidates, to a
-> tool whose entire value is surfacing candidates a human then adjudicates, trades a cheap error
-> for an expensive one.
+The naive objection first, because it is valid as far as it goes: the lens *removes* detections.
+A false positive costs the reviewer seconds to reject; a false negative is a seizure they are
+never shown, by a detector that already misses about half of them. Threshold 0.50 → 0.80 is 159
+fewer false alarms at the cost of **6 of the 42 seizures the system would otherwise surface**.
 
-Moving from threshold 0.50 to 0.80 illustrates it: 159 fewer false alarms across 27.8 h, at the
-cost of **6 of the 42 seizures the system would otherwise have surfaced**. For a reviewer who is
-the safety net, that is a bad trade.
+**But the lens is not a global threshold, and treating it as one understates it.** Its mechanism
+is a *per-recording, per-band adaptive percentile*. That targets a failure a global threshold
+cannot touch, and the failure is present in this corpus:
 
-**Where it would matter.** The deployment target is ambulatory/outpatient monitoring, where
-studies routinely run 24–72 hours — well past the two-hour window. If this system is ever
-evaluated on ambulatory recordings, the lens becomes both applicable and testable, and the
-false-alarm burden over a multi-day study is a genuine clinical problem worth solving. **The
-blocker is the evaluation corpus, not the idea.** Recorded as future work with a precondition:
-obtain recordings ≥ 2 h before implementing it.
+| background score across the 177 recordings with ≥ 20 scored background windows | |
+|---|---|
+| 85th percentile — median | 0.0032 |
+| 85th percentile — maximum | **0.9885** (**308× the median**) |
+| recordings whose 85th-pct *background* already exceeds the 0.5 threshold | **19 / 177 (11 %)** |
+
+And the resulting false alarms are extremely concentrated:
+
+| | |
+|---|---|
+| **5 of 204 recordings produce 44 %** of all false-positive windows | |
+| 10 recordings produce 57 % | 20 recordings produce 74 % |
+| **111 of 204 recordings (54 %) produce none at all** | |
+
+The worst case, `aaaaaqek_s011_t001`, has **82 of its 99 background windows above threshold** and
+a background 85th percentile of 0.989 — the model reads essentially the whole recording as
+ictal. No global threshold can fix that without destroying sensitivity everywhere else. A
+per-recording adaptive percentile fixes exactly it.
+
+> **So the mechanism is worth having, and the paper's own use of it is not the only option.**
+> The paper *filters* with it because its system screens 14,590 hours near-autonomously. A review
+> assistant can take the same statistic and use it to **normalise and rank rather than suppress**:
+> score each window against its own recording's background distribution, order the worklist by
+> that, and show the reviewer everything. The attention burden falls — the wall of alarms on a
+> bad recording is what actually exhausts a reviewer — while **nothing is hidden, so the
+> false-negative risk added is zero.**
+>
+> That is the form to build: adapting an autonomous-system component into a human-in-the-loop-safe
+> one, which is a contribution in itself rather than a reimplementation.
+
+**Verdict: build it, in the ranking form, once ≥ 2 h recordings exist.** The deployment target is
+ambulatory monitoring at 24–72 hours per study, where the two-hour window is comfortably
+available and where 204 FA/24 h compounds into hundreds of alarms per study. The evidence above
+says the mechanism has a genuine target in this data; the blocker is the evaluation corpus, not
+the idea. The falsifiable question to answer when that data exists is narrow and well-posed:
+**does per-recording adaptive normalisation beat a global threshold at matched sensitivity?**
+§3b's sweep is the curve it has to beat.
 
 ### Reviewer-triage view, threshold 0.5
 
