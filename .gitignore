@@ -179,6 +179,11 @@ sample_data/
 !artifacts/drift_ref_windows.npz
 !artifacts/drift_*.json
 
+# Per-window probabilities from two builds of the same stack, for the
+# cross-machine agreement measurement. A few KB each; the numbers behind any
+# claim that two platforms do or do not propose the same events.
+!artifacts/zuna_thesis/agree_*.npz
+
 # IDE / OS
 .idea/
 .vscode/
