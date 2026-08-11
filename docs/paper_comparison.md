@@ -95,12 +95,25 @@ patient, montage and artifact regime.
 | Result | Dataset | Value | Why not comparable |
 |---|---|---|---|
 | AUC | RPAH, 1,006 sessions | 0.82 | private clinical data (ethics X19-0323-2019/STE16040) |
-| Sensitivity | RPAH, 1,006 sessions | 76.68 % | private data; **20-channel** model (19 EEG + ECG); PWA/PEI lens; SDR metric |
+| Sensitivity | RPAH, 1,006 sessions | 76.68 % | private data; PWA/PEI lens; SDR metric; **probably** 20-channel — see below |
 | FA / 24 h | RPAH, 1,006 sessions | 56.55 | as above; SDR merges alarms within 30 s into one |
 | Sensitivity + arbiter | RPAH, 66-session pilot | 92.19 % | private data; requires a human expert arbiter |
 | Review time | RPAH, 66-session pilot | 90 → 7.62 min | private data; clinical workflow study |
 | **Sensitivity** | **TUH v1.5.1** | **not published** | Table 2 leaves this column blank for TUH |
 | **FA / 24 h** | **TUH v1.5.1** | **not published** | Table 2 leaves this column blank for TUH |
+
+> ### ⚠ The "20-channel model" is inferred from the code, not stated in the paper
+> Earlier revisions of this document asserted that the RPAH figures came from a **20-channel**
+> model (19 EEG + ECG) as though the paper said so. **It does not.** §2.3 says the signal is
+> decomposed "into 19 independent components", Fig. 4 shows the input as `23 × 19 × 125`, and ECG
+> appears only in the EPILEPSIAE table caption and one patient anecdote. The "10–20 system" in
+> Fig. 3(a) is electrode *placement* nomenclature and not a channel count.
+>
+> The claim came from the authors' **code**: `utils/ICA_load_data_elec.py:285` asserts a shape of
+> `(1, 23, 20, 125)`, and line 200 reads RPAH through `params_RPA_addECG.txt`. That is good
+> evidence the RPAH runs used ECG, and it is still the most likely explanation — but it is an
+> inference from the repository, not a published statement, and it must be written as one. The
+> released `convlstm_ICA_12_train.h5` is 19-channel.
 
 > ### ⚠ The 56.55 trap
 > Our event-level false-alarm figures land in the same numeric neighbourhood as the paper's
