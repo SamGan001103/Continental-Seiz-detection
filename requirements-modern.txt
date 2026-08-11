@@ -35,6 +35,12 @@ stft==0.5.2
 # TF 2.x rather than the paper's 1.15, which has no Apple Silicon wheel and
 # never will. Verified to agree with TF 1.15 to 6.8e-09 on real windows.
 tensorflow==2.21.0
+# Keras 2, which TF 2.16+ no longer bundles. Not optional: with Keras 3 the same
+# weights and the same input give a different answer - measured 0.9779213071 vs
+# 0.9663650393 on one window, and up to 0.44 across the corpus. The paper states
+# Keras 2.0, so this is what reproduces it. models/convlstm_tf2.py sets
+# TF_USE_LEGACY_KERAS=1 to select it.
+tf-keras==2.21.0
 
 # --- interface ----------------------------------------------------------
 PyQt5==5.15.11

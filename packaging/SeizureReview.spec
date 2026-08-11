@@ -179,6 +179,18 @@ print('spec: building against TensorFlow major version {}'.format(_TF_MAJOR))
 if _TF_MAJOR >= 2:
     hiddenimports += collect_submodules('tensorflow.python.keras')
     hiddenimports += ['tensorflow', 'tensorflow.python']
+    # Keras 2, selected by models/convlstm_tf2.py via TF_USE_LEGACY_KERAS. It is
+    # resolved by name at import time, so PyInstaller cannot see it, and a build
+    # without it silently falls back to Keras 3 - which loads the same weights
+    # and returns a different probability. That failure has no traceback: the
+    # application works, and its numbers quietly stop matching the paper.
+    try:
+        import tf_keras as _tfk                                  # noqa: F401
+        hiddenimports += collect_submodules('tf_keras')
+        print('spec: tf_keras bundled (Keras 2 numerics preserved)')
+    except ImportError:
+        print('spec: WARNING tf_keras NOT installed - the frozen app will use '
+              'Keras 3 and will not reproduce the published results')
     # models/deep_conv_lstm.py imports keras.layers.core, which TF2 removed, so
     # declaring it here would only produce an unresolvable-import warning.
 else:

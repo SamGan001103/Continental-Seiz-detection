@@ -23,6 +23,34 @@ or — worse — silently mis-assign.
 from gui.io.edf import CHANNELS_19
 
 
+# --------------------------------------------------------------------------
+# Keras 2, not Keras 3
+# --------------------------------------------------------------------------
+# TensorFlow 2.16 replaced Keras 2 with Keras 3, which reimplemented the layers
+# this model is built from. The weights still load and the parameter count still
+# matches, because the architecture is unchanged - but ConvLSTM2D computes in a
+# different order, and the result differs.
+#
+# Measured on one real window, byte-identical input:
+#
+#     TF 1.15   (the shipped Windows build)   p(seizure) = 0.9779213071
+#     TF 2.21 + Keras 3                       p(seizure) = 0.9663650393
+#     TF 2.21 + Keras 2 (this switch)         p(seizure) = 0.9779213071
+#
+# The last two lines are the same runtime. Across 40 recordings the switch takes
+# the median cross-machine difference to 0.000000 and halves the windows that
+# change a detection decision. The paper states Keras 2.0 and TensorFlow 1.4.0,
+# so this is fidelity to the published method, not merely self-consistency.
+#
+# It must be set before TensorFlow is imported anywhere in the process, which is
+# why it is here at module scope rather than inside the function: importing this
+# module is what pulls TensorFlow in. `tf_keras` is a hard requirement of the
+# modern stack for the same reason (requirements-modern.txt).
+import os
+
+os.environ.setdefault('TF_USE_LEGACY_KERAS', '1')
+
+
 def build_convlstm(n_time=23, n_electrodes=None, n_freq=125, n_classes=2):
     """Return the uncompiled model, matching Fig. 4 of the source paper.
 

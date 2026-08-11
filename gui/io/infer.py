@@ -8,6 +8,28 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
+# Keras 2, not Keras 3 — and it has to be selected HERE.
+#
+# TensorFlow 2.16 replaced Keras 2 with Keras 3, which reimplemented ConvLSTM2D.
+# The weights still load and the parameter count still matches, so nothing
+# fails; the model simply returns a different number. Measured on one real
+# window with byte-identical input:
+#
+#     TF 1.15  (the shipped Windows build)  p(seizure) = 0.9779213071
+#     TF 2.21 + Keras 3                     p(seizure) = 0.9663650393
+#     TF 2.21 + Keras 2                     p(seizure) = 0.9779213071
+#
+# The paper states Keras 2.0 and TensorFlow 1.4.0, so this is fidelity to the
+# published method rather than a preference.
+#
+# The variable is read by TensorFlow at import time, so setting it later has no
+# effect and fails silently. It lived in models/convlstm_tf2.py first, which was
+# too late: that module is not imported until _build_model() is called, by which
+# point something else has already pulled TensorFlow in and bound Keras 3. This
+# module is on every path that reaches inference, and imports no TensorFlow of
+# its own, which makes it the right place.
+os.environ.setdefault('TF_USE_LEGACY_KERAS', '1')
+
 from gui.io.edf import load_edf_19ch, CHANNELS_19, TARGET_FS  # noqa: E402
 from gui.paths import weights_path  # noqa: E402
 

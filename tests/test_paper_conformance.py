@@ -190,6 +190,37 @@ class DocumentedEnvironmentDeviation(unittest.TestCase):
                       'portability.md no longer states the modern Python '
                       'that replaces 3.6 on Apple Silicon')
 
+    def test_keras_2_is_selected_on_a_tf2_runtime(self):
+        """The paper: "Keras 2.0 and Tensorflow 1.4.0".
+
+        TensorFlow 2.16 replaced Keras 2 with Keras 3, which reimplemented
+        ConvLSTM2D. Nothing fails when Keras 3 is used — the weights load, the
+        parameter count matches, the application runs — and p(seizure) is
+        different. Measured on one real window with byte-identical input:
+        0.9779213071 under Keras 2, 0.9663650393 under Keras 3, against
+        0.9779213071 on the TF 1.15 build the reported figures come from.
+
+        There is no traceback for this. The only way it stays fixed is a test.
+        `gui.io.infer` sets TF_USE_LEGACY_KERAS at import, which is the last
+        moment before TensorFlow reads it.
+        """
+        try:
+            import tensorflow as tf
+        except ImportError:
+            self.skipTest('TensorFlow not installed')
+        major, minor = (int(x) for x in tf.__version__.split('.')[:2])
+        if (major, minor) < (2, 16):
+            return          # Keras 2 is the only Keras this runtime has
+        import gui.io.infer  # noqa: F401  — sets the variable at import
+        self.assertEqual(os.environ.get('TF_USE_LEGACY_KERAS'), '1',
+                         'TF_USE_LEGACY_KERAS is not set, so tf.keras is '
+                         'Keras 3 and this build does not reproduce the '
+                         'published numbers')
+        self.assertIn('tf_keras', tf.keras.__name__,
+                      'tf.keras resolved to {!r}, not the Keras 2 compatibility '
+                      'package. Is tf-keras installed? '
+                      '(requirements-modern.txt)'.format(tf.keras.__name__))
+
     def test_mne_version_deviation_is_documented(self):
         import mne
         review = os.path.join(REPO, 'docs', 'ica_implementation_review.md')
