@@ -292,6 +292,8 @@ class MainWindow(QtWidgets.QMainWindow):
         tb.addWidget(QtWidgets.QLabel('Montage'))
         self.cb_montage = QtWidgets.QComboBox()
         self.cb_montage.addItems(list(MONTAGES.keys()))
+        self.cb_montage.setToolTip(
+            'Display montage. Display only. The detector always scores the unfiltered, referential recording — changing this changes what you see, never what the AI scored.')
         self.cb_montage.setCurrentText(self._montage)
         self.cb_montage.currentTextChanged.connect(self._on_montage_change)
         tb.addWidget(self.cb_montage)
@@ -300,6 +302,8 @@ class MainWindow(QtWidgets.QMainWindow):
         tb.addWidget(QtWidgets.QLabel('HP'))
         self.cb_hp = QtWidgets.QComboBox()
         self.cb_hp.addItems(['off', '0.3', '0.5', '1.0', '3.0', '5.0'])
+        self.cb_hp.setToolTip(
+            'Display high-pass filter. Display only. The detector always scores the unfiltered, referential recording — changing this changes what you see, never what the AI scored.')
         self.cb_hp.setCurrentText('1.0')
         self.cb_hp.currentTextChanged.connect(self._on_filters_change)
         tb.addWidget(self.cb_hp)
@@ -307,6 +311,8 @@ class MainWindow(QtWidgets.QMainWindow):
         tb.addWidget(QtWidgets.QLabel('LP'))
         self.cb_lp = QtWidgets.QComboBox()
         self.cb_lp.addItems(['off', '15', '30', '35', '50', '70'])
+        self.cb_lp.setToolTip(
+            'Display low-pass filter. Display only. The detector always scores the unfiltered, referential recording — changing this changes what you see, never what the AI scored.')
         self.cb_lp.setCurrentText('70')
         self.cb_lp.currentTextChanged.connect(self._on_filters_change)
         tb.addWidget(self.cb_lp)
@@ -314,6 +320,8 @@ class MainWindow(QtWidgets.QMainWindow):
         tb.addWidget(QtWidgets.QLabel('Notch'))
         self.cb_notch = QtWidgets.QComboBox()
         self.cb_notch.addItems(['off', '50', '60'])
+        self.cb_notch.setToolTip(
+            'Display notch filter (mains). Display only. The detector always scores the unfiltered, referential recording — changing this changes what you see, never what the AI scored.')
         self.cb_notch.setCurrentText('60')
         self.cb_notch.currentTextChanged.connect(self._on_filters_change)
         tb.addWidget(self.cb_notch)
