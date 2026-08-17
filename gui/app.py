@@ -710,6 +710,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self._refresh_signal_view(preserve_view=False)
         self._rebuild_events_from_probs(preserve_review=False)
         self.statusBar().showMessage(msg)
+        # ...then offer back any crash-recovery record for this recording.
+        # Must run AFTER _rebuild_events_from_probs, which replaces self._events
+        # wholesale with freshly proposed candidates.
+        self._offer_autosave_restore()
 
     def _ensure_probs_with_progress(self, edf_path):
         """Run inference on an EDF that has no cached probs, with a
@@ -1600,6 +1604,117 @@ class MainWindow(QtWidgets.QMainWindow):
             except OSError:
                 continue  # read-only location; try the next one
         self._autosave_written_to = None
+
+    def _read_autosave(self):
+        """The most recent crash-recovery record for this recording, or None.
+
+        Both locations are considered because _autosave_review falls back to a
+        per-user directory when the recording sits on a read-only share, which
+        is the normal case in a hospital. The newer of the two wins: a reviewer
+        whose folder permissions changed mid-session could have one of each.
+        """
+        best, best_mtime = None, -1.0
+        for path in self._autosave_locations():
+            if not path or not os.path.exists(path):
+                continue
+            try:
+                mtime = os.path.getmtime(path)
+                with open(path) as f:
+                    blob = json.load(f)
+            except (OSError, ValueError):
+                continue        # unreadable or truncated by the crash itself
+            if not isinstance(blob, dict) or not blob.get('events'):
+                continue
+            if mtime > best_mtime:
+                best, best_mtime = blob, mtime
+        return best
+
+    def _offer_autosave_restore(self):
+        """Offer to reload decisions the reviewer never exported.
+
+        The application has always written this file, and _confirm_discard_review
+        tells the reviewer where it is when they abandon a session — but nothing
+        ever read it back, so the promise could not be kept. A reviewer whose
+        machine died forty candidates into a recording lost the lot.
+
+        Restoring is opt-in and non-destructive: declining leaves the file on
+        disk, so a mis-click costs nothing.
+        """
+        blob = self._read_autosave()
+        if not blob:
+            return
+        saved = blob.get('events') or []
+
+        # Match on the interval, not on identity — the proposals were rebuilt
+        # from the probabilities a moment ago and are different dict objects.
+        # A tenth of a second is far below the 6 s window step, so it cannot
+        # collide two distinct candidates, and it absorbs the float round-trip
+        # through JSON.
+        by_span = {}
+        for i, ev in enumerate(self._events):
+            by_span[(round(float(ev['start']), 1),
+                     round(float(ev['stop']), 1))] = i
+
+        restorable, added_back = [], []
+        for rec in saved:
+            try:
+                span = (round(float(rec['start']), 1),
+                        round(float(rec['stop']), 1))
+            except (KeyError, TypeError, ValueError):
+                continue
+            if span in by_span:
+                restorable.append((by_span[span], rec))
+            elif rec.get('status') == 'added':
+                added_back.append(rec)      # a seizure the detector never proposed
+        if not restorable and not added_back:
+            return
+
+        n = len(restorable) + len(added_back)
+        box = QtWidgets.QMessageBox(self)
+        box.setIcon(QtWidgets.QMessageBox.Question)
+        box.setWindowTitle('Unfinished review found')
+        box.setText('{} decision(s) for this recording were autosaved and '
+                    'never exported.'.format(n))
+        detail = ('Restore them and continue where you left off?\n\n'
+                  'Declining leaves the autosave file untouched — nothing is '
+                  'lost either way.')
+        if added_back:
+            detail += ('\n\n{} of them are seizures you marked that the '
+                       'detector did not propose.'.format(len(added_back)))
+        box.setInformativeText(detail)
+        box.setStandardButtons(QtWidgets.QMessageBox.Yes |
+                               QtWidgets.QMessageBox.No)
+        box.setDefaultButton(QtWidgets.QMessageBox.Yes)
+        if box.exec_() != QtWidgets.QMessageBox.Yes:
+            return
+
+        for idx, rec in restorable:
+            ev = self._events[idx]
+            ev['status'] = rec.get('status', ev['status'])
+            if rec.get('review_note'):
+                ev['review_note'] = rec['review_note']
+        for rec in added_back:
+            self._events.append({
+                'start': float(rec['start']), 'stop': float(rec['stop']),
+                'source_start': float(rec['start']),
+                'source_stop': float(rec['stop']),
+                'prob': rec.get('model_score_uncalibrated'),
+                'status': 'added',
+                'review_note': rec.get('review_note')})
+        self._events.sort(key=lambda e: e['start'])
+        # Re-issue ids: the restored events have none, and both the worklist and
+        # the signal view key their selection off 'id'. assign_event_ids is the
+        # same helper _add_event_at_view uses, so a restored event is
+        # indistinguishable from one added by hand.
+        self._events = assign_event_ids(self._events)
+
+        self._dirty = True
+        self._update_title()
+        self.event_list.set_events(self._events)
+        self._refresh_signal_view(preserve_view=True)
+        self.statusBar().showMessage(
+            'Restored {} unexported decision(s) from the autosave. Export when '
+            'you are finished.'.format(n), 8000)
 
     def _clear_autosave(self):
         for path in self._autosave_locations():

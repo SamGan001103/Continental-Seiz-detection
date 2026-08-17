@@ -15,7 +15,18 @@ import os
 import sys
 import traceback
 
-from PyQt5 import QtCore, QtWidgets
+# BEFORE PyQt5, and that is not a style preference. On Windows with
+# TensorFlow 2.x, loading Qt's DLLs first makes TensorFlow's native library fail
+# to initialise — "DLL load failed while importing _pywrap_tensorflow_internal:
+# A dynamic link library (DLL) initialization routine failed." Reversing the
+# order fixes it. This is docs/known_issues.md §1, which was attributed to
+# PyInstaller for six build attempts and reproduces from source with no
+# PyInstaller involved. See gui/tf_preload.py for the measurements.
+#
+# Do not move this below the PyQt5 import. Do not merge it into the block below.
+import gui.tf_preload                                        # noqa: F401,E402
+
+from PyQt5 import QtCore, QtWidgets                          # noqa: E402
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if REPO not in sys.path:
