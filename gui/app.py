@@ -41,6 +41,12 @@ from gui.events import (clamp_interval, rebuild_events, assign_event_ids,
                         EXPORTED_STATUSES)
 from gui.processing import (apply_montage, apply_filters, MONTAGES)
 from gui.widgets.head_view import HeadView, derivations_for
+#: Most signal the display-side ICA will clean for one repaint. At roughly half
+#: a second per 12 s window, 60 s is about five windows and two and a half
+#: seconds — slow but bounded. Unbounded, a zoomed-out view of a long recording
+#: froze the application for minutes.
+MAX_ICA_DISPLAY_S = 60.0
+
 from gui.io.ica_display import (SEGMENT_S as ICA_SEGMENT_S,
                                 cache_clear as ica_cache_clear,
                                 clean_span_for_display,
@@ -247,6 +253,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._ica_anchor_s = 0         # block grid alignment
         self._ica_recording_id = None  # cache identity for this file
         self._ica_blocks = []          # per-block IcaDisplayInfo, for the UI
+        self._ica_capped = False       # was the cleaned span bounded?
         # Scrolling fires viewRangeChanged continuously and a ~1 s ICA per
         # event would make the scrollbar feel broken. Coalesce.
         self._ica_timer = QtCore.QTimer(self)
@@ -1410,6 +1417,28 @@ class MainWindow(QtWidgets.QMainWindow):
         t0 = max(0.0, x0 - ICA_SEGMENT_S)
         t1 = min(self._duration_s, x1 + ICA_SEGMENT_S)
 
+        # Bounded, and it must be. Cleaning costs about half a second per 12 s
+        # window, and this had no cap at all: zoomed out to a 56-minute
+        # recording it tried to clean all of it — 278 windows, over two minutes
+        # of frozen window, with the application reported as Not Responding.
+        # That is exactly the failure MAX_SPECTRUM_SECONDS already prevents in
+        # the spectrum panel; this view needed the same bound and did not have
+        # it.
+        #
+        # Centred on the view rather than truncated from the left, so the part
+        # the reviewer is looking at is the part that gets cleaned. At the
+        # default 10 s sweep the cap never binds — it only fires when zoomed
+        # out, which is the runaway case.
+        if (t1 - t0) > MAX_ICA_DISPLAY_S:
+            mid = 0.5 * (x0 + x1)
+            half = 0.5 * MAX_ICA_DISPLAY_S
+            t0 = max(0.0, mid - half)
+            t1 = min(self._duration_s, t0 + MAX_ICA_DISPLAY_S)
+            t0 = max(0.0, t1 - MAX_ICA_DISPLAY_S)
+            self._ica_capped = True
+        else:
+            self._ica_capped = False
+
         # Measured at 0.94 s for a first toggle at the default 10 s sweep, and
         # 0.66 s after a scroll; a cache hit is 0.04 s. That is real work — the
         # detector's own ICA, re-run per 12 s window — but a second of frozen
@@ -1450,7 +1479,15 @@ class MainWindow(QtWidgets.QMainWindow):
             i0 = int(round(t_start * self._fs))
             source[:, i0:i0 + span.shape[1]] = span
             self._ica_blocks = blocks
-            self.statusBar().showMessage(ica_summarise(blocks), 8000)
+            msg = ica_summarise(blocks)
+            if self._ica_capped:
+                # Without this the reviewer sees cleaned signal in the middle
+                # and raw signal either side, with nothing saying which is
+                # which — a worse failure than the delay it prevents.
+                msg += ('  —  only the middle {:g} s of this view is shown as '
+                        'detector input; zoom in to cover it all.'
+                        .format(MAX_ICA_DISPLAY_S))
+            self.statusBar().showMessage(msg, 10000)
             return source
         finally:
             QtWidgets.QApplication.restoreOverrideCursor()

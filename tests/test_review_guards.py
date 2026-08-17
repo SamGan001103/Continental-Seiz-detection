@@ -474,3 +474,54 @@ class TheBusyCursorAlwaysComesBack(unittest.TestCase):
         self.assertNotIn('what the AI', label)
         self.assertIn('ICA', label,
                       'ICA is the standard clinical term and should stay')
+
+
+@unittest.skipUnless(HAVE_QT, 'PyQt5 not available')
+class TheIcaViewIsBounded(unittest.TestCase):
+    """Cleaning is proportional to the visible span, so the span must be capped.
+
+    Re-running the detector's ICA costs about half a second per 12 s window.
+    Unbounded, a zoomed-out view of a 56-minute recording tried to clean all of
+    it — 278 windows, over two minutes of frozen window, with Windows reporting
+    the application as Not Responding. The spectrum panel already guards this
+    with MAX_SPECTRUM_SECONDS; this view was written without the equivalent.
+    """
+
+    def setUp(self):
+        import numpy as np
+        self.w = MainWindow()
+        self.w._raw_data = np.zeros((19, 250 * 3600), dtype=np.float32)
+        self.w._original_data = self.w._raw_data
+        self.w._fs = 250
+        self.w._duration_s = 3600.0
+        self.w._ica_display = True
+        self.w._ica_recording_id = 'test'
+
+    def tearDown(self):
+        self.w.close()
+
+    def test_a_zoomed_out_view_is_capped(self):
+        from gui.app import MAX_ICA_DISPLAY_S
+        self.w._ica_view_span = (0.0, 3600.0)
+        self.w._display_source()
+        self.assertTrue(self.w._ica_capped,
+                        'an hour-wide view was not capped; this is the freeze')
+        span = sum(1 for _ in self.w._ica_blocks)
+        self.assertLessEqual(
+            span * 12.0, MAX_ICA_DISPLAY_S + 24.0,
+            'more windows were cleaned than the cap allows')
+
+    def test_the_cap_is_disclosed(self):
+        self.w._ica_view_span = (0.0, 3600.0)
+        self.w._display_source()
+        msg = self.w.statusBar().currentMessage()
+        self.assertIn('middle', msg,
+                      'a partially cleaned view must say so — otherwise the '
+                      'reviewer sees cleaned signal beside raw signal with '
+                      'nothing marking the boundary')
+
+    def test_an_ordinary_view_is_not_capped(self):
+        self.w._ica_view_span = (100.0, 110.0)
+        self.w._display_source()
+        self.assertFalse(self.w._ica_capped,
+                         'the cap must not bind at normal sweep speeds')
