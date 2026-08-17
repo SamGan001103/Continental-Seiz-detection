@@ -273,7 +273,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.head_view = HeadView()
         self.head_view.set_montage(self._montage)
         self.head_view.electrodeClicked.connect(self._on_electrode_clicked)
-        self._head_dock = QtWidgets.QDockWidget('Electrodes (10-20)', self)
+        # Title matches the View menu entry verbatim. They differed - 'Electrodes'
+        # against 'Electrode map' - and a reviewer hunting for a panel they
+        # closed should not have to infer that two names mean one thing.
+        self._head_dock = QtWidgets.QDockWidget('Electrode map (10-20)', self)
         self._head_dock.setObjectName('headDock')   # saveState() needs a name
         self._head_dock.setWidget(self.head_view)
         self._head_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea |
@@ -491,6 +494,18 @@ class MainWindow(QtWidgets.QMainWindow):
         a_rev.triggered.connect(self._revert_extent)
 
         m_view = mb.addMenu('&View')
+        # A closed dock is otherwise unrecoverable except through Qt's own
+        # right-click menu on the toolbar, which nobody discovers. toggleViewAction
+        # ticks and unticks itself, so it also shows whether the panel is open.
+        # No shortcut on it: N, Ctrl+Z, Ctrl+R and Ctrl+O were all silently dead
+        # because a sequence was registered twice, and tests/test_review_guards.py
+        # now fails on any duplicate.
+        act_head = self._head_dock.toggleViewAction()
+        act_head.setText('&Electrode map (10-20)')
+        act_head.setToolTip('Show where each displayed derivation sits on the '
+                            'scalp. Display only.')
+        m_view.addAction(act_head)
+        m_view.addSeparator()
         self.a_inspector = m_view.addAction('&Channel inspector…')
         self.a_inspector.setShortcut('Ctrl+I')
         self.a_inspector.setToolTip(

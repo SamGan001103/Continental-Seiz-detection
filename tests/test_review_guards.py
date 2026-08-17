@@ -253,3 +253,51 @@ class AddedEventsCountAsReviewWork(unittest.TestCase):
                     'work, so it can be discarded without a prompt' % status)
         finally:
             w.close()
+
+
+@unittest.skipUnless(HAVE_QT, 'PyQt5 not available')
+class ClosedPanelsCanBeReopened(unittest.TestCase):
+    """A dock with no menu entry is gone for good, as far as a user is concerned.
+
+    Qt puts every dock in a right-click menu on the toolbar, but nobody finds
+    it — the electrode map was added without a View entry and the first person
+    to close it had no way back. A panel that cannot be restored is worse than
+    one that was never added: the reviewer now knows the feature exists and
+    cannot reach it.
+    """
+
+    def test_every_dock_has_a_view_menu_entry(self):
+        w = MainWindow()
+        w.show()
+        try:
+            view = [m for m in w.menuBar().actions()
+                    if 'View' in m.text()][0].menu()
+            texts = ' '.join(a.text() for a in view.actions())
+            for dock in w.findChildren(QtWidgets.QDockWidget):
+                title = dock.windowTitle()
+                key = title.split()[0].strip('&')
+                self.assertIn(
+                    key.lower(), texts.lower(),
+                    'the {!r} dock has no View menu entry, so closing it is '
+                    'irreversible for a user'.format(title))
+        finally:
+            w.close()
+
+    def test_closing_and_reopening_the_electrode_map_works(self):
+        w = MainWindow()
+        w.show()
+        try:
+            view = [m for m in w.menuBar().actions()
+                    if 'View' in m.text()][0].menu()
+            act = [a for a in view.actions() if 'Electrode' in a.text()][0]
+            self.assertTrue(w._head_dock.isVisible())
+            w._head_dock.close()
+            self.assertFalse(w._head_dock.isVisible())
+            self.assertFalse(act.isChecked(),
+                             'the menu entry must untick when the dock closes, '
+                             'or it lies about the panel state')
+            act.trigger()
+            self.assertTrue(w._head_dock.isVisible(),
+                            'the View menu entry did not bring the panel back')
+        finally:
+            w.close()
