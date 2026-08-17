@@ -16,9 +16,9 @@ mirroring or transposing it does not.
 import math
 import unittest
 
-from gui.widgets.head_view import (CHANNEL_NAMES, HEAD_POS, HEAD_POS_1020,
-                                    LEGACY_ALIASES, derivations_for,
-                                    montage_pairs)
+from gui.widgets.head_view import (_CAP_PAD, CHANNEL_NAMES, HEAD_POS,
+                                    HEAD_POS_1020, LEGACY_ALIASES,
+                                    derivations_for, montage_pairs)
 from gui.processing import (CH_NAMES_19, LONGITUDINAL_BIPOLAR, MONTAGES,
                             TRANSVERSE_BIPOLAR)
 
@@ -221,13 +221,126 @@ class HeadViewWidgetTests(unittest.TestCase):
 
     def test_it_paints_at_absurd_sizes(self):
         """A dock widget can be dragged to almost nothing. The caption is
-        reserved space, so a squeeze must shrink the head, not divide by it."""
+        reserved space, so a squeeze must shrink the head, not divide by it.
+
+        This previously only called render() and asserted nothing, so it passed
+        while the caption was being silently clipped. It now also pins the
+        property named in its own docstring: the head keeps a positive radius
+        and the reservation stays inside the widget.
+        """
         for w, h in ((1, 1), (10, 400), (400, 10), (60, 60), (1200, 900)):
             self.w.resize(w, h)
             img = QtGui.QImage(max(1, w), max(1, h),
                                QtGui.QImage.Format_ARGB32)
             img.fill(0)
             self.w.render(img)
+
+            # These two must be able to FAIL, or this test is decoration
+            # again. `radius > 0` and `reserved <= widget height` are both
+            # true by construction (_layout floors head_h/head_w at 10.0;
+            # _reserved_caption_height already clamps to r.height()), so they
+            # are asserted nowhere. What can fail is the floor: the widget is
+            # required to refuse a size its own caption cannot fit into.
+            floor = self.w.minimumSizeHint()
+            self.assertGreaterEqual(
+                self.w.width(), floor.width(),
+                'resize({}, {}) got under the floor width'.format(w, h))
+            self.assertGreaterEqual(
+                self.w.height(), floor.height(),
+                'resize({}, {}) got under the floor height'.format(w, h))
+            self.assertEqual(
+                self.w.minimumSize(), floor,
+                'the hard minimum and the published hint have diverged — an '
+                'explicit minimumSize shadows minimumSizeHint(), so they must '
+                'come from one measurement')
+
+    def test_the_caption_is_never_silently_truncated(self):
+        """The disclaimer must fit the box it is painted into, at every UI font
+        size a reviewer might be running.
+
+        Regression test. QPainter.drawText(rect, TextWordWrap) clips with no
+        ellipsis and no warning, so a reservation one line short does not look
+        like a bug — it looks like a shorter sentence. _reserved_caption_height
+        used to cap itself at 45 % of the widget, which at the macOS default
+        13 pt gave the caption 85 px when it needed 88.
+
+        8 pt is the Windows default, 13 pt the macOS one; the sizes between are
+        what a reviewer gets from display scaling.
+        """
+        for pt in (8, 9, 10, 11, 12, 13, 14, 16):
+            f = self.w.font()
+            f.setPointSize(pt)
+            self.w.setFont(f)
+
+            floor = self.w.minimumSizeHint()
+            floor_h = max(1, floor.height())
+            floor_w = max(1, floor.width())
+            # The floor's own WIDTH matters as much as its height: the caption
+            # wraps to more lines the narrower it gets, so testing only at a
+            # comfortable 280 px hid the case where minimumSizeHint promises
+            # room it measured at one width and the paint happens at another.
+            sizes = [(floor_w, floor_h), (floor_w, floor_h + 40),
+                     (floor_w + 40, floor_h), (280, floor_h),
+                     (280, 320), (280, 420), (320, 380)]
+            for (w_px, h) in sizes:
+                self.w.resize(w_px, h)
+                r = self.w.contentsRect()
+
+                fm = QtGui.QFontMetrics(self.w.font())
+                reserved = self.w._reserved_caption_height()
+                # The rect _draw_caption actually paints the caption into.
+                top = r.bottom() - reserved
+                avail = max(0.0, r.bottom() - _CAP_PAD - top)
+
+                needed = fm.boundingRect(
+                    QtCore.QRect(0, 0, max(1, r.width() - 8), 10000),
+                    QtCore.Qt.TextWordWrap | QtCore.Qt.AlignHCenter,
+                    HeadView.CAPTION).height()
+
+                self.assertLessEqual(
+                    needed, avail + 0.5,
+                    'caption truncated at {} pt in {}x{}: needs {} px, '
+                    'gets {} px'.format(pt, r.width(), h, needed, round(avail)))
+
+    def test_the_montage_header_elides_instead_of_losing_both_ends(self):
+        """The header must fit its box, and say so when it has been shortened.
+
+        drawText(rect, AlignHCenter) does not elide — it clips, and a centred
+        string that overflows loses characters off BOTH ends. That is how
+        "Longitudinal Bipolar — 18 derivations" became "ongitudinal Bipolar —
+        18 derivation" at the macOS default 13 pt in a 280 px dock: a montage
+        name silently reading as a different word, with nothing to signal it.
+
+        The property: whatever gets painted fits, and if it is not the whole
+        string it ends in an ellipsis.
+        """
+        for montage in MONTAGES:
+            self.w.set_montage(montage)
+            full = self.w.header_text()
+            self.assertIn(montage.split()[0], full,
+                          'header does not name the montage')
+
+            for pt in (8, 10, 11, 12, 13, 14, 16):
+                f = self.w.font()
+                f.setPointSize(pt)
+                self.w.setFont(f)
+                fm = QtGui.QFontMetrics(self.w.font())
+
+                for box_w in (120, 160, 200, 240, 280, 320, 420, 900):
+                    shown = self.w._header_shown(box_w)
+                    self.assertLessEqual(
+                        fm.boundingRect(shown).width(), box_w + 1,
+                        'header overflows its box at {} pt in {} px: '
+                        '{!r}'.format(pt, box_w, shown))
+                    if shown != full:
+                        self.assertTrue(
+                            shown.endswith('…'),
+                            'header was shortened without an ellipsis at {} pt '
+                            'in {} px: {!r}'.format(pt, box_w, shown))
+                        self.assertTrue(
+                            full.startswith(shown[:1]),
+                            'header lost its leading character at {} pt in '
+                            '{} px: {!r}'.format(pt, box_w, shown))
 
     def test_clicking_an_electrode_emits_its_name(self):
         got = []
@@ -244,16 +357,39 @@ class HeadViewWidgetTests(unittest.TestCase):
         self.assertEqual(self.w.selected(), 'T3')
 
     def test_clicking_empty_scalp_selects_nothing(self):
+        """Clicking bare scalp must emit nothing and leave the selection alone.
+
+        This used to aim at the widget centre and accept `assertIn(got, ([],
+        ['Cz']))` — but the centre *is* Cz, so the test passed whether the
+        contract held or not. It now finds a point the hit-test genuinely
+        rejects, asserts that it found one, and only then clicks it.
+        """
+        cx, cy, radius = self.w._layout()
+
+        # Walk out along a ray until the hit-test reports empty scalp. Between
+        # the midline chain and the frontal ring there is always such a gap.
+        empty = None
+        for frac in [i / 100.0 for i in range(10, 96)]:
+            cand = QtCore.QPointF(cx + 0.36 * radius,
+                                  cy - frac * radius)
+            if self.w.electrode_at(cand) is None:
+                empty = cand
+                break
+        self.assertIsNotNone(
+            empty, 'found no empty scalp point to click — test would be vacuous')
+
+        self.w.set_selected('T3')
         got = []
         self.w.electrodeClicked.connect(got.append)
-        cx, cy, _radius = self.w._layout()
-        # Between Cz and Fz there is no electrode; halfway is empty.
         ev = QtGui.QMouseEvent(
-            QtCore.QEvent.MouseButtonPress, QtCore.QPoint(int(cx), int(cy)),
+            QtCore.QEvent.MouseButtonPress,
+            QtCore.QPoint(int(round(empty.x())), int(round(empty.y()))),
             QtCore.Qt.LeftButton, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
         self.w.mousePressEvent(ev)
-        # Cz is within a marker radius of the centre, so aim well clear of it.
-        self.assertIn(got, ([], ['Cz']))
+
+        self.assertEqual(got, [], 'empty scalp emitted a selection')
+        self.assertEqual(self.w.selected(), 'T3',
+                         'a miss must not clear the existing selection')
 
     def test_hit_testing_finds_every_electrode_and_only_that_one(self):
         cx, cy, radius = self.w._layout()

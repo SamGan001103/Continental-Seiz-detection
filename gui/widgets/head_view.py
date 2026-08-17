@@ -96,6 +96,13 @@ _EXT_BOT = 1.06
 # Breathing room reserved below the caption block, in pixels.
 _CAP_PAD = 5
 
+# Smallest width and head allowance minimumSizeHint() will ask a layout for.
+# The caption is measured at _MIN_W, not at the current width, so the floor
+# does not move about as the dock is dragged; _MIN_HEAD_PX is what stays for
+# the scalp circle once the header and the caption have taken theirs.
+_MIN_W = 200
+_MIN_HEAD_PX = 90
+
 
 def montage_pairs(montage_name):
     """Return the derivations of a montage as [(label, anode, cathode), ...].
@@ -197,9 +204,18 @@ class HeadView(QtWidgets.QWidget):
         self._selected = None          # channel name last clicked
         self.setMouseTracking(True)    # hover highlight needs move events
         self.setFocusPolicy(QtCore.Qt.ClickFocus)
-        self.setMinimumSize(180, 200)
+        # The floor used to be a hardcoded setMinimumSize(180, 200). Two things
+        # were wrong with that. It is not font-relative, so it under-reserved
+        # exactly where this widget failed — a machine whose UI font is bigger
+        # than the developer's. And an explicit minimum SHADOWS
+        # minimumSizeHint(): Qt's qSmartMinSize only consults the hint when no
+        # explicit minimum is set, so a font-relative hint alone would be
+        # computed, published and then ignored. _refresh_floor() sets both from
+        # one measurement, so the hard floor and the published hint agree and
+        # both track the font. It is re-run whenever that measurement moves.
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                            QtWidgets.QSizePolicy.Expanding)
+        self._refresh_floor()
         self.setToolTip(
             'Electrode positions in the international 10-20 system, viewed '
             'from above with the nose at the top and the subject\'s left on '
@@ -248,6 +264,12 @@ class HeadView(QtWidgets.QWidget):
         self._vmin = vmin
         self._vmax = vmax
         self._unit = unit or ''
+        # Switching shading on adds the legend bar to the caption strip, which
+        # raises minimumSizeHint(). update() only schedules a repaint — the
+        # layout caches the old minimum until updateGeometry() invalidates it,
+        # so without this the widget keeps a floor measured without the legend.
+        self._refresh_floor()
+        self.updateGeometry()
         self.update()
 
     def values_range(self):
@@ -303,6 +325,48 @@ class HeadView(QtWidgets.QWidget):
     def sizeHint(self):
         return QtCore.QSize(280, 320)
 
+    def minimumSizeHint(self):
+        """Floor that keeps the caption whole and the head visible at once.
+
+        _reserved_caption_height() no longer caps itself, so nothing else stops
+        a layout squeezing this widget until the disclaimer is clipped. This is
+        what stops it, and it is font-relative on purpose: the caption wraps to
+        more lines as the UI font grows, so the floor has to grow with it or
+        macOS at 13 pt lands back in the truncation this replaced.
+        """
+        fm = QtGui.QFontMetrics(self.font())
+        header = fm.height() + 6
+        caption = self._caption_height(_MIN_W)
+        return QtCore.QSize(_MIN_W,
+                            int(round(header + _MIN_HEAD_PX + caption + 4)))
+
+    def _refresh_floor(self):
+        """Push minimumSizeHint() into the hard minimum, so both bind.
+
+        QWidget.resize() and a squeezing layout honour minimumSize(), not the
+        hint, so the hint on its own leaves the widget resizable below the size
+        its own caption needs. Setting them from the same measurement is what
+        makes the guarantee real. Guarded against no-op writes because
+        setMinimumSize() can trigger a relayout.
+        """
+        floor = self.minimumSizeHint()
+        if floor != self.minimumSize():
+            self.setMinimumSize(floor)
+            self.updateGeometry()
+
+    def changeEvent(self, ev):
+        """Republish the floor when the UI font changes under us.
+
+        minimumSizeHint() is font-relative, so a font change moves it. Qt does
+        not re-ask on its own — the layout caches the minimum — and the case
+        that matters is exactly the one this widget got wrong before: a machine
+        whose UI font is larger than the developer's.
+        """
+        if ev.type() == QtCore.QEvent.FontChange:
+            self._refresh_floor()
+            self.updateGeometry()
+        super().changeEvent(ev)
+
     # -------------------------------------------------------------- events
     def mouseMoveEvent(self, ev):
         name = self.electrode_at(ev.pos())
@@ -355,16 +419,27 @@ class HeadView(QtWidgets.QWidget):
 
         The caption is reserved space, not leftover space: when the widget is
         squeezed the head shrinks and the caption survives. It is a safety
-        statement, so it must not be the thing that gets clipped. The 45 % cap
-        stops the reverse failure — a widget dragged so narrow that the caption
-        wraps to eight lines and leaves no head at all.
+        statement, so it must not be the thing that gets clipped.
+
+        It gets the height the wrapped text actually measures, with no
+        proportional ceiling. A ceiling was the bug: capping this at 45 % of
+        the widget meant that at the macOS default 13 pt UI font, a dock at its
+        minimum height reserved 85 px for a caption needing 88, and
+        QPainter.drawText(rect, TextWordWrap) clips silently — no ellipsis, no
+        warning, just a disclaimer with its tail cut off. The reverse failure
+        the ceiling guarded against (a squeeze leaving no head at all) is now
+        held off by minimumSizeHint(), which keeps the widget large enough for
+        both, rather than by quietly dropping half the sentence.
+
+        The only clamp left is the widget's own height, so _layout() can never
+        derive a negative head from this.
 
         _layout() and _draw_caption() must agree on this to the pixel, so they
         share one implementation rather than each recomputing it.
         """
         r = self.contentsRect()
         return min(self._caption_height(r.width()),
-                   max(0.0, r.height() * 0.45))
+                   max(0.0, float(r.height())))
 
     def _layout(self):
         """(cx, cy, radius_px) of the scalp circle in widget coordinates."""
@@ -417,21 +492,44 @@ class HeadView(QtWidgets.QWidget):
         self._draw_caption(p, muted, canvas, dark)
         p.end()
 
-    def _draw_header(self, p, muted, ink):
-        """Montage name, so the diagram can never be read out of context."""
-        r = self.contentsRect()
-        fm = QtGui.QFontMetrics(self.font())
+    def header_text(self):
+        """The montage line in full, exposed so a test can pin what it says."""
         pairs = montage_pairs(self._montage)
         if pairs:
-            text = '{} — {} derivations'.format(self._montage, len(pairs))
-        elif self._montage == 'Common Average':
-            text = 'Common Average — reference is the mean of all 19'
-        else:
-            text = '{} — electrodes as recorded'.format(self._montage)
+            return '{} — {} derivations'.format(self._montage, len(pairs))
+        if self._montage == 'Common Average':
+            return 'Common Average — reference is the mean of all 19'
+        return '{} — electrodes as recorded'.format(self._montage)
+
+    def _header_shown(self, width):
+        """The header exactly as it will be painted into `width` pixels.
+
+        Elided, not clipped. QPainter.drawText with AlignHCenter and no elide
+        drops characters off BOTH ends when the string overflows: at the macOS
+        default 13pt in a 280px dock, "Longitudinal Bipolar — 18 derivations"
+        painted as "ongitudinal Bipolar — 18 derivation" — no ellipsis, nothing
+        to tell the reader the montage name had been cut. Eliding right keeps
+        the montage name, which is the part that stops the diagram being read
+        out of context, and shows a visible "…" for the rest.
+
+        _draw_header() goes through here rather than eliding inline, so a test
+        can assert the painted string fits without having to read pixels.
+        """
+        fm = QtGui.QFontMetrics(self.font())
+        return fm.elidedText(self.header_text(), QtCore.Qt.ElideRight, width)
+
+    def _header_box(self):
+        r = self.contentsRect()
+        fm = QtGui.QFontMetrics(self.font())
+        return QtCore.QRect(r.left() + 4, r.top(), r.width() - 8,
+                            fm.height() + 4)
+
+    def _draw_header(self, p, muted, ink):
+        """Montage name, so the diagram can never be read out of context."""
+        box = self._header_box()
         p.setPen(QtGui.QPen(muted))
-        p.drawText(QtCore.QRect(r.left() + 4, r.top(), r.width() - 8,
-                                fm.height() + 4),
-                   QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter, text)
+        p.drawText(box, QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter,
+                   self._header_shown(box.width()))
 
     def _draw_head(self, p, cx, cy, radius, outline):
         """Scalp circle, nose and ears — the orientation cues."""
@@ -541,8 +639,13 @@ class HeadView(QtWidgets.QWidget):
                     t = (self._values[name] - vmin) / span
                 fill = _value_color(t, dark)
             elif rng is not None:
-                # Shading requested but this channel has no value: hatch it so
-                # "no data" cannot be misread as the bottom of the ramp.
+                # Shading requested but this channel has no value. It gets a
+                # flat neutral tint, deliberately off the colour ramp, so that
+                # "not measured" cannot be misread as "measured at the bottom
+                # of the scale". (This comment used to say the marker was
+                # hatched. It never was — it is the solid mix below, and a
+                # reader checking the safety property deserves to be told what
+                # the code does rather than what someone once intended.)
                 fill = _mix(canvas, ink, 0.18)
 
             is_sel = name == self._selected
