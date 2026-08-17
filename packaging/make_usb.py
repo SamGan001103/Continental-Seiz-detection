@@ -284,11 +284,34 @@ def main(argv=None):
         os.makedirs(dest)
 
     # 1 -- this platform's build ------------------------------------------
+    # Copy beside the existing build, then swap. copy_tree removes the
+    # destination first, so an interrupted copy used to leave the slot EMPTY -
+    # the previous, working build deleted and the new one incomplete, with a
+    # NOT_BUILT placeholder written over the top by step 2. That happened once
+    # in practice, and it is the worst possible moment for it: refilling a stick
+    # is something you do shortly before showing the thing to somebody, and a
+    # USB write is exactly the operation that gets interrupted by a pulled
+    # cable, a full disk, or an impatient eject.
+    #
+    # The staging directory costs a second copy's worth of free space for the
+    # duration. That is the right trade against losing the only build on the
+    # stick.
     if os.path.isdir(args.dist):
         target = os.path.join(dest, plat, 'SeizureReview')
+        staging = target + '.incoming'
         print('  copying the {} build (this takes a few minutes, ~1.2 GB)'
               .format(plat))
-        copy_tree(args.dist, target)
+        if os.path.isdir(staging):
+            shutil.rmtree(staging, ignore_errors=True)
+        copy_tree(args.dist, staging)
+        # Only now is the old build expendable.
+        previous = target + '.previous'
+        if os.path.isdir(previous):
+            shutil.rmtree(previous, ignore_errors=True)
+        if os.path.isdir(target):
+            os.rename(target, previous)
+        os.rename(staging, target)
+        shutil.rmtree(previous, ignore_errors=True)
         print('    done: {}'.format(target))
     else:
         print('  !! no build at {} — run the build script first'
@@ -298,6 +321,21 @@ def main(argv=None):
     for p in PLATFORM_DIRS:
         d = os.path.join(dest, p)
         if os.path.isdir(os.path.join(d, 'SeizureReview')):
+            # The slot is filled, so clear any placeholder left from when it
+            # wasn't. These outlive their truth: the placeholder goes in on the
+            # first run, the build arrives on a later one into the SeizureReview
+            # subdirectory, and the file saying "not built yet" stays sitting
+            # beside it forever. A stick was found in exactly that state --
+            # windows/ holding both a verified 1.4 GB build and a note telling
+            # the reader to go and build it.
+            #
+            # It also cost a wrong diagnosis. When a failed copy removed the
+            # build, the leftover placeholder was the only thing left in the
+            # directory, which read as "the failure wrote a placeholder" rather
+            # than "the failure exposed an old one".
+            stale = os.path.join(d, 'NOT_BUILT.txt')
+            if os.path.isfile(stale):
+                os.remove(stale)
             continue
         if not os.path.isdir(d):
             os.makedirs(d)
