@@ -494,7 +494,15 @@ class ChannelInspector(QtWidgets.QDialog):
                 pen=pg.mkPen(_FILTER_PEN[0], _FILTER_PEN[1], _FILTER_PEN[2],
                              width=1, style=QtCore.Qt.DashLine),
                 label=text,
-                labelOpts={'position': 0.93, 'color': (70, 70, 70),
+                # 0.80, not 0.93: the band names ride at the very top of the
+                # Y range (setPos(..., log10(pmax) + 0.3), anchored 0.0), and a
+                # filter marker landing inside a band printed its label over
+                # that name. At the macOS default 13 pt the labels are wide
+                # enough that "HP 1" struck through "delta" and "notch 60"
+                # through "gamma", leaving both unreadable. Dropping the filter
+                # label one row clears the band strip; the white fill keeps it
+                # legible where it now crosses the curve.
+                labelOpts={'position': 0.80, 'color': (70, 70, 70),
                            'fill': (255, 255, 255, 190), 'movable': False})
             line.setZValue(5)
             spi.addItem(line)
