@@ -192,16 +192,76 @@ Two things that are easy to get wrong:
 """
 
 
+def _copy_portable(src, dst, follow_symlinks=True):
+    """copy2 minus the timestamp copy, which a FAT32 stick rejects.
+
+    shutil.copy2 finishes with copystat(), which calls os.utime() with
+    nanosecond precision. msdosfs — what every pre-formatted USB stick is —
+    answers EINVAL, because FAT32 stores mtime at two-second resolution. That
+    made copytree() raise after copying 1541 files, so `make_usb.py --dest
+    /Volumes/<stick>` could not fill a stick at all: the exact thing this
+    script exists to do.
+
+    The mode IS copied, and that part matters: drop it and the frozen
+    executable arrives without its +x bit and will not start. Timestamps on a
+    distribution copy carry nothing, so losing them costs nothing.
+    """
+    shutil.copyfile(src, dst, follow_symlinks=follow_symlinks)
+    try:
+        shutil.copymode(src, dst, follow_symlinks=follow_symlinks)
+    except OSError:
+        # A filesystem with no permission model at all. The mount is then
+        # giving everything 0755 anyway, so the executable still runs.
+        pass
+    return dst
+
+
+def _copy_tree_portable(src, dst):
+    """Recursive copy onto a filesystem with no Unix metadata.
+
+    shutil.copytree cannot do this job whatever copy_function it is handed: it
+    finishes every directory with copystat(), and copystat() on msdosfs raises
+    EINVAL the same way it does for files. That left 13 failures, one per macOS
+    .framework bundle, after the per-file fix had cleared the other 1541.
+
+    Symlinks are recreated, not followed. A framework's Versions/Current link
+    is part of its structure, and dereferencing turned a 1.1 GB build into
+    1.8 GB of duplicated dylibs. Where the destination cannot store a symlink
+    at all, the target is copied instead so the result is still complete.
+    """
+    if not os.path.isdir(dst):
+        os.makedirs(dst)
+    for name in os.listdir(src):
+        s = os.path.join(src, name)
+        d = os.path.join(dst, name)
+        if os.path.islink(s):
+            target = os.readlink(s)
+            if os.path.lexists(d):
+                os.remove(d)
+            try:
+                os.symlink(target, d)
+            except (OSError, NotImplementedError):
+                real = os.path.realpath(s)
+                if os.path.isdir(real):
+                    _copy_tree_portable(real, d)
+                elif os.path.exists(real):
+                    _copy_portable(real, d)
+        elif os.path.isdir(s):
+            _copy_tree_portable(s, d)
+        else:
+            _copy_portable(s, d)
+
+
 def copy_tree(src, dst):
     if os.path.isdir(src):
         if os.path.exists(dst):
             shutil.rmtree(dst)
-        shutil.copytree(src, dst)
+        _copy_tree_portable(src, dst)
     elif os.path.exists(src):
         d = os.path.dirname(dst)
         if d and not os.path.isdir(d):
             os.makedirs(d)
-        shutil.copy2(src, dst)
+        _copy_portable(src, dst)
     else:
         return False
     return True
