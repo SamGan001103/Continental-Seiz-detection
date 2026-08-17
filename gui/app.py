@@ -40,6 +40,12 @@ from gui.io.zuna import (ZunaFullRunner, zuna_session_paths,
 from gui.events import (clamp_interval, rebuild_events, assign_event_ids,
                         EXPORTED_STATUSES)
 from gui.processing import (apply_montage, apply_filters, MONTAGES)
+from gui.widgets.head_view import HeadView, derivations_for
+from gui.io.ica_display import (SEGMENT_S as ICA_SEGMENT_S,
+                                cache_clear as ica_cache_clear,
+                                clean_span_for_display,
+                                recording_key as ica_recording_key,
+                                summarise as ica_summarise)
 from gui.widgets.signal_view import SignalView
 from gui.widgets.prob_strip import ProbStrip
 from gui.widgets.event_list import EventList
@@ -216,6 +222,24 @@ class MainWindow(QtWidgets.QMainWindow):
         self._display_t = None         # [N] seconds
         self._inspectors = {}          # channel_idx -> ChannelInspector
 
+        # Display-side ICA. Off by default: the raw trace is what a reviewer
+        # expects to open on, and the cleaned one answers a question they have
+        # to ask first. It re-runs the DETECTOR'S OWN ica_arti_remove, read
+        # only, on a copy — so what it draws is literally what the model was
+        # fed, not an approximation of it.
+        self._ica_display = False
+        self._ica_view_span = None     # (x0, x1) the span last cleaned
+        self._ica_anchor_s = 0         # block grid alignment
+        self._ica_recording_id = None  # cache identity for this file
+        self._ica_blocks = []          # per-block IcaDisplayInfo, for the UI
+        # Scrolling fires viewRangeChanged continuously and a ~1 s ICA per
+        # event would make the scrollbar feel broken. Coalesce.
+        self._ica_timer = QtCore.QTimer(self)
+        self._ica_timer.setSingleShot(True)
+        self._ica_timer.setInterval(250)
+        self._ica_timer.timeout.connect(
+            lambda: self._refresh_signal_view(preserve_view=True))
+
         self._build_ui()
         self._wire_shortcuts()
         self.statusBar().showMessage('Open an EDF to start.')
@@ -240,6 +264,21 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([1200, 380])
         self.setCentralWidget(splitter)
+
+        # Head map. Shows where a derivation actually sits on the scalp, which
+        # a row label like "Fp1-F7" only tells a reader who already knows the
+        # montage. Display only: it never changes what was scored, and it says
+        # so in a caption that is drawn into reserved space so it cannot be
+        # clipped away by a narrow dock.
+        self.head_view = HeadView()
+        self.head_view.set_montage(self._montage)
+        self.head_view.electrodeClicked.connect(self._on_electrode_clicked)
+        self._head_dock = QtWidgets.QDockWidget('Electrodes (10-20)', self)
+        self._head_dock.setObjectName('headDock')   # saveState() needs a name
+        self._head_dock.setWidget(self.head_view)
+        self._head_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea |
+                                        QtCore.Qt.RightDockWidgetArea)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._head_dock)
 
         self._build_toolbar()
         self._build_menu()
@@ -354,6 +393,17 @@ class MainWindow(QtWidgets.QMainWindow):
                                  'from the .csv_bi file')
         self.chk_refs.toggled.connect(self._on_refs_toggled)
         tb.addWidget(self.chk_refs)
+        tb.addSeparator()
+
+        self.chk_ica = QtWidgets.QCheckBox('ICA (what the AI saw)')
+        self.chk_ica.setToolTip(
+            "Re-run the detector's own ICA artifact removal on the visible "
+            'span and draw that instead of the raw trace.\n\n'
+            'Display only — the scores never change. Windows where no eye-'
+            'movement component was found reached the detector uncleaned; '
+            'the status bar says how many.')
+        self.chk_ica.toggled.connect(self._on_ica_display_toggled)
+        tb.addWidget(self.chk_ica)
         tb.addSeparator()
 
         # ZUNA is a research side-study and cannot run in the packaged
@@ -664,6 +714,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self._raw_data = data
         self._fs = fs
         self._duration_s = dur
+        self._ica_recording_id = ica_recording_key(path)
+        self._ica_view_span = None
+        self._ica_anchor_s = 0
+        ica_cache_clear()      # the previous recording's windows are dead
         self._events = []
         self._events_by_source = {}
         self._undo_stack = []
@@ -1242,6 +1296,67 @@ class MainWindow(QtWidgets.QMainWindow):
     # ==================================================================
     # Display pipeline
     # ==================================================================
+    def _display_source(self):
+        """The array the display chain filters: raw, or the detector's own ICA.
+
+        Returns a FULL-LENGTH array either way, so SignalView, the x-linked
+        probability strip, the event overlays and the channel inspectors need no
+        changes — only the visible span is actually cleaned, and it is spliced
+        into a copy.
+
+        `self._raw_data` is never written. It is the same numpy object as
+        `self._original_data`, which is the detector's input, so writing through
+        it would silently change what gets scored. `.copy()` below is the entire
+        reason this is safe, and tests/test_display_model_isolation.py asserts
+        the property it depends on.
+        """
+        if not self._ica_display or self._raw_data is None:
+            return self._raw_data
+        if self._ica_view_span is None:
+            self._ica_view_span = (0.0, min(self._duration_s,
+                                            float(self._timebase_s)))
+        x0, x1 = self._ica_view_span
+        # A window of padding either side, so the seam between cleaned and raw
+        # signal sits outside what the reviewer is looking at.
+        t0 = max(0.0, x0 - ICA_SEGMENT_S)
+        t1 = min(self._duration_s, x1 + ICA_SEGMENT_S)
+        # The ZUNA reconstruction is a different signal under the same filename,
+        # so it must not share cache entries with the baseline.
+        rec_id = '{}|{}'.format(self._ica_recording_id, self._prob_source)
+        try:
+            span, t_start, blocks = clean_span_for_display(
+                self._raw_data, self._fs, t0, t1, recording_id=rec_id,
+                anchor_s=self._ica_anchor_s)
+        except Exception:                                   # noqa: BLE001
+            # Never let the display-side ICA take the trace down: falling back
+            # to the raw signal is always a legitimate thing to draw, and the
+            # checkbox is a question the reviewer asked, not a promise.
+            self.chk_ica.blockSignals(True)
+            self.chk_ica.setChecked(False)
+            self.chk_ica.blockSignals(False)
+            self._ica_display = False
+            self.statusBar().showMessage(
+                'ICA view failed on this span; showing the raw trace.', 8000)
+            return self._raw_data
+        source = self._raw_data.copy()
+        i0 = int(round(t_start * self._fs))
+        source[:, i0:i0 + span.shape[1]] = span
+        self._ica_blocks = blocks
+        self.statusBar().showMessage(ica_summarise(blocks), 8000)
+        return source
+
+    def _on_ica_display_toggled(self, on):
+        """Toggle between the raw trace and what the detector actually scored.
+
+        The comparison is the point. A reviewer judging whether a candidate is
+        an eye-blink artifact is judging the cleaned signal the model saw, and
+        until now had no way to see it — or to see the roughly one window in ten
+        where the frozen preprocessing finds no EOG component and hands the
+        model the raw signal instead.
+        """
+        self._ica_display = bool(on)
+        self._refresh_signal_view(preserve_view=True)
+
     def _refresh_signal_view(self, preserve_view=True):
         """Rebuild filtered + montaged signal and push into SignalView.
 
@@ -1251,7 +1366,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if self._raw_data is None:
             return
         filtered = apply_filters(
-            self._raw_data, self._fs,
+            self._display_source(), self._fs,
             hp=self._hp, lp=self._lp, notch=self._notch)
         montaged, labels = apply_montage(filtered, self._montage)
         if self._prob_source == 'zuna':
@@ -1761,6 +1876,7 @@ class MainWindow(QtWidgets.QMainWindow):
     # ==================================================================
     def _on_montage_change(self, name):
         self._montage = name
+        self.head_view.set_montage(name)
         self._refresh_signal_view()
 
     def _on_filters_change(self, _=None):
@@ -1811,6 +1927,11 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_refs_toggled(self, checked):
         self.signal_view.set_references_visible(checked)
         self.prob_strip.set_references_visible(checked)
+        # Inspectors already open when blind mode is toggled. Missing this, a
+        # reviewer could turn blind mode on with a detail window showing and
+        # keep seeing the reference bands in it.
+        for insp in self._inspectors.values():
+            insp.set_references_visible(checked)
         if hasattr(self, 'a_blind') and self.a_blind.isChecked() == checked:
             self.a_blind.blockSignals(True)
             self.a_blind.setChecked(not checked)
@@ -1819,6 +1940,12 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_view_range(self, x0, x1):
         self._hover_lbl.setText('View: {:.1f}s – {:.1f}s  ({:.1f}s)'
                                 .format(x0, x1, x1 - x0))
+        # The ICA view follows the scroll, but only after the reviewer stops
+        # moving: cleaning is ~1 s per 12 s window, and doing it per scroll
+        # event would make the scrollbar feel broken.
+        self._ica_view_span = (float(x0), float(x1))
+        if self._ica_display:
+            self._ica_timer.start()
 
     # ==================================================================
     # Channel inspector popups
@@ -1844,10 +1971,47 @@ class MainWindow(QtWidgets.QMainWindow):
             initial_x_range=(x0, x1),
             parent=self,
         )
+        # The band table has to know which display filters produced this trace,
+        # or it cannot say which of its numbers the filters already decided.
+        # Untold, it marks every band unverified rather than guessing — safe,
+        # but it withholds the one thing the panel exists to say.
+        insp.set_filters(self._hp, self._lp, self._notch)
+        # A detail window opened during a blind session must not show the answer
+        # key the main view is hiding. Without this a session could display the
+        # ground truth in the inspector and still export blind_mode: true.
+        insp.set_references_visible(self.chk_refs.isChecked())
         insp.closed.connect(self._on_inspector_closed)
         insp.sync_toggle_signal().connect(lambda _s, i=idx: self._apply_inspector_sync(i))
         self._inspectors[idx] = insp
         insp.show()
+
+    def _on_electrode_clicked(self, name):
+        """Head map -> traces: open the first displayed row using this electrode.
+
+        In a bipolar montage one electrode feeds several rows and in a
+        referential montage the row is the electrode itself, so the mapping goes
+        through the same derivation table the map draws from rather than
+        guessing at the label.
+
+        The status message states that the detector scored all 19 regardless.
+        Clicking an electrode looks like selecting it, and the one belief this
+        panel must not create is that a channel can be deselected from the
+        model — the network's first kernel spans the whole electrode axis, so
+        that is not offerable even in principle.
+        """
+        if not self._display_labels:
+            return
+        wanted = derivations_for(name, self._montage) or [name]
+        for label in wanted:
+            if label in self._display_labels:
+                self._open_channel_inspector(self._display_labels.index(label))
+                self.statusBar().showMessage(
+                    '{} — showing {}. Display only: the detector scored all '
+                    '19 electrodes.'.format(name, label), 6000)
+                return
+        self.statusBar().showMessage(
+            '{} is not a displayed row in the {} montage.'.format(
+                name, self._montage), 4000)
 
     def _on_inspector_closed(self, idx):
         self._inspectors.pop(idx, None)

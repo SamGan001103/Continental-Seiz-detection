@@ -148,5 +148,69 @@ print("IDENTICAL", same)
             'array. The display path is reaching the detector.')
 
 
+
+@unittest.skipUnless(
+    __import__('importlib').util.find_spec('PyQt5') is not None,
+    'PyQt5 not available')
+class TheIcaDisplayToggleCannotReachTheDetector(unittest.TestCase):
+    """The display-side ICA re-runs the FROZEN function, on a copy.
+
+    This is the feature most able to break the separation, because it is the
+    only display control that runs the detector's own preprocessing. It is safe
+    for exactly one reason: `_display_source` splices the cleaned span into
+    `self._raw_data.copy()`.
+
+    `_raw_data` and `_original_data` are the SAME numpy object in the baseline
+    case, and `_original_data` is what `compute_probs` scores. Drop the `.copy()`
+    and the toggle would rewrite the detector's input in place — the scores
+    would change, silently, and only while the checkbox happened to be ticked.
+    """
+
+    def setUp(self):
+        import os
+        os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+        from PyQt5 import QtWidgets
+        self.app = (QtWidgets.QApplication.instance()
+                    or QtWidgets.QApplication(['-platform', 'offscreen']))
+        from gui.app import MainWindow
+        self.w = MainWindow()
+
+    def tearDown(self):
+        self.w.close()
+
+    def test_display_source_never_returns_the_detectors_array_modified(self):
+        rng = np.random.RandomState(3)
+        data = (rng.randn(19, 250 * 40) * 30.0).astype(np.float32)
+        self.w._raw_data = data
+        self.w._original_data = data          # the same object, as on load
+        self.w._fs = 250
+        self.w._duration_s = 40.0
+        self.w._ica_view_span = (0.0, 24.0)
+        self.w._ica_recording_id = 'test'
+        before = data.copy()
+
+        self.w._ica_display = True
+        out = self.w._display_source()
+
+        np.testing.assert_array_equal(
+            self.w._original_data, before,
+            'the ICA display view rewrote the detector\'s input array')
+        self.assertFalse(
+            np.shares_memory(out, data),
+            'the ICA display view returned a view onto the detector\'s array; '
+            'a later in-place display operation would reach the model')
+
+    def test_toggling_off_restores_the_raw_array_exactly(self):
+        rng = np.random.RandomState(4)
+        data = (rng.randn(19, 250 * 30) * 25.0).astype(np.float32)
+        self.w._raw_data = data
+        self.w._original_data = data
+        self.w._fs = 250
+        self.w._duration_s = 30.0
+        self.w._ica_display = False
+        self.assertIs(self.w._display_source(), data,
+                      'with the toggle off the display must use the raw array '
+                      'itself, not a cleaned or copied one')
+
 if __name__ == '__main__':
     unittest.main()
