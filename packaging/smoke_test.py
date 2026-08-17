@@ -268,6 +268,35 @@ def main(argv=None):
                 print('  [ok] frozen app ran the full inference path on {}'
                       .format('synthetic data' if synthetic
                               else 'a real recording'))
+
+                # Which Keras the FROZEN app selected, not which one the build
+                # machine has. These differ, and the difference is silent.
+                #
+                # A Windows build shipped running Keras 3 while every gate here
+                # passed and the spec had printed "tf_keras bundled (Keras 2
+                # numerics preserved)". Both statements were true: tf_keras was
+                # in the bundle, and it was never selected, because the runtime
+                # hook imported TensorFlow before anything set
+                # TF_USE_LEGACY_KERAS and `tf.keras` binds on first access.
+                # The scores stayed plausible -- 0.0141 mean against 0.0113 --
+                # so nothing downstream could have caught it either.
+                #
+                # Only meaningful on the modern stack. Under TF 1.15 there is
+                # one Keras and the question does not arise.
+                keras_line = ''
+                for line in out.splitlines():
+                    if line.startswith('self-test: keras'):
+                        keras_line = line
+                        break
+                tf2 = 'self-test: keras' in out and 'unavailable' not in keras_line
+                if tf2 and 'Keras 2' not in keras_line:
+                    failures.append(
+                        'the frozen app is running Keras 3, not Keras 2 -- it '
+                        'will load the weights and return different numbers '
+                        'with no error ({})'.format(keras_line.strip()))
+                elif tf2:
+                    print('  [ok] frozen app selected Keras 2 (numerics match '
+                          'the published stack)')
         except subprocess.TimeoutExpired:
             failures.append('self-test timed out after {}s'.format(
                 args.timeout))

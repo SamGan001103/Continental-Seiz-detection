@@ -98,6 +98,18 @@ def preload():
     if not _should_preload():
         STATUS = 'skipped (not needed on this platform/stack)'
         return STATUS
+    # Keras 2 must be selected before TensorFlow is imported, for the same
+    # reason as in packaging/rthook_tf_before_qt.py: `tf.keras` resolves lazily
+    # and binds whichever Keras this variable names at the moment of first
+    # access. Preloading TensorFlow without setting it hands that decision to
+    # whatever touches `tf.keras` first, and `gui/io/infer.py` -- the module
+    # that owns this setting -- has not necessarily been imported yet.
+    #
+    # Measured before this line existed: `import gui.tf_preload` followed by
+    # `import tensorflow` gave `tf.keras -> keras._tf_keras.keras`, i.e. Keras 3,
+    # which loads the same weights and returns different probabilities with no
+    # error of any kind.
+    os.environ.setdefault('TF_USE_LEGACY_KERAS', '1')
     try:
         import tensorflow as tf
         major = int(str(tf.__version__).split('.')[0])

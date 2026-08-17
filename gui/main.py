@@ -109,6 +109,23 @@ def self_test(edf_path):
     print('self-test: python      {}'.format(sys.version.split()[0]))
     print('self-test: frozen      {}'.format(
         bool(getattr(sys, 'frozen', False))))
+
+    # Which Keras actually got selected. Printed rather than assumed, because a
+    # frozen build once reported every other line of this self-test as PASS
+    # while quietly running Keras 3: the weights load, the windows score, the
+    # probabilities are plausible, and they are wrong. `tf.keras` resolves
+    # lazily on first access, so bundling tf_keras is not the same as using it,
+    # and the spec's build-time "tf_keras bundled" message cannot tell the
+    # difference. smoke_test.py checks this line.
+    try:
+        import tensorflow as _tf
+        _keras = getattr(_tf, 'keras', None)
+        _name = getattr(_keras, '__name__', 'unknown')
+        _flavour = ('Keras 2 (tf_keras)' if _name.startswith('tf_keras')
+                    else 'Keras 3')
+        print('self-test: keras       {} [{}]'.format(_flavour, _name))
+    except Exception as _ex:                                    # noqa: BLE001
+        print('self-test: keras       unavailable ({})'.format(_ex))
     print('self-test: reading     {}'.format(edf_path))
     data, fs, duration = load_edf_19ch(edf_path)
     print('self-test: signal      {} ch, {} Hz, {:.1f} s'.format(

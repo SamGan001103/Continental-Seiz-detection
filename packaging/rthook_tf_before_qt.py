@@ -45,6 +45,30 @@ import sys
 if (sys.platform.startswith('win')
         and sys.version_info >= (3, 9)                 # modern stack only
         and not os.environ.get('SEIZ_NO_TF_PRELOAD')):
+    # Select Keras 2 BEFORE TensorFlow is imported. `gui/io/infer.py` sets this
+    # too, and that is where it belongs for every path that does not come
+    # through here -- but this hook runs before the entry script, so by the time
+    # infer.py is imported the choice has already been made.
+    #
+    # `tf.keras` is resolved lazily on first attribute access, and TensorFlow
+    # reads this variable at that moment. Importing TensorFlow here without it
+    # set therefore does not merely fail to select Keras 2; it lets something in
+    # the import graph touch `tf.keras` first and bind Keras 3 permanently.
+    #
+    # This shipped. The frozen Windows build scored a recording at
+    # min 0.0001 max 0.0333 mean 0.0113 from source and
+    # min 0.0002 max 0.0391 mean 0.0141 frozen -- the second set matching a
+    # deliberate Keras 3 run to four decimals. Nothing failed, nothing warned,
+    # and the spec had already printed "tf_keras bundled (Keras 2 numerics
+    # preserved)", which was true: tf_keras was in the bundle and simply never
+    # selected. Forcing this variable on the same frozen binary reproduced the
+    # Keras 2 numbers exactly, which is what proved the diagnosis.
+    #
+    # Note the direction of the bug. The preload is Windows-only, so macOS and
+    # Linux -- where nothing imports TensorFlow before infer.py -- were correct
+    # all along. Windows was the odd one out, which is the reverse of where the
+    # cross-platform investigation had been looking.
+    os.environ.setdefault('TF_USE_LEGACY_KERAS', '1')
     try:
         import tensorflow                                       # noqa: F401
     except Exception:                                           # noqa: BLE001
