@@ -50,6 +50,49 @@ recording rather than merely starting the binary.
 Both fixes are gated to Windows on Python 3.9+, decided without importing
 TensorFlow, so the legacy build keeps deferring it and pays nothing.
 
+### The fix introduced a worse bug, which then shipped (2026-08-18)
+
+Importing TensorFlow before the entry script is the whole point of the runtime
+hook. It also decides which Keras is used, and the hook did not know that.
+
+`tf.keras` resolves **lazily**, on first attribute access, and TensorFlow reads
+`TF_USE_LEGACY_KERAS` at that moment. `gui/io/infer.py` sets it correctly, but
+the hook runs first, so Keras 3 was bound before the module that owns the setting
+had been imported at all. The frozen Windows build ran Keras 3 — which loads the
+same weights and returns different probabilities — for as long as the hook has
+existed. Measured on `aaaaajdj_s004_t001`:
+
+```
+source, Keras 2      min 0.0001   max 0.0333   mean 0.0113
+the frozen build     min 0.0002   max 0.0391   mean 0.0141
+source, Keras 3      min 0.0002   max 0.0391   mean 0.0141   <- the match
+```
+
+Forcing `TF_USE_LEGACY_KERAS=1` on the shipped binary returned the Keras 2
+numbers exactly, which proved `tf_keras` was bundled correctly and simply never
+selected. **Bundling is not selecting**, and the spec's build-time message
+`tf_keras bundled (Keras 2 numerics preserved)` was printed, truthfully, by the
+build that shipped Keras 3.
+
+Every gate passed throughout. This is the same shape as the failure it was fixing
+— an import order whose symptom flatters the build — and it hid better, because
+here even scoring succeeds. The output is plausible; it is just wrong.
+
+Note the direction, because it inverts §4's framing. Both preloads are
+Windows-only, so **macOS and Linux never imported TensorFlow early and were
+correct all along.** Windows, the platform every reported figure was produced on,
+was the outlier. A cross-platform disagreement had been attributed to the Mac.
+
+Fixed by setting the variable before the import in both preload sites. The gate
+now proves it rather than assuming it: the self-test prints which Keras it
+selected and `smoke_test.py` fails the build on Keras 3.
+`tests/test_keras_selection.py` pins the ordering.
+
+**The lesson worth keeping:** a build-time message about what went *into* the
+bundle cannot tell you what the application *does*. Gate 4 exists because "it
+launches" is not "it works"; this adds that "it scored something" is not "it
+scored correctly".
+
 The original investigation is kept below, because the three wrong theories each
 produced a real fix that the macOS and Linux builds needed.
 
@@ -190,3 +233,14 @@ builds. See `docs/portability.md` for the distribution and for why neither machi
 **Do not mix figures from two machines in one table.** Previously advice about precision, this is
 now a correctness requirement: such a table can disagree with itself about whether a seizure was
 proposed at all. Regenerate the caches in a single pass on one machine and say which.
+
+**Between machines, not within one.** The figures above are machine-to-machine. A single machine
+reproduces itself exactly — the drift harness returns 0.000000 comparing a machine to itself, and
+two runs in separate processes are bit-identical. So "regenerate on one machine" is a real remedy,
+not a hope.
+
+**A source-versus-frozen difference on Windows was NOT this.** Until 2026-08-18 the frozen Windows
+application ran Keras 3 while the same code from source ran Keras 2 (§1). Any figure produced by the
+*frozen* Windows app before that date is a Keras 3 figure and must not be compared against a
+source-produced or macOS one. That difference had nothing to do with ICA convergence and was
+entirely fixable — it is worth being slow to call a disagreement inherent.
