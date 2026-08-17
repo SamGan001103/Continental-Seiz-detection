@@ -4,9 +4,58 @@
 
 ---
 
-## 1. The modern stack does not freeze on Windows (open)
+## 1. The modern stack does not freeze on Windows — RESOLVED 2026-08-17
 
-**Status: open. Does not affect anything that ships today.**
+**Status: fixed.** It was an import order, not PyInstaller, not conda's DLL
+layout, and not bundled-DLL shadowing. Six build attempts were spent on those
+three theories.
+
+On Windows with TensorFlow 2, loading Qt's DLLs first makes TensorFlow's native
+library fail to initialise. Reversing the order fixes it. Measured from source,
+with no PyInstaller involved:
+
+```
+import tensorflow  ->  import PyQt5        works
+import PyQt5       ->  import tensorflow   DLL load failed
+import PyQt5.QtCore only, then tensorflow  DLL load failed
+```
+
+Merely loading Qt is enough — not QApplication, not the widgets. The legacy
+Python 3.6 stack does not have the conflict (Qt then TF 1.15 loads fine), which
+is why the build that shipped all along worked and why this stayed hidden.
+
+**Two fixes were needed, and the first alone was not enough.**
+
+`gui/tf_preload.py`, imported as the first statement of `gui/main.py`, fixes it
+from source. It does **not** fix the frozen build: PyInstaller ships
+`pyi_rth_pyqt5.py`, a runtime hook that imports PyQt5 to set the Qt plugin path,
+and runtime hooks execute *before* the entry script. No ordering inside
+`gui/main.py` can be early enough.
+
+`packaging/rthook_tf_before_qt.py` is registered through `runtime_hooks=` in the
+spec and runs ahead of the automatic hooks. With it, the modern stack freezes
+and scores a real recording on Windows for the first time:
+
+```
+self-test: frozen True · python 3.11.9 · 19 ch, 250 Hz, 31.0 s
+self-test: windows 4 (4 scored, 0 skipped) · PASS
+```
+
+**Why it hid for so long.** The failure flatters the build. The freeze succeeds,
+the executable runs, the window opens, all 137 widgets construct, and the GUI
+self-test passes. Only scoring fails. Any check that stops at "it launches"
+reports success — which is the reason gate 4 insists on scoring a real
+recording rather than merely starting the binary.
+
+Both fixes are gated to Windows on Python 3.9+, decided without importing
+TensorFlow, so the legacy build keeps deferring it and pays nothing.
+
+The original investigation is kept below, because the three wrong theories each
+produced a real fix that the macOS and Linux builds needed.
+
+---
+
+### Original report (the six attempts)
 
 The Windows application is built from the **Python 3.6 stack** (`seiz36`), which freezes and runs
 correctly. Building the *same* application from the modern stack

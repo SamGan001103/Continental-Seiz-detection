@@ -312,7 +312,12 @@ a = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    # TensorFlow must be imported before Qt on Windows. PyInstaller's own
+    # pyi_rth_pyqt5 hook loads PyQt5 before the entry script runs, so the fix
+    # in gui/main.py cannot be early enough in a frozen build — this is what
+    # kept docs/known_issues.md 1 open through six attempts. See the hook.
+    runtime_hooks=[os.path.join(REPO, 'packaging',
+                                'rthook_tf_before_qt.py')],
     excludes=excludes,
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
