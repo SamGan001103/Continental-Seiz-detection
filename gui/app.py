@@ -279,8 +279,13 @@ class MainWindow(QtWidgets.QMainWindow):
             'QToolBar { spacing: 6px; padding: 2px 6px; }'
             'QLabel { color: #555; }')
 
+        # No shortcut here: File > Open EDF carries Ctrl+O. Setting it on both
+        # the toolbar button and the menu item is the same ambiguity that
+        # silently disabled N, Ctrl+Z and Ctrl+R - Qt refuses both and neither
+        # fires. The toolbar button stays clickable; the key lives in the menu,
+        # where it is also visible to the reviewer.
         a_open = tb.addAction('Open EDF…')
-        a_open.setShortcut(QtGui.QKeySequence.Open)
+        a_open.setToolTip('Open an EDF recording (Ctrl+O)')
         a_open.triggered.connect(self._open_edf_dialog)
         tb.addSeparator()
 
@@ -412,6 +417,7 @@ class MainWindow(QtWidgets.QMainWindow):
         m_edit = mb.addMenu('&Edit')
         a_undo = m_edit.addAction('&Undo')
         a_undo.setShortcut('Ctrl+Z')
+        a_undo.setShortcutContext(QtCore.Qt.ApplicationShortcut)
         a_undo.triggered.connect(self._undo)
         m_edit.addSeparator()
         a_add = m_edit.addAction('&Add event the detector missed')
@@ -419,9 +425,11 @@ class MainWindow(QtWidgets.QMainWindow):
         a_add.setToolTip('Record a seizure the detector did not propose. '
                          'Without this the reviewer can only remove events, '
                          'never add one.')
+        a_add.setShortcutContext(QtCore.Qt.ApplicationShortcut)
         a_add.triggered.connect(self._add_event_at_view)
         a_rev = m_edit.addAction('&Revert extent to detector')
         a_rev.setShortcut('Ctrl+R')
+        a_rev.setShortcutContext(QtCore.Qt.ApplicationShortcut)
         a_rev.triggered.connect(self._revert_extent)
 
         m_view = mb.addMenu('&View')
@@ -559,12 +567,16 @@ class MainWindow(QtWidgets.QMainWindow):
             sc.setContext(QtCore.Qt.ApplicationShortcut)
             sc.activated.connect(fn)
 
+        # N, Ctrl+Z, Ctrl+R and Ctrl+O are deliberately ABSENT here. Each is
+        # already a menu QAction, and registering the same sequence twice makes
+        # Qt refuse both: "QAction::event: Ambiguous shortcut overload: N", and
+        # nothing fires. That silently disabled the four keys - including N, the
+        # only way to record a seizure the detector missed. The menu actions now
+        # carry ApplicationShortcut context themselves (see _build_menu), which
+        # is what these duplicates were for.
         add('Space', self._shortcut_accept)
         add('X', self._shortcut_reject)
         add('Shift+X', self._reject_with_reason)
-        add('N', self._add_event_at_view)
-        add('Ctrl+Z', self._undo)
-        add('Ctrl+R', self._revert_extent)
         add('Return', self._shortcut_jump)
         add('Enter', self._shortcut_jump)
         add('J', lambda: self._cycle_selection(+1))
@@ -1492,8 +1504,14 @@ class MainWindow(QtWidgets.QMainWindow):
     # opens the next recording should not lose that silently.
     # ==================================================================
     def _reviewed_events(self):
+        # 'added' belongs here. It was omitted, and three things depended on
+        # this list: the unsaved-work prompt, the autosave payload, and the
+        # session summary. A reviewer who only added seizures the detector
+        # missed - the exact case this tool exists to demonstrate - had an
+        # empty list, so closing the window or opening the next recording
+        # discarded the work with no prompt and no autosave to recover from.
         return [ev for ev in self._events
-                if ev.get('status') in ('accepted', 'rejected', 'edited')]
+                if ev.get('status') in EXPORTED_STATUSES + ('rejected',)]
 
     def _mark_dirty(self):
         self._dirty = True
@@ -1802,10 +1820,16 @@ class MainWindow(QtWidgets.QMainWindow):
         n_edit = sum(1 for e in self._events if e['status'] == 'edited')
         n_rej = sum(1 for e in self._events if e['status'] == 'rejected')
         n_prop = sum(1 for e in self._events if e['status'] == 'proposed')
-        n_out = n_acc + n_edit
+        # Count what the writer actually writes. This was n_acc + n_edit while
+        # the write filters on EXPORTED_STATUSES, which includes 'added' - so a
+        # reviewer who added three missed seizures was shown "0 event(s) will be
+        # written", warned that an empty file asserts no seizures, and defaulted
+        # to Cancel. Three events were then written anyway.
+        n_add = sum(1 for e in self._events if e['status'] == 'added')
+        n_out = n_acc + n_edit + n_add
 
-        lines = ['{} event(s) will be written: {} accepted, {} edited.'
-                 .format(n_out, n_acc, n_edit)]
+        lines = ['{} event(s) will be written: {} accepted, {} edited, '
+                 '{} added by the reviewer.'.format(n_out, n_acc, n_edit, n_add)]
         if n_rej or n_prop:
             lines.append('{} rejected and {} still-unreviewed candidate(s) '
                          'will be omitted.'.format(n_rej, n_prop))

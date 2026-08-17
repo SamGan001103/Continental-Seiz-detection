@@ -167,3 +167,89 @@ class ReviewGuardTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+@unittest.skipUnless(HAVE_QT, 'PyQt5 not available')
+class ShortcutsAreUnambiguous(unittest.TestCase):
+    """Two registrations of one key sequence disable it, silently.
+
+    Qt answers a duplicate with "QAction::event: Ambiguous shortcut overload"
+    on stderr and then fires neither handler. Nothing raises, nothing is
+    logged to the application's own log, and the menu item still shows the
+    shortcut next to it — so the only way to notice is to press the key and
+    watch nothing happen.
+
+    Four keys were dead this way: N, Ctrl+Z, Ctrl+R and Ctrl+O, each declared
+    once as a menu QAction and once again as a QShortcut. N is the only way to
+    record a seizure the detector never proposed, which is the capability the
+    human-in-the-loop argument rests on.
+    """
+
+    def test_no_key_sequence_is_registered_twice(self):
+        from collections import Counter
+        w = MainWindow()
+        try:
+            seqs = Counter()
+            for a in w.findChildren(QtWidgets.QAction):
+                for s in a.shortcuts():
+                    if s.toString():
+                        seqs[s.toString()] += 1
+            for s in w.findChildren(QtWidgets.QShortcut):
+                if s.key().toString():
+                    seqs[s.key().toString()] += 1
+            dupes = {k: v for k, v in seqs.items() if v > 1}
+            self.assertEqual(dupes, {},
+                             'these key sequences are registered more than '
+                             'once, so Qt will fire none of them: {}'
+                             .format(sorted(dupes)))
+        finally:
+            w.close()
+
+    def test_the_add_missed_event_key_is_bound(self):
+        """N specifically, because it is the one the thesis figure needs."""
+        w = MainWindow()
+        try:
+            bound = [a for a in w.findChildren(QtWidgets.QAction)
+                     if any(s.toString() == 'N' for s in a.shortcuts())]
+            self.assertEqual(len(bound), 1,
+                             'N should be bound exactly once; found %d'
+                             % len(bound))
+        finally:
+            w.close()
+
+
+@unittest.skipUnless(HAVE_QT, 'PyQt5 not available')
+class AddedEventsCountAsReviewWork(unittest.TestCase):
+    """A session of only added events is still a session.
+
+    _reviewed_events() feeds the unsaved-work prompt, the autosave payload and
+    the session summary. It listed accepted/rejected/edited and omitted
+    'added', so a reviewer who only marked seizures the detector missed had an
+    empty list: closing the window discarded the work without asking, and no
+    autosave existed to recover it.
+    """
+
+    def test_added_events_are_review_work(self):
+        w = MainWindow()
+        try:
+            w._events = [{'start': 10.0, 'stop': 22.0, 'status': 'added',
+                          'prob': None}]
+            self.assertEqual(len(w._reviewed_events()), 1,
+                             'an added event is unexported review work and '
+                             'must trigger the discard guard')
+        finally:
+            w.close()
+
+    def test_every_exported_status_counts_as_review_work(self):
+        from gui.events import EXPORTED_STATUSES
+        w = MainWindow()
+        try:
+            for status in EXPORTED_STATUSES:
+                w._events = [{'start': 0.0, 'stop': 12.0, 'status': status,
+                              'prob': None}]
+                self.assertEqual(
+                    len(w._reviewed_events()), 1,
+                    '%r is written on export but does not count as unsaved '
+                    'work, so it can be discarded without a prompt' % status)
+        finally:
+            w.close()
