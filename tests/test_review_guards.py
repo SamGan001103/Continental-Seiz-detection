@@ -409,3 +409,68 @@ class AFailedOpenMustNotLookLikeASuccess(unittest.TestCase):
         self.w.load_edf(self._corrupt())
         msg = self.w.statusBar().currentMessage()
         self.assertIn('No recording is open', msg)
+
+
+@unittest.skipUnless(HAVE_QT, 'PyQt5 not available')
+class TheBusyCursorAlwaysComesBack(unittest.TestCase):
+    """An override cursor that is never restored looks exactly like a hang.
+
+    Re-running the detector's ICA over the visible span takes about a second —
+    measured 0.94 s on a first toggle at the default sweep, 0.66 s after a
+    scroll — so the window sets a wait cursor to say it is working rather than
+    frozen. If any path returns without restoring it, every window in the
+    application shows a spinner forever, which is worse than the silence it
+    replaced.
+
+    The copy and splice allocate a second full-recording array and can raise on
+    a long recording, so the restore is in a `finally` rather than beside each
+    return.
+    """
+
+    def setUp(self):
+        self.w = MainWindow()
+        while QtWidgets.QApplication.overrideCursor() is not None:
+            QtWidgets.QApplication.restoreOverrideCursor()
+
+    def tearDown(self):
+        self.w.close()
+
+    def test_no_cursor_is_left_over_when_ica_is_unavailable(self):
+        """_display_source returns early when there is no recording."""
+        self.w._ica_display = True
+        self.w._raw_data = None
+        self.w._display_source()
+        self.assertIsNone(QtWidgets.QApplication.overrideCursor())
+
+    def test_a_failure_inside_the_ica_restores_the_cursor(self):
+        import numpy as np
+        import gui.app as ga
+        self.w._raw_data = np.zeros((19, 250 * 40), dtype=np.float32)
+        self.w._original_data = self.w._raw_data
+        self.w._fs = 250
+        self.w._duration_s = 40.0
+        self.w._ica_view_span = (0.0, 10.0)
+        self.w._ica_display = True
+
+        def boom(*a, **k):
+            raise RuntimeError('simulated ICA failure')
+
+        real = ga.clean_span_for_display
+        ga.clean_span_for_display = boom
+        try:
+            out = self.w._display_source()
+        finally:
+            ga.clean_span_for_display = real
+        self.assertIsNone(QtWidgets.QApplication.overrideCursor(),
+                          'the wait cursor outlived a failed ICA view')
+        self.assertIs(out, self.w._raw_data,
+                      'a failed ICA view must fall back to the raw trace')
+        self.assertFalse(self.w.chk_ica.isChecked(),
+                         'the checkbox must untick itself when the view fails')
+
+    def test_the_checkbox_is_named_for_a_clinical_audience(self):
+        """'ICA (what the AI saw)' was informal for a tool shown to clinicians."""
+        label = self.w.chk_ica.text()
+        self.assertNotIn('what the AI', label)
+        self.assertIn('ICA', label,
+                      'ICA is the standard clinical term and should stay')

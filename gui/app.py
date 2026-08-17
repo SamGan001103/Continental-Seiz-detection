@@ -424,7 +424,7 @@ class MainWindow(QtWidgets.QMainWindow):
         tb.addWidget(self.chk_refs)
         tb.addSeparator()
 
-        self.chk_ica = QtWidgets.QCheckBox('ICA (what the AI saw)')
+        self.chk_ica = QtWidgets.QCheckBox('Detector input (ICA)')
         self.chk_ica.setToolTip(
             "Re-run the detector's own ICA artifact removal on the visible "
             'span and draw that instead of the raw trace.\n\n'
@@ -1409,30 +1409,51 @@ class MainWindow(QtWidgets.QMainWindow):
         # signal sits outside what the reviewer is looking at.
         t0 = max(0.0, x0 - ICA_SEGMENT_S)
         t1 = min(self._duration_s, x1 + ICA_SEGMENT_S)
-        # The ZUNA reconstruction is a different signal under the same filename,
-        # so it must not share cache entries with the baseline.
-        rec_id = '{}|{}'.format(self._ica_recording_id, self._prob_source)
+
+        # Measured at 0.94 s for a first toggle at the default 10 s sweep, and
+        # 0.66 s after a scroll; a cache hit is 0.04 s. That is real work — the
+        # detector's own ICA, re-run per 12 s window — but a second of frozen
+        # window with nothing on screen reads as a hang, and the reviewer's next
+        # move is to click the checkbox again. Say what is happening, and paint
+        # it BEFORE the work starts rather than after.
+        self.statusBar().showMessage(
+            'Running the detector\'s ICA over the visible span…')
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        QtWidgets.QApplication.processEvents()
+        # try/finally, not a restore beside each return. The copy and the splice
+        # below allocate a second full-recording array and can raise on a long
+        # recording; an override cursor that is never restored leaves the whole
+        # application showing a spinner forever, which is indistinguishable from
+        # the hang this code exists to avoid looking like.
         try:
-            span, t_start, blocks = clean_span_for_display(
-                self._raw_data, self._fs, t0, t1, recording_id=rec_id,
-                anchor_s=self._ica_anchor_s)
-        except Exception:                                   # noqa: BLE001
-            # Never let the display-side ICA take the trace down: falling back
-            # to the raw signal is always a legitimate thing to draw, and the
-            # checkbox is a question the reviewer asked, not a promise.
-            self.chk_ica.blockSignals(True)
-            self.chk_ica.setChecked(False)
-            self.chk_ica.blockSignals(False)
-            self._ica_display = False
-            self.statusBar().showMessage(
-                'ICA view failed on this span; showing the raw trace.', 8000)
-            return self._raw_data
-        source = self._raw_data.copy()
-        i0 = int(round(t_start * self._fs))
-        source[:, i0:i0 + span.shape[1]] = span
-        self._ica_blocks = blocks
-        self.statusBar().showMessage(ica_summarise(blocks), 8000)
-        return source
+            # The ZUNA reconstruction is a different signal under the same
+            # filename, so it must not share cache entries with the baseline.
+            rec_id = '{}|{}'.format(self._ica_recording_id, self._prob_source)
+            try:
+                span, t_start, blocks = clean_span_for_display(
+                    self._raw_data, self._fs, t0, t1, recording_id=rec_id,
+                    anchor_s=self._ica_anchor_s)
+            except Exception:                               # noqa: BLE001
+                # Never let the display-side ICA take the trace down: falling
+                # back to the raw signal is always a legitimate thing to draw,
+                # and the checkbox is a question the reviewer asked, not a
+                # promise.
+                self.chk_ica.blockSignals(True)
+                self.chk_ica.setChecked(False)
+                self.chk_ica.blockSignals(False)
+                self._ica_display = False
+                self.statusBar().showMessage(
+                    'ICA view failed on this span; showing the raw trace.',
+                    8000)
+                return self._raw_data
+            source = self._raw_data.copy()
+            i0 = int(round(t_start * self._fs))
+            source[:, i0:i0 + span.shape[1]] = span
+            self._ica_blocks = blocks
+            self.statusBar().showMessage(ica_summarise(blocks), 8000)
+            return source
+        finally:
+            QtWidgets.QApplication.restoreOverrideCursor()
 
     def _on_ica_display_toggled(self, on):
         """Toggle between the raw trace and what the detector actually scored.
