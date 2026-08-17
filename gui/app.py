@@ -172,7 +172,22 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(APP_NAME + TITLE_SUFFIX)
+        # Geometry is restored if this reviewer has run the app before, and
+        # otherwise the window opens maximised. A review session wants every
+        # pixel of vertical space it can get for traces, and 1600x960 on a
+        # 2560x1440 screen wastes half of it. saveState() carries the dock
+        # layout too, so a reviewer who moved or closed the electrode map keeps
+        # that arrangement.
         self.resize(1600, 960)
+        self._settings = QtCore.QSettings('NeuroSyd', 'SeizureReview')
+        geo = self._settings.value('geometry')
+        state = self._settings.value('windowState')
+        if geo is not None:
+            self.restoreGeometry(geo)
+        else:
+            self.setWindowState(self.windowState() |
+                                QtCore.Qt.WindowMaximized)
+        self._restore_dock_state = state
 
         # ------------------ state
         self._edf_path = None
@@ -254,15 +269,22 @@ class MainWindow(QtWidgets.QMainWindow):
         left = QtWidgets.QWidget()
         lv = QtWidgets.QVBoxLayout(left)
         lv.setContentsMargins(0, 0, 0, 0)
-        lv.addWidget(self.signal_view, 5)
+        # 4:1 rather than 5:1. The strip is the detector's entire output and
+        # the thing a reviewer scans to decide where to look; at one sixth of
+        # the height a shallow rise near threshold was hard to read at all.
+        lv.addWidget(self.signal_view, 4)
         lv.addWidget(self.prob_strip, 1)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         splitter.addWidget(left)
         splitter.addWidget(self.event_list)
-        splitter.setStretchFactor(0, 4)
+        # The worklist holds five narrow columns and was given 380 px of a
+        # 1600 px window - width taken directly from the traces, which are the
+        # thing being read. 300 is enough for the widest row.
+        splitter.setStretchFactor(0, 6)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([1200, 380])
+        splitter.setSizes([1300, 300])
+        self.event_list.setMaximumWidth(420)
         self.setCentralWidget(splitter)
 
         # Head map. Shows where a derivation actually sits on the scalp, which
@@ -285,6 +307,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._build_toolbar()
         self._build_menu()
+        # After the docks and the menu exist, or restoreState has nothing to
+        # attach to and silently drops the arrangement.
+        if getattr(self, '_restore_dock_state', None) is not None:
+            self.restoreState(self._restore_dock_state)
 
         # Permanent prototype banner, left of the hover readout so it is never
         # scrolled away or overwritten by a transient showMessage().
@@ -664,6 +690,26 @@ class MainWindow(QtWidgets.QMainWindow):
         add('.', lambda: self._bump_timebase(+1))
         add(',', lambda: self._bump_timebase(-1))
 
+    @staticmethod
+    def _may_persist_layout():
+        """False under the test suite, which must not write a real user's settings.
+
+        Every headless test that constructs a MainWindow and closes it runs
+        closeEvent, so the suite was saving geometry and dock state into
+        the registry under NeuroSyd/SeizureReview. One of those tests closes the
+        electrode map on purpose - to prove the View menu can bring it back -
+        and that state persisted, so the next real launch restored a window
+        arrangement a test had chosen. The panel was simply missing, with no
+        indication why.
+
+        `unittest` in sys.modules is a heuristic, and an honest one: the
+        application never imports it, directly or transitively, and the frozen
+        build does not ship it. The alternative - threading an opt-out through
+        every test that builds a window - would be forgotten by the next test
+        added, which is exactly how this happened.
+        """
+        return 'unittest' not in sys.modules
+
     def closeEvent(self, event):
         if not self._confirm_discard_review('close the application'):
             event.ignore()
@@ -679,6 +725,15 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
             self._zuna_thread.cancel()
             self._zuna_thread.wait(5000)
+        # Only once the close is certain - both guards above can still abort it,
+        # and saving geometry for a window that stays open would record a state
+        # the reviewer never chose.
+        try:
+            if self._may_persist_layout():
+                self._settings.setValue('geometry', self.saveGeometry())
+                self._settings.setValue('windowState', self.saveState())
+        except Exception:                                   # noqa: BLE001
+            pass          # a read-only registry must not block closing
         super().closeEvent(event)
 
     # ==================================================================

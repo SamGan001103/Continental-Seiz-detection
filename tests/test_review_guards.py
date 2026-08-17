@@ -301,3 +301,49 @@ class ClosedPanelsCanBeReopened(unittest.TestCase):
                             'the View menu entry did not bring the panel back')
         finally:
             w.close()
+
+
+@unittest.skipUnless(HAVE_QT, 'PyQt5 not available')
+class ThePlotsCannotBeSilentlyTransformed(unittest.TestCase):
+    """pyqtgraph's context menu can destroy the display in one click.
+
+    "Transforms > Power Spectrum (FFT)" replaces the EEG trace with its own
+    spectrum; "Log X" replaces the time axis with a logarithmic one. Neither is
+    labelled as destructive and neither is obviously reversible. A reviewer who
+    right-clicks looking for a panel they closed can end up staring at something
+    that is no longer an EEG, with the uV/mm calibration this widget exists to
+    guarantee quietly gone — which is exactly what happened the first time the
+    application was shown to anyone.
+
+    The menu also offers an image export with no "not for diagnostic use" on it.
+    """
+
+    def _plots(self, w):
+        return [('signal view', w.signal_view._pw),
+                ('score strip', w.prob_strip._pw)]
+
+    def test_no_plot_offers_a_context_menu(self):
+        w = MainWindow()
+        try:
+            for name, pw in self._plots(w):
+                pi = pw.getPlotItem()
+                self.assertFalse(
+                    pi.vb.menuEnabled(),
+                    '{}: the view box still offers a right-click menu, so a '
+                    'reviewer is one click from an FFT of their EEG'.format(name))
+        finally:
+            w.close()
+
+    def test_the_transform_actions_are_unreachable(self):
+        """Specifically the two that bit us, by name."""
+        w = MainWindow()
+        try:
+            for name, pw in self._plots(w):
+                pi = pw.getPlotItem()
+                menu = pi.vb.menu if pi.vb.menuEnabled() else None
+                self.assertIsNone(
+                    menu,
+                    '{}: Power Spectrum (FFT) and Log X are still reachable'
+                    .format(name))
+        finally:
+            w.close()

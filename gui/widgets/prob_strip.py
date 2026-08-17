@@ -90,6 +90,12 @@ class ProbStrip(QtWidgets.QWidget):
 
         self._pw = pg.PlotWidget(background='w')
         pi = self._pw.getPlotItem()
+        # Same reasoning as SignalView: the context menu can turn the score
+        # curve into its own FFT, which is meaningless here and unrecoverable
+        # without knowing where the toggle lives.
+        pi.setMenuEnabled(False)
+        pi.hideButtons()
+        self._pw.setMenuEnabled(False)
         pi.setLabel('bottom', 'time (s)')
         # Not "p(seiz)": this is a raw softmax output with no post-hoc
         # calibration, so it does not carry the frequentist meaning a

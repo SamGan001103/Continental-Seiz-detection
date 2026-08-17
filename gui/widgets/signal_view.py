@@ -216,6 +216,21 @@ class SignalView(QtWidgets.QWidget):
         pi.setMouseEnabled(x=True, y=False)
         pi.setLabel('bottom', 'time (s)')
         pi.showGrid(x=True, y=False, alpha=0.2)
+        # pyqtgraph's right-click menu is removed, not merely tidied. It
+        # offers "Transforms > Power Spectrum (FFT)" and "Log X/Y", each one
+        # click away from replacing the EEG trace with something that is no
+        # longer an EEG trace - and the reviewer has no obvious way back. A
+        # clinician who right-clicks looking for a panel they closed can
+        # silently destroy the uV/mm calibration this widget exists to
+        # guarantee. It also exposes an undisclaimered image export, which
+        # would put a screenshot of a research prototype into a report with no
+        # "not for diagnostic use" on it.
+        #
+        # Everything here that a reviewer legitimately needs - amplitude, sweep
+        # speed, montage, filters - is on the toolbar, where it is labelled.
+        pi.setMenuEnabled(False)
+        pi.hideButtons()
+        self._pw.setMenuEnabled(False)
         pi.sigRangeChanged.connect(self._emit_range)
         self._pw.scene().sigMouseClicked.connect(self._on_scene_click)
         v.addWidget(self._pw)
