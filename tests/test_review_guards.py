@@ -347,3 +347,65 @@ class ThePlotsCannotBeSilentlyTransformed(unittest.TestCase):
                     .format(name))
         finally:
             w.close()
+
+
+@unittest.skipUnless(HAVE_QT, 'PyQt5 not available')
+class AFailedOpenMustNotLookLikeASuccess(unittest.TestCase):
+    """The previous recording stays on screen when a load fails.
+
+    That is deliberate — a mistyped filename must not destroy a reviewer's
+    unexported work — but it means the window title, the traces and the worklist
+    all still describe the OLD recording. The only signal was a status line
+    reading "EDF load failed", with no filename, cleared after five seconds by
+    the next message.
+
+    A reviewer who opened the wrong file and glanced away would then be reading
+    the previous patient's EEG believing it was this one. In a review tool that
+    is a patient-identity error, not a cosmetic one.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self._real = QtWidgets.QMessageBox.critical
+        QtWidgets.QMessageBox.critical = staticmethod(
+            lambda *a, **k: self._capture(a))
+        self.shown = []
+        self.w = MainWindow()
+
+    def tearDown(self):
+        QtWidgets.QMessageBox.critical = self._real
+        self.w.close()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _capture(self, args):
+        self.shown.append(' '.join(str(a) for a in args))
+
+    def _corrupt(self, name='corrupt.edf'):
+        p = os.path.join(self.tmp, name)
+        with open(p, 'wb') as f:
+            f.write(os.urandom(20000))
+        return p
+
+    def test_the_dialog_names_the_file_that_is_still_open(self):
+        self.w._edf_path = os.path.join(self.tmp, 'patient_A.edf')
+        self.w.load_edf(self._corrupt('patient_B.edf'))
+        blob = ' '.join(self.shown)
+        self.assertIn('patient_B', blob,
+                      'the dialog must name the file that failed')
+        self.assertIn('patient_A', blob,
+                      'the dialog must name the recording still on screen, or '
+                      'the reviewer believes the new one opened')
+
+    def test_the_status_line_is_persistent_and_names_both(self):
+        self.w._edf_path = os.path.join(self.tmp, 'patient_A.edf')
+        self.w.load_edf(self._corrupt('patient_B.edf'))
+        msg = self.w.statusBar().currentMessage()
+        self.assertIn('patient_B', msg)
+        self.assertIn('patient_A', msg,
+                      'the status line must say which recording is displayed')
+
+    def test_with_nothing_open_it_says_so(self):
+        self.w._edf_path = None
+        self.w.load_edf(self._corrupt())
+        msg = self.w.statusBar().currentMessage()
+        self.assertIn('No recording is open', msg)

@@ -767,10 +767,29 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             data, fs, dur = load_edf_19ch(path)
         except Exception as ex:
-            QtWidgets.QMessageBox.critical(
-                self, 'Could not open EDF',
-                'Could not load this EDF:\n\n{}'.format(ex))
-            self.statusBar().showMessage('EDF load failed.', 5000)
+            # Name BOTH recordings. On failure the previous one is still on
+            # screen, in the title bar and in the worklist — deliberately, so a
+            # reviewer's unexported work is not destroyed by a mistyped filename
+            # — but "EDF load failed" alone let them believe the new file had
+            # opened. They would then be reading the previous patient's EEG
+            # under the impression it was this one, with the only warning a
+            # status line that the next message overwrites.
+            still = (os.path.basename(self._edf_path) if self._edf_path
+                     else None)
+            text = 'Could not load this recording:\n\n{}\n\n{}'.format(
+                os.path.basename(path), ex)
+            if still:
+                text += ('\n\nThe previous recording is still open and is what '
+                         'you are looking at:\n\n{}'.format(still))
+            QtWidgets.QMessageBox.critical(self, 'Could not open EDF', text)
+            if still:
+                self.statusBar().showMessage(
+                    'Could not open {} — still showing {}.'.format(
+                        os.path.basename(path), still))
+            else:
+                self.statusBar().showMessage(
+                    'Could not open {}. No recording is open.'.format(
+                        os.path.basename(path)))
             return
         self._edf_path = path
         self._file_opened_at = time.time()
