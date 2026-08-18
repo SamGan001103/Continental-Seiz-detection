@@ -79,9 +79,16 @@ Every gate passed throughout. This is the same shape as the failure it was fixin
 here even scoring succeeds. The output is plausible; it is just wrong.
 
 Note the direction, because it inverts §4's framing. Both preloads are
-Windows-only, so **macOS and Linux never imported TensorFlow early and were
-correct all along.** Windows, the platform every reported figure was produced on,
-was the outlier. A cross-platform disagreement had been attributed to the Mac.
+Windows-only, so **macOS and Linux never lost this particular race**, and for the
+frozen build Windows was the outlier -- a cross-platform disagreement had been
+attributed to the Mac.
+
+Do not read that as "the other platforms were right all along". Nothing selected
+Keras 2 anywhere before 36a56b6 (2026-08-11 10:11), so every modern-stack run on
+every platform before that date was Keras 3 -- including both arms of the
+platform-drift study behind `docs/portability.md`. What is Windows-specific is
+that the frozen build went on losing the race for another week after the source
+path had been fixed.
 
 Fixed by setting the variable before the import in both preload sites. The gate
 now proves it rather than assuming it: the self-test prints which Keras it

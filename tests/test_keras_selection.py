@@ -23,9 +23,17 @@ a recording at
 while every build gate passed and the spec printed "tf_keras bundled (Keras 2
 numerics preserved)" -- which was true and irrelevant: bundling is not selecting.
 
-Note the direction. Both preloads are Windows-only, so macOS and Linux never
-imported TensorFlow early and were correct throughout. Windows was the outlier,
-which is the opposite of what a cross-platform investigation would assume.
+Note the direction, and its limits. Both preloads are Windows-only, so macOS and
+Linux never lost *this* race, and for the frozen build Windows was the outlier --
+the opposite of what a cross-platform investigation would assume.
+
+"Correct all along" would be too strong, and an earlier version of this docstring
+said it. Nothing selected Keras 2 on any platform before 36a56b6 (2026-08-11
+10:11), which added both the tf-keras pin and the setdefault in gui/io/infer.py.
+Every modern-stack run on every platform before that date was Keras 3, including
+both arms of the platform-drift study. What is Windows-specific is the frozen
+build continuing to lose the race for a further week, after the source path had
+been fixed.
 
 These tests read the source rather than importing TensorFlow: the ordering is a
 property of the text, they must pass on the legacy 3.6 stack where tf_keras does

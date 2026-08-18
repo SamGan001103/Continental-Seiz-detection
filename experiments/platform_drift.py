@@ -458,6 +458,9 @@ def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None,
         'reference_platform': prov['platform'],
         'local_platform': '{} {}'.format(platform.system(),
                                          platform.machine()),
+        # Not decoration. Without these a comparison cannot be interpreted
+        # later, and two studies were written up wrong for exactly that reason.
+        'local_numerics': _local_numerics_stack(),
         'not_found': len(missing),
         'misaligned': misaligned,
         'ambiguous_stems': sorted(set(ambiguous)),
@@ -510,6 +513,40 @@ def compare(ref_path, corpus=None, limit=None, threshold=0.5, out_json=None,
                        'reference_provenance': prov}, f, indent=2)
         print('wrote {}'.format(out_json))
     return 0
+
+
+def _local_numerics_stack():
+    """What actually decides the numbers, recorded so a run can be interpreted.
+
+    This function exists because its absence cost two studies. The summary block
+    below stamped host, platform, python, numpy, scipy and MNE -- everything
+    except the two libraries that do the arithmetic. Both arms of the drift study
+    behind docs/portability.md therefore ran Keras 3 against a Keras 2 reference
+    and stored nothing that said so, and the difference was written up as
+    platform drift. It is a bigger effect than the platform: on one recording the
+    Keras version moves p(seizure) from 0.5990 to 0.4602, across a decision
+    threshold, while two machines on the same Keras agree to ~1e-9.
+
+    Keras is asked for by the name `tf.keras` resolves to, not by
+    `keras.__version__`. The standalone Keras 3 package reports 3.x even when
+    tf.keras is correctly bound to Keras 2, so the version string answers a
+    different question than the one being asked.
+    """
+    info = {}
+    try:
+        import tensorflow as tf
+        info['tensorflow'] = str(tf.__version__)
+        try:
+            name = tf.keras.__name__
+            info['tf_keras_module'] = name
+            info['keras_major'] = 2 if name.startswith('tf_keras') else 3
+        except Exception as ex:                                 # noqa: BLE001
+            info['tf_keras_module'] = 'unavailable: {}'.format(ex)
+    except Exception as ex:                                     # noqa: BLE001
+        info['tensorflow'] = 'unavailable: {}'.format(ex)
+    info['TF_USE_LEGACY_KERAS'] = os.environ.get('TF_USE_LEGACY_KERAS')
+    info['python'] = platform.python_version()
+    return info
 
 
 def main(argv=None):
