@@ -27,6 +27,7 @@ import os
 import platform
 import shutil
 import sys
+import time
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if REPO not in sys.path:
@@ -252,6 +253,36 @@ def _copy_tree_portable(src, dst):
             _copy_portable(s, d)
 
 
+
+def _remove_tree(path, attempts=4):
+    """Delete a directory tree, coping with a removable drive's delays.
+
+    `shutil.rmtree(..., ignore_errors=True)` can return having deleted almost
+    everything, leaving a directory that then refuses to be replaced. On
+    Windows this is routine on a USB stick: a virus scanner or the shell still
+    holds a handle for a moment after a write, and the delete of that one entry
+    fails while its siblings succeed.
+
+    That is not hypothetical here. An interrupted refill left a partial
+    `SeizureReview.incoming`; the next run's ignore_errors cleanup could not
+    finish it, and `copy_tree`'s own strict rmtree then raised WinError 145,
+    "the directory is not empty". The copy-then-swap design meant the existing
+    build survived untouched — but the refill could not proceed either, which
+    is a stuck stick shortly before a demonstration.
+
+    Retries with a short pause, then reports whether the path is really gone so
+    the caller can pick a different name rather than fail.
+    """
+    for i in range(attempts):
+        if not os.path.exists(path):
+            return True
+        shutil.rmtree(path, ignore_errors=True)
+        if not os.path.exists(path):
+            return True
+        time.sleep(0.5 * (i + 1))
+    return not os.path.exists(path)
+
+
 def copy_tree(src, dst):
     if os.path.isdir(src):
         if os.path.exists(dst):
@@ -301,17 +332,34 @@ def main(argv=None):
         staging = target + '.incoming'
         print('  copying the {} build (this takes a few minutes, ~1.2 GB)'
               .format(plat))
-        if os.path.isdir(staging):
-            shutil.rmtree(staging, ignore_errors=True)
+        if not _remove_tree(staging):
+            # Still there after retries. Rather than fail — which would leave
+            # the stick unrefillable until someone deletes it by hand — copy
+            # beside it under another name and clean up afterwards.
+            n = 2
+            while os.path.exists('{}.{}'.format(staging, n)):
+                n += 1
+            staging = '{}.{}'.format(staging, n)
+            print('    (previous staging directory is locked; using {})'
+                  .format(os.path.basename(staging)))
         copy_tree(args.dist, staging)
         # Only now is the old build expendable.
         previous = target + '.previous'
-        if os.path.isdir(previous):
-            shutil.rmtree(previous, ignore_errors=True)
+        _remove_tree(previous)
         if os.path.isdir(target):
             os.rename(target, previous)
         os.rename(staging, target)
-        shutil.rmtree(previous, ignore_errors=True)
+        _remove_tree(previous)
+        # Sweep any staging directories a previous interrupted run left, now
+        # that nothing is using them. Best effort: a leftover costs disk, not
+        # correctness, and must never fail a refill that already succeeded.
+        parent = os.path.dirname(target)
+        try:
+            for name in os.listdir(parent):
+                if ('.incoming' in name or name.endswith('.previous')):
+                    _remove_tree(os.path.join(parent, name), attempts=2)
+        except OSError:
+            pass
         print('    done: {}'.format(target))
     else:
         print('  !! no build at {} — run the build script first'
