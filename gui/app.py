@@ -31,6 +31,7 @@ if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
 from gui.io.edf import load_edf_19ch
+from gui.display_pipeline import DisplayPipeline, SplicedSource
 from gui.io.cache import (load_probs, load_probability_file,
                           save_probability_file)
 from gui.io import csv_bi as csv_bi_module
@@ -46,6 +47,12 @@ from gui.widgets.head_view import HeadView, derivations_for
 #: seconds — slow but bounded. Unbounded, a zoomed-out view of a long recording
 #: froze the application for minutes.
 MAX_ICA_DISPLAY_S = 60.0
+
+# A channel inspector holds this much of its channel either side of the view
+# it was opened on, and asks for more when panned past it. Ten minutes each
+# way is 300 k samples — about a megabyte — where "the whole channel" of a
+# day-long recording was 21.6 M points in a single curve.
+INSPECTOR_HALF_WINDOW_S = 600.0
 
 from gui.io.ica_display import (SEGMENT_S as ICA_SEGMENT_S,
                                 cache_clear as ica_cache_clear,
@@ -238,7 +245,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # cache of the most-recent post-filter, post-montage display data so
         # channel-inspector popups can be opened without recomputing.
-        self._display_data = None      # [K, N] float32, before clipping
+        self._pipeline = None          # DisplayPipeline over the current file
+        self._display_data = None      # retired: no full-length display copy
         self._display_labels = []      # list[str]
         self._display_t = None         # [N] seconds
         self._inspectors = {}          # channel_idx -> ChannelInspector
@@ -769,6 +777,27 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self._confirm_discard_review('open another recording'):
             return
         self._cancel_zuna_for_file_change()
+        # Will it fit? Asked from the header, before a byte of signal is read.
+        # A recording too large for this machine used to be opened anyway,
+        # pushing it into swap: the development box (16 GB) needed a power
+        # cycle after a 24-hour file. A ward PC has 8 GB and nobody who can
+        # diagnose that, and a freeze takes down whatever else the clinician
+        # had open. Refusing with numbers is strictly better than hanging.
+        try:
+            from gui.memory import edf_open_estimate, describe_refusal
+            est = edf_open_estimate(path)
+            if not est['fits']:
+                QtWidgets.QMessageBox.warning(
+                    self, 'Not enough memory for this recording',
+                    describe_refusal(est))
+                self.statusBar().showMessage(
+                    'Not enough memory to open {}.'.format(
+                        os.path.basename(path)), 8000)
+                return
+        except Exception:                                   # noqa: BLE001
+            # The estimate is a guard, not a gate. If the header cannot be
+            # read here, the loader below will fail with a better message.
+            pass
         self.statusBar().showMessage('Loading {}…'.format(os.path.basename(path)))
         QtWidgets.QApplication.processEvents()
         try:
@@ -1411,18 +1440,19 @@ class MainWindow(QtWidgets.QMainWindow):
     # Display pipeline
     # ==================================================================
     def _display_source(self):
-        """The array the display chain filters: raw, or the detector's own ICA.
+        """The source the display pipeline reads: raw, or the detector's own ICA.
 
-        Returns a FULL-LENGTH array either way, so SignalView, the x-linked
-        probability strip, the event overlays and the channel inspectors need no
-        changes — only the visible span is actually cleaned, and it is spliced
-        into a copy.
+        Returns the raw array itself when the ICA view is off. When it is on,
+        returns a SplicedSource — a full-length read-only view of the raw array
+        with the cleaned span overlaid, assembled only for the samples actually
+        requested. Nothing is copied: the previous design spliced into
+        `self._raw_data.copy()`, a second full-recording array, which on a
+        day-long file is 1.6 GB allocated to clean 60 seconds.
 
         `self._raw_data` is never written. It is the same numpy object as
         `self._original_data`, which is the detector's input, so writing through
-        it would silently change what gets scored. `.copy()` below is the entire
-        reason this is safe, and tests/test_display_model_isolation.py asserts
-        the property it depends on.
+        it would silently change what gets scored. SplicedSource only ever reads
+        it, and tests/test_display_model_isolation.py asserts the property.
         """
         if not self._ica_display or self._raw_data is None:
             return self._raw_data
@@ -1467,9 +1497,9 @@ class MainWindow(QtWidgets.QMainWindow):
             'Running the detector\'s ICA over the visible span…')
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         QtWidgets.QApplication.processEvents()
-        # try/finally, not a restore beside each return. The copy and the splice
-        # below allocate a second full-recording array and can raise on a long
-        # recording; an override cursor that is never restored leaves the whole
+        # try/finally, not a restore beside each return. The cleaning below can
+        # raise, and it is real work on a long recording; an override cursor
+        # that is never restored leaves the whole
         # application showing a spinner forever, which is indistinguishable from
         # the hang this code exists to avoid looking like.
         try:
@@ -1493,9 +1523,10 @@ class MainWindow(QtWidgets.QMainWindow):
                     'ICA view failed on this span; showing the raw trace.',
                     8000)
                 return self._raw_data
-            source = self._raw_data.copy()
             i0 = int(round(t_start * self._fs))
-            source[:, i0:i0 + span.shape[1]] = span
+            # Overlay, not copy: the raw array is read through, never
+            # duplicated and never written.
+            source = SplicedSource(self._raw_data, i0, span)
             self._ica_blocks = blocks
             msg = ica_summarise(blocks)
             if self._ica_capped:
@@ -1530,21 +1561,25 @@ class MainWindow(QtWidgets.QMainWindow):
             that open a fresh file should pass False."""
         if self._raw_data is None:
             return
-        filtered = apply_filters(
+        # Nothing full-length is derived here any more. Until 2026-08-31 this
+        # filtered the ENTIRE recording (float64, three zero-phase passes),
+        # montaged it, copied it for the inspectors and copied it again for
+        # the view — five full-length arrays per filter change. On a 24-hour
+        # recording that froze a 16 GB machine to a power cycle. The pipeline
+        # holds only the raw source and renders the visible span on demand;
+        # see gui/display_pipeline.py.
+        self._pipeline = DisplayPipeline(
             self._display_source(), self._fs,
-            hp=self._hp, lp=self._lp, notch=self._notch)
-        montaged, labels = apply_montage(filtered, self._montage)
+            hp=self._hp, lp=self._lp, notch=self._notch,
+            montage=self._montage)
+        labels = list(self._pipeline.labels)
         if self._prob_source == 'zuna':
             labels = ['{} (ZUNA)'.format(label) for label in labels]
-        # Cache unclipped version for channel-inspector popups.
-        self._display_data = montaged.copy()
-        self._display_labels = list(labels)
-        self._display_t = np.arange(montaged.shape[1], dtype=np.float32) / self._fs
-        # Hand the unclipped, post-montage signal to the view. SignalView
-        # owns clipping + decimation, so sensitivity can change (via
-        # toolbar or axis-drag) without re-running filter/montage.
-        self.signal_view.set_signal(
-            montaged.astype(np.float32), self._fs, labels,
+        self._display_labels = labels
+        self._display_data = None
+        self._display_t = None
+        self.signal_view.set_provider(
+            self._pipeline, self._fs, labels,
             sensitivity_uv=float(self._sensitivity_uv),
             initial_span_s=float(self._timebase_s),
             preserve_view=preserve_view,
@@ -2115,8 +2150,32 @@ class MainWindow(QtWidgets.QMainWindow):
     # ==================================================================
     # Channel inspector popups
     # ==================================================================
+    def _inspector_window(self, idx, x0, x1):
+        """One channel over a bounded window centred on [x0, x1].
+
+        Returns (values, t) at full rate with absolute time. The window is
+        INSPECTOR_HALF_WINDOW_S either side of the view's centre, clamped to
+        the recording; the inspector asks for a new one (need_data) when it is
+        panned past the edge.
+        """
+        half = INSPECTOR_HALF_WINDOW_S
+        mid = 0.5 * (float(x0) + float(x1))
+        w0 = max(0.0, mid - half)
+        w1 = min(float(self._duration_s), w0 + 2.0 * half)
+        w0 = max(0.0, w1 - 2.0 * half)
+        return self._pipeline.channel(idx, int(w0 * self._fs),
+                                      int(w1 * self._fs))
+
+    def _refill_inspector(self, idx, x0, x1):
+        insp = self._inspectors.get(idx)
+        if (insp is None or self._pipeline is None
+                or idx >= len(self._display_labels)):
+            return
+        vals, t = self._inspector_window(idx, x0, x1)
+        insp.set_data(self._display_labels[idx], vals, t, self._refs)
+
     def _open_channel_inspector(self, idx):
-        if self._display_data is None or idx >= len(self._display_labels):
+        if self._pipeline is None or idx >= len(self._display_labels):
             return
         # Reuse existing inspector if already open for this channel
         if idx in self._inspectors:
@@ -2124,18 +2183,23 @@ class MainWindow(QtWidgets.QMainWindow):
             w.raise_(); w.activateWindow()
             return
         label = self._display_labels[idx]
-        data1d = self._display_data[idx]
         x0, x1 = self.signal_view.current_span()
+        data1d, t1d = self._inspector_window(idx, x0, x1)
         insp = ChannelInspector(
             channel_idx=idx,
             channel_name=label,
             fs=self._fs,
             data1d=data1d,
-            t=self._display_t,
+            t=t1d,
             reference_intervals=self._refs,
             initial_x_range=(x0, x1),
             parent=self,
         )
+        # The window holds a bounded slice; tell it the true length so it can
+        # be panned beyond that slice, and answer its requests for more.
+        insp.set_time_limit(float(self._duration_s))
+        insp.need_data.connect(
+            lambda a, b, _idx=idx: self._refill_inspector(_idx, a, b))
         # The band table has to know which display filters produced this trace,
         # or it cannot say which of its numbers the filters already decided.
         # Untold, it marks every band unverified rather than guessing — safe,
@@ -2203,15 +2267,17 @@ class MainWindow(QtWidgets.QMainWindow):
         only an inspector whose channel no longer exists in the new montage is
         closed, because there is nothing left to show it.
         """
-        if self._display_data is None:
+        if self._pipeline is None:
             return
         for idx, insp in list(self._inspectors.items()):
             if idx >= len(self._display_labels):
                 insp.close()                      # channel gone in this montage
                 continue
             try:
-                insp.set_data(self._display_labels[idx], self._display_data[idx],
-                              self._display_t, self._refs)
+                x0, x1 = insp.current_x_range()
+                vals, t = self._inspector_window(idx, x0, x1)
+                insp.set_time_limit(float(self._duration_s))
+                insp.set_data(self._display_labels[idx], vals, t, self._refs)
             except Exception:
                 insp.close()
 

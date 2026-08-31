@@ -190,6 +190,12 @@ class _DraggableYAxis(pg.AxisItem):
 
 class ChannelInspector(QtWidgets.QDialog):
     closed = QtCore.pyqtSignal(int)
+    # Emitted with the visible (x0, x1) when the view leaves the span this
+    # window has been given. The owner answers with set_data over a new
+    # window. The inspector holds a bounded slice of its channel, not the
+    # whole recording — on a day-long file "the whole channel" was 21.6 M
+    # points in one curve and the stats ran over all of them.
+    need_data = QtCore.pyqtSignal(float, float)
 
     def __init__(self, channel_idx, channel_name, fs, data1d, t,
                  reference_intervals=None, initial_x_range=None, parent=None):
@@ -204,6 +210,12 @@ class ChannelInspector(QtWidgets.QDialog):
         self._fs = fs
         self._data = data1d.astype(np.float32, copy=False)
         self._t = t
+        # `t` is absolute time and may not start at zero: the owner hands this
+        # window a bounded slice of the channel around the current view.
+        # Every sample index below is therefore relative to _t0.
+        self._t0 = float(t[0]) if len(t) else 0.0
+        self._x_limit = float(t[-1]) if len(t) else 0.0
+        self._last_need = None
 
         # Ground truth is drawn by this window too, so it needs the same blind
         # switch as SignalView and ProbStrip. Without it a "blind" session could
@@ -531,8 +543,8 @@ class ChannelInspector(QtWidgets.QDialog):
             return None, 0.0, 0.0, False
         fs = float(self._fs)
         x0, x1 = self._pw.getPlotItem().viewRange()[0]
-        s0 = max(0, int(x0 * fs))
-        s1 = min(n, int(np.ceil(x1 * fs)))
+        s0 = max(0, int((x0 - self._t0) * fs))
+        s1 = min(n, int(np.ceil((x1 - self._t0) * fs)))
         if s1 - s0 < MIN_SPECTRUM_SAMPLES:
             return None, float(x0), float(x1), False
         cap = int(MAX_SPECTRUM_SECONDS * fs)
@@ -541,7 +553,8 @@ class ChannelInspector(QtWidgets.QDialog):
             mid = (s0 + s1) // 2
             s0 = max(0, mid - cap // 2)
             s1 = min(n, s0 + cap)
-        return self._data[s0:s1], s0 / fs, s1 / fs, truncated
+        return (self._data[s0:s1], self._t0 + s0 / fs, self._t0 + s1 / fs,
+                truncated)
 
     def refresh_spectrum(self):
         """Recompute the spectrum and band table for the visible span, now.
@@ -795,6 +808,12 @@ class ChannelInspector(QtWidgets.QDialog):
         self._channel_name = channel_name
         self._data = np.asarray(data1d, dtype=np.float32)
         self._t = np.asarray(t, dtype=np.float32)
+        self._t0 = float(self._t[0]) if self._t.size else 0.0
+        # A larger recording limit set via set_time_limit is kept; the slice's
+        # own end only ever raises the bound, never lowers it.
+        if self._t.size:
+            self._x_limit = max(self._x_limit, float(self._t[-1]))
+        self._last_need = None
         self.setWindowTitle('Channel — {}'.format(channel_name))
         self._curve.setData(self._t, self._data)
         if reference_intervals is not None:
@@ -809,6 +828,16 @@ class ChannelInspector(QtWidgets.QDialog):
 
     def sync_toggle_signal(self):
         return self.chk_sync.stateChanged
+
+    def set_time_limit(self, duration_s):
+        """The recording's true length, so the x-axis can be panned beyond
+        the slice currently loaded (need_data then asks for the rest)."""
+        self._x_limit = float(duration_s)
+        self._pw.getPlotItem().vb.setLimits(xMin=0.0, xMax=self._x_limit)
+
+    def current_x_range(self):
+        x0, x1 = self._pw.getPlotItem().viewRange()[0]
+        return float(x0), float(x1)
 
     # ---- reference annotations ---------------------------------------
     def _rebuild_references(self):
@@ -845,14 +874,29 @@ class ChannelInspector(QtWidgets.QDialog):
 
     # ------------------------------------------------------------------
     def _slice_between(self, x0, x1):
-        s0 = max(0, int(x0 * self._fs))
-        s1 = min(self._data.shape[0], int(x1 * self._fs))
+        s0 = max(0, int((x0 - self._t0) * self._fs))
+        s1 = min(self._data.shape[0], int((x1 - self._t0) * self._fs))
         if s1 <= s0:
             return self._data[:0]
         return self._data[s0:s1]
 
     def _on_range_changed(self, *_):
         x0, x1 = self._pw.getPlotItem().viewRange()[0]
+        # Ask for more channel when the view runs past what this window was
+        # given. A 5 s margin keeps a pan along the loaded edge from firing a
+        # request per pixel; the dedupe key keeps repeated range events from
+        # firing the same one twice.
+        if self._data.size:
+            loaded_t1 = self._t0 + self._data.shape[0] / float(self._fs)
+            margin = 5.0
+            wants_earlier = x0 < self._t0 + margin and self._t0 > 0.0
+            wants_later = (x1 > loaded_t1 - margin
+                           and loaded_t1 < self._x_limit - 1e-6)
+            if wants_earlier or wants_later:
+                key = (round(float(x0), 2), round(float(x1), 2))
+                if key != self._last_need:
+                    self._last_need = key
+                    self.need_data.emit(float(x0), float(x1))
         sl = self._slice_between(x0, x1)
         self._update_stats(sl)
         if self.chk_autofit.isChecked():

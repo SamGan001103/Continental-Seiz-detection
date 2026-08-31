@@ -189,6 +189,13 @@ class _SignalViewBox(pg.ViewBox):
 
 # ---------------------------------------------------------------------- SignalView
 
+# Trace rendered beyond the viewport so a pan has signal ready before the
+# coalescing timer fires. Bounded: it used to be a whole extra span either
+# side, which at a 10-minute view meant deriving 30 minutes of signal per
+# redraw for the sake of the next scroll.
+PAN_PAD_S = 60.0
+
+
 class SignalView(QtWidgets.QWidget):
     regionChanged = QtCore.pyqtSignal(int, float, float)
     viewRangeChanged = QtCore.pyqtSignal(float, float)
@@ -248,7 +255,8 @@ class SignalView(QtWidgets.QWidget):
         self._grid_lines = []
         self._channel_names = []
         self._fs = 250
-        self._full_unclipped = None    # [K, N] float32 (unclipped, post-montage)
+        self._full_unclipped = None    # retired: nothing full-length is held here
+        self._provider = None          # DisplayPipeline; renders spans on demand
         self._full_offsets = None
         self._ref_intervals = []       # cached (start, stop) tuples for refresh
         self._event_cache = []         # cached event dicts for refresh
@@ -288,8 +296,31 @@ class SignalView(QtWidgets.QWidget):
     # ---- data --------------------------------------------------------
     def set_signal(self, data_full, fs, channel_names, sensitivity_uv=30.0,
                    initial_span_s=30.0, preserve_view=False):
-        """Cache full-resolution unclipped data. SignalView owns clipping
-        so sensitivity changes are fast (no filter/montage re-run).
+        """Draw an already-derived [K, N] array as given: no filters, no montage.
+
+        Kept for callers and tests that hand the view a finished array. The
+        application itself uses set_provider, so nothing full-length is ever
+        derived on its behalf — see gui/display_pipeline.py for why.
+        """
+        from gui.display_pipeline import DisplayPipeline
+        arr = np.ascontiguousarray(data_full, dtype=np.float32)
+        provider = DisplayPipeline(arr, fs, montage=None,
+                                   row_labels=list(channel_names))
+        self.set_provider(provider, fs, channel_names,
+                          sensitivity_uv=sensitivity_uv,
+                          initial_span_s=initial_span_s,
+                          preserve_view=preserve_view)
+
+    def set_provider(self, provider, fs, channel_names, sensitivity_uv=30.0,
+                     initial_span_s=30.0, preserve_view=False):
+        """Point the view at a DisplayPipeline and draw the current span.
+
+        The view holds no signal of its own any more. Every redraw asks the
+        provider for exactly the samples on screen (plus a pan margin), already
+        filtered and montaged; SignalView still owns clipping, so sensitivity
+        changes stay cheap. This is what lets a 24-hour recording redraw in the
+        same time as a 10-minute one — the previous design cached a filtered,
+        montaged copy of the entire recording here and it froze a 16 GB machine.
 
         preserve_view : if True and the viewport was already populated,
             keep the current x-range. Used when the caller is refreshing
@@ -298,7 +329,7 @@ class SignalView(QtWidgets.QWidget):
         """
         pi = self._pw.getPlotItem()
         # Capture current x-range before tearing down so we can restore it.
-        had_signal = self._full_unclipped is not None
+        had_signal = self._provider is not None
         keep_x = preserve_view and had_signal
         if keep_x:
             prev_x0, prev_x1 = pi.viewRange()[0]
@@ -313,9 +344,10 @@ class SignalView(QtWidgets.QWidget):
         self._time_cursor.reattach()
         self._channel_names = list(channel_names)
         self._fs = fs
-        self._full_unclipped = np.ascontiguousarray(data_full, dtype=np.float32)
+        self._provider = provider
+        self._full_unclipped = None
         self._sensitivity_uv = float(sensitivity_uv)
-        n_ch = data_full.shape[0]
+        n_ch = provider.n_rows
         self._spacing = self._compute_spacing(n_ch)
         self._full_offsets = -np.arange(n_ch, dtype=np.float32) * self._spacing
         self._ch_axis.set_channels(self._channel_names)
@@ -335,7 +367,7 @@ class SignalView(QtWidgets.QWidget):
             self._curves.append(curve)
 
         self._update_y_range()
-        duration_s = data_full.shape[1] / fs
+        duration_s = provider.duration_s
         pi.vb.setLimits(xMin=0.0, xMax=float(duration_s))
         if keep_x:
             pi.setXRange(prev_x0, prev_x1, padding=0)
@@ -349,9 +381,9 @@ class SignalView(QtWidgets.QWidget):
         self._sensitivity_uv = float(sensitivity_uv)
         self._spacing = self._compute_spacing(
             len(self._channel_names) or 1)
-        if self._full_unclipped is None:
+        if self._provider is None:
             return
-        n_ch = self._full_unclipped.shape[0]
+        n_ch = self._provider.n_rows
         self._full_offsets = -np.arange(n_ch, dtype=np.float32) * self._spacing
         self._ch_axis.set_spacing(self._spacing)
         if rebuild_layout:
@@ -382,32 +414,33 @@ class SignalView(QtWidgets.QWidget):
                      0.5 * self._spacing, padding=0)
 
     def _redecimate_visible(self):
-        if self._full_unclipped is None or not self._curves:
+        if self._provider is None or not self._curves:
             return
         pi = self._pw.getPlotItem()
         x0, x1 = pi.viewRange()[0]
         px_w = max(200, int(self._pw.viewport().width() or 1600))
-        n = self._full_unclipped.shape[1]
+        n = self._provider.n_samples
         span = max(1e-6, x1 - x0)
-        pad = span
+        pad = min(span, PAN_PAD_S)
         s0 = max(0, int((x0 - pad) * self._fs))
         s1 = min(n, int((x1 + pad) * self._fs))
         if s1 <= s0:
             return
-        slice_ = self._full_unclipped[:, s0:s1]
-        # Clip to current sensitivity BEFORE decimation so spikes that
-        # exceed the row are rendered flat at ±sens rather than wiping
-        # across the neighboring channel.
-        lvl = self._clip_level()
-        clipped = np.clip(slice_, -lvl, lvl)
         target = int(px_w * (s1 - s0) / (span * self._fs)) if span > 0 else px_w
         target = max(512, min(target, 20000))
-        data_ds, t_local = decimate_for_display(clipped, self._fs, target_px=target)
-        t_ds = t_local + (s0 / self._fs)
+        # The provider filters, montages and decimates just this span. Work
+        # per redraw is therefore bounded by the viewport, never by the file.
+        data_ds, t_ds = self._provider.render(s0, s1, target)
+        # Clip to the current sensitivity so a spike that exceeds the row is
+        # drawn flat at the lane edge rather than across the neighbour. Stride
+        # decimation selects samples, so clipping after it is pointwise
+        # identical to the old clip-then-decimate order.
+        lvl = self._clip_level()
+        clipped = np.clip(data_ds, -lvl, lvl)
         for i, curve in enumerate(self._curves):
             # Negative-up: the universal EEG display convention. Negating at
             # render only — the arrays feeding inference are untouched.
-            curve.setData(t_ds, -data_ds[i] + self._full_offsets[i])
+            curve.setData(t_ds, -clipped[i] + self._full_offsets[i])
 
 
     # ------------------------------------------------------------------
