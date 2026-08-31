@@ -122,6 +122,41 @@ class TheRefusalIsActionable(unittest.TestCase):
         self.assertIn('unknown', text)
 
 
+class TheBuildGateChecksTheFrozenApp(unittest.TestCase):
+    """A guard that can vanish from a bundle must be gated, not assumed.
+
+    `load_edf` imports gui.memory lazily and swallows an ImportError — right,
+    because a machine that cannot report its memory should still open files,
+    and wrong if nobody notices the module missing from a frozen build. The
+    guard would then silently not exist and the first symptom would be a
+    frozen ward PC. This is the Keras 3 failure shape (known_issues.md §1),
+    where a build-time claim was true and the runtime behaviour was not, so it
+    gets the same treatment: the self-test reports what it actually found and
+    the smoke test fails the build on it.
+    """
+
+    def _src(self, rel):
+        import io
+        with io.open(os.path.join(REPO, rel), encoding='utf-8') as f:
+            return f.read()
+
+    def test_the_self_test_reports_whether_the_guard_is_present(self):
+        code = self._src(os.path.join('gui', 'main.py'))
+        self.assertIn('self-test: memguard', code,
+                      'the frozen self-test no longer reports the memory '
+                      'guard, so smoke_test.py has nothing to check')
+
+    def test_the_smoke_test_fails_the_build_when_it_is_missing(self):
+        import re
+        code = self._src(os.path.join('packaging', 'smoke_test.py'))
+        self.assertIn('self-test: memguard', code,
+                      'smoke_test.py does not inspect the memory guard line')
+        self.assertTrue(
+            re.search(r'failures\.append\([^)]*memory guard', code, re.S),
+            'smoke_test.py reads the memory-guard line but does not fail the '
+            'build on it — a silently unguarded build would ship')
+
+
 class TheMachineCanBeQueried(unittest.TestCase):
     def test_available_bytes_is_plausible_or_none(self):
         v = available_bytes()

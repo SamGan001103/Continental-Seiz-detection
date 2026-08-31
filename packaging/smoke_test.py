@@ -283,6 +283,25 @@ def main(argv=None):
                 #
                 # Only meaningful on the modern stack. Under TF 1.15 there is
                 # one Keras and the question does not arise.
+                # Is the memory guard in this bundle? It is imported lazily
+                # inside load_edf and wrapped in try/except, so a guard missing
+                # from the frozen build disables itself silently and the first
+                # symptom is a frozen ward PC. Exactly the Keras 3 shape: the
+                # fallback is invisible, so the gate has to check rather than
+                # assume.
+                mem_line = ''
+                for line in out.splitlines():
+                    if line.startswith('self-test: memguard'):
+                        mem_line = line
+                        break
+                if 'self-test: memguard' in out and 'present' not in mem_line:
+                    failures.append(
+                        'the memory guard is missing from the frozen build -- '
+                        'an oversized recording would be loaded anyway and can '
+                        'freeze the machine ({})'.format(mem_line.strip()))
+                elif mem_line:
+                    print('  [ok] frozen app carries the memory guard')
+
                 keras_line = ''
                 for line in out.splitlines():
                     if line.startswith('self-test: keras'):
