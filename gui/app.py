@@ -874,14 +874,29 @@ class MainWindow(QtWidgets.QMainWindow):
         from gui.io.cache import save_probs
 
         dlg = QtWidgets.QProgressDialog(
-            'Loading model (first open only)…',
-            'Cancel', 0, 100, self)
+            'Loading the detector…\n\n'
+            'First open of a recording only. This takes about a minute in the\n'
+            'packaged application; scoring starts as soon as it finishes.',
+            'Cancel', 0, 0, self)
         dlg.setWindowTitle('Detecting seizures')
         dlg.setWindowModality(QtCore.Qt.WindowModal)
         dlg.setMinimumDuration(0)
         dlg.setAutoClose(False)
         dlg.setAutoReset(False)
-        dlg.setValue(0)
+        # Range 0-0 is Qt's busy indicator: an animated bar with no percentage.
+        #
+        # This was a 0-100 bar sitting at 0 for the entire model load, which is
+        # about 5 s from source but a full minute in the frozen build --
+        # PyInstaller unpacking TensorFlow, and the virus scanner reading a
+        # 1.4 GB directory it has not seen before. A bar that never moves is
+        # indistinguishable from a hung application, and the first person to
+        # meet it reported the app as stuck.
+        #
+        # Nothing here can report true progress: the model load is one opaque
+        # call inside TensorFlow. So the honest signal is "working, duration
+        # unknown" -- which is what the busy indicator means -- plus a sentence
+        # saying how long to expect. progress_cb switches to a real 0-n bar the
+        # moment the first window is scored.
         dlg.show()
         QtWidgets.QApplication.processEvents()
 
@@ -890,7 +905,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         def progress_cb(i, n):
             if dlg.maximum() != n:
-                dlg.setMaximum(n)
+                # Leaves the busy indicator and becomes a real bar. setRange,
+                # not setMaximum: the dialog starts at 0-0, so the minimum has
+                # to be restored as well or the bar stays animated forever.
+                dlg.setRange(0, n)
             dlg.setValue(i)
             dlg.setLabelText('Scoring window {}/{}…'.format(i, n))
             QtWidgets.QApplication.processEvents()
