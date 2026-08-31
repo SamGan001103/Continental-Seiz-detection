@@ -117,6 +117,25 @@ def self_test(edf_path):
     # lazily on first access, so bundling tf_keras is not the same as using it,
     # and the spec's build-time "tf_keras bundled" message cannot tell the
     # difference. smoke_test.py checks this line.
+    # Is the memory guard actually in this build? It is imported lazily inside
+    # load_edf and wrapped in try/except — deliberately, so a machine that
+    # cannot report its memory still opens files — which means a guard missing
+    # from a frozen bundle would disable itself silently and the first symptom
+    # would be a frozen ward PC. Same shape as the Keras 3 fallback that
+    # shipped (known_issues.md 1): bundling is not the same as working, so the
+    # build gate checks rather than assumes. smoke_test.py reads this line.
+    try:
+        from gui.memory import available_bytes, estimate_bytes
+        _r, _t = estimate_bytes(19, 250 * 3600, 250)
+        _avail = available_bytes()
+        print('self-test: memguard    present (1 h estimate {:.2f} GB, '
+              'machine reports {})'.format(
+                  (_r + _t) / 1e9,
+                  'unknown' if _avail is None
+                  else '{:.1f} GB free'.format(_avail / 1e9)))
+    except Exception as _ex:                                    # noqa: BLE001
+        print('self-test: memguard    MISSING ({})'.format(_ex))
+
     try:
         import tensorflow as _tf
         _keras = getattr(_tf, 'keras', None)

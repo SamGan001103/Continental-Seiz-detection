@@ -14,6 +14,9 @@ Keyboard shortcuts:
     Enter     jump to selected event and frame it
     J / K     next / prev event
     ← / →     pan half a screen
+    PgUp/PgDn a whole page back / forward (1 s overlap)
+    Ctrl+Home jump to the start of the recording
+    Ctrl+End  jump to the end of the recording
     + / -     zoom in / out on time axis
     [ / ]     amplitude sensitivity down / up
     , / .     timebase shorter / longer
@@ -61,6 +64,7 @@ from gui.io.ica_display import (SEGMENT_S as ICA_SEGMENT_S,
                                 summarise as ica_summarise)
 from gui.widgets.signal_view import SignalView
 from gui.widgets.prob_strip import ProbStrip
+from gui.widgets.overview_strip import OverviewStrip
 from gui.widgets.event_list import EventList
 from gui.widgets.channel_inspector import ChannelInspector
 
@@ -278,8 +282,16 @@ class MainWindow(QtWidgets.QMainWindow):
     def _build_ui(self):
         self.signal_view = SignalView()
         self.prob_strip = ProbStrip()
+        # Deliberately NOT linked to the signal view. The strip above follows
+        # the page — ten seconds by default — which is right for reading the
+        # score against the trace, and which left the application with no view
+        # of the recording as a whole. At 24 hours that is 8,640 pages and no
+        # map, while INTENDED_USE asks the reviewer to look at signal the
+        # detector said nothing about.
+        self.overview_strip = OverviewStrip()
         self.event_list = EventList()
         self.signal_view.link_x_to(self.prob_strip.plot_item())
+        self.overview_strip.seek_requested.connect(self._on_overview_seek)
 
         left = QtWidgets.QWidget()
         lv = QtWidgets.QVBoxLayout(left)
@@ -289,6 +301,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # the height a shallow rise near threshold was hard to read at all.
         lv.addWidget(self.signal_view, 4)
         lv.addWidget(self.prob_strip, 1)
+        # Fixed height, not a stretch share: the overview is a map, and a map
+        # that grows with the window steals space from the traces, which are
+        # what the reviewer actually reads.
+        lv.addWidget(self.overview_strip, 0)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         splitter.addWidget(left)
@@ -697,6 +713,20 @@ class MainWindow(QtWidgets.QMainWindow):
         add('K', lambda: self._cycle_selection(-1))
         add('Right', lambda: self.signal_view.shift_view(self._timebase_s * 0.5))
         add('Left', lambda: self.signal_view.shift_view(-self._timebase_s * 0.5))
+        # Whole-page steps and jumps to either end. Arrows move half a page,
+        # which is right for examining something but makes reading a recording
+        # end to end cost twice as many keystrokes as it should — at the 10 s
+        # default a 24-hour study is 17,000 presses. A reviewer who cannot
+        # afford to read is a reviewer who only ever looks where the detector
+        # pointed, which is the anchoring INTENDED_USE warns against.
+        #
+        # A page step deliberately overlaps by a second: a discharge sitting
+        # exactly on a page boundary would otherwise be split across two
+        # screens and seen properly on neither.
+        add('PgDown', lambda: self.signal_view.shift_view(self._timebase_s - 1.0))
+        add('PgUp', lambda: self.signal_view.shift_view(-(self._timebase_s - 1.0)))
+        add('Ctrl+Home', lambda: self.signal_view.center_on(0.0))
+        add('Ctrl+End', lambda: self.signal_view.center_on(self._duration_s))
         add('+', lambda: self.signal_view.zoom_x(0.75))
         add('=', lambda: self.signal_view.zoom_x(0.75))
         add('-', lambda: self.signal_view.zoom_x(1.33))
@@ -861,6 +891,7 @@ class MainWindow(QtWidgets.QMainWindow):
                       for e in read_csv_bi(ref_path) if e['label'] == 'seiz']
         self.signal_view.set_references(self._refs)
         self.prob_strip.set_references(self._refs)
+        self.overview_strip.set_references(self._refs)
 
         # probability cache — run inference on-demand if missing
         cached = load_probs(path)
@@ -869,6 +900,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if cached is None:
             self._probs = None
             self.prob_strip.set_probs([], [])
+            self.overview_strip.clear()
             msg = '{} — inference cancelled, no probabilities loaded.'.format(
                 os.path.basename(path))
         else:
@@ -1022,6 +1054,13 @@ class MainWindow(QtWidgets.QMainWindow):
             segment_s=self._segment_s,
             skip_code=cache.get('skip_code'),
             duration_s=self._duration_s)
+        self.overview_strip.set_probs(
+            cache['window_starts'], cache['probs'],
+            segment_s=self._segment_s,
+            skip_code=cache.get('skip_code'),
+            duration_s=self._duration_s)
+        self.overview_strip.set_threshold(self._threshold)
+        self.overview_strip.set_references(self._refs)
         self._events = list(self._events_by_source.get(key, []))
         self._refresh_signal_view(preserve_view=preserve_view)
         self._rebuild_events_from_probs(
@@ -1593,6 +1632,7 @@ class MainWindow(QtWidgets.QMainWindow):
     # ==================================================================
     def _rebuild_events_from_probs(self, preserve_review=True):
         self.prob_strip.set_threshold(self._threshold)
+        self.overview_strip.set_threshold(self._threshold)
         if self._probs is None:
             self._events = []
             self.signal_view.set_events([])
@@ -2127,6 +2167,11 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_refs_toggled(self, checked):
         self.signal_view.set_references_visible(checked)
         self.prob_strip.set_references_visible(checked)
+        # Blind mode has to reach the map too, or the answer key survives on
+        # the one widget that shows the whole recording at once.
+        self.overview_strip.set_references_visible(checked)
+        if checked:
+            self.overview_strip.set_references(self._refs)
         # Inspectors already open when blind mode is toggled. Missing this, a
         # reviewer could turn blind mode on with a detail window showing and
         # keep seeing the reference bands in it.
@@ -2137,9 +2182,26 @@ class MainWindow(QtWidgets.QMainWindow):
             self.a_blind.setChecked(not checked)
             self.a_blind.blockSignals(False)
 
+    def _on_overview_seek(self, centre_s):
+        """Click or drag on the whole-recording map moves the page there."""
+        if self._raw_data is None:
+            return
+        self.signal_view.center_on(float(centre_s))
+
     def _on_view_range(self, x0, x1):
-        self._hover_lbl.setText('View: {:.1f}s – {:.1f}s  ({:.1f}s)'
-                                .format(x0, x1, x1 - x0))
+        span = x1 - x0
+        if self._duration_s > 0:
+            pages = max(1, int(round(self._duration_s / max(span, 1e-6))))
+            page = min(pages, int(x0 / max(span, 1e-6)) + 1)
+            pct = 100.0 * x0 / self._duration_s
+            self._hover_lbl.setText(
+                'View: {:.1f}s – {:.1f}s  ({:.1f}s)   ·   page {} of {}  '
+                '({:.0f}% in)'.format(x0, x1, span, page, pages, pct))
+        else:
+            self._hover_lbl.setText('View: {:.1f}s – {:.1f}s  ({:.1f}s)'
+                                    .format(x0, x1, span))
+        # Move the "you are here" box on the overview map.
+        self.overview_strip.set_viewport(x0, x1)
         # The ICA view follows the scroll, but only after the reviewer stops
         # moving: cleaning is ~1 s per 12 s window, and doing it per scroll
         # event would make the scrollbar feel broken.
