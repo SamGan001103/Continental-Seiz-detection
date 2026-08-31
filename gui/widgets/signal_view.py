@@ -200,6 +200,15 @@ PAN_PAD_S = 60.0
 # about 17 characters — plus a gap, so two shown labels never touch.
 MIN_LABEL_GAP_PX = 110.0
 
+# Height of the annotation lane above the top trace, in channel-spacings.
+# 0.5 is the ordinary top margin; the extra 0.9 is the empty band the labels
+# sit in so they never cover a trace.
+ANNOT_LANE_FRACTION = 1.4
+
+# Where along the vertical marker line its text sits, 0 = bottom, 1 = top.
+# Just under the top so the text lands inside the lane above the first channel.
+ANNOT_LABEL_POSITION = 0.985
+
 
 def _set_label_shown(label, shown):
     """Show or hide an InfiniteLine's text label, on either pyqtgraph.
@@ -444,8 +453,16 @@ class SignalView(QtWidgets.QWidget):
             return
         n_ch = len(self._full_offsets)
         pi = self._pw.getPlotItem()
+        # A lane above the top trace for annotation text, but only when there
+        # is any. Seen on a real display, the labels were drawn over the
+        # bottom channel: legible in themselves — they carry a white
+        # background — while hiding the EEG underneath, which is the one thing
+        # on this widget that must never be covered. A recording with no
+        # annotations keeps the tighter range and loses no screen height.
+        head = (ANNOT_LANE_FRACTION if getattr(self, '_source_annotations', None)
+                else 0.5)
         pi.setYRange(-(n_ch - 0.5) * self._spacing,
-                     0.5 * self._spacing, padding=0)
+                     head * self._spacing, padding=0)
 
     def _redecimate_visible(self):
         if self._provider is None or not self._curves:
@@ -578,8 +595,9 @@ class SignalView(QtWidgets.QWidget):
                 item = pg.InfiniteLine(
                     pos=onset, angle=90, pen=pen, movable=False,
                     label=text,
-                    labelOpts={'position': 0.04, 'color': (120, 60, 170),
-                               'movable': False, 'fill': (255, 255, 255, 190)})
+                    labelOpts={'position': ANNOT_LABEL_POSITION,
+                               'color': (120, 60, 170), 'movable': False,
+                               'fill': (255, 255, 255, 190)})
                 item.setZValue(-15)
                 pi.addItem(item, ignoreBounds=True)
             else:
@@ -591,6 +609,9 @@ class SignalView(QtWidgets.QWidget):
                 item.setZValue(-18)
                 pi.addItem(item)
             self._annot_items.append(item)
+        # The lane above the traces only exists when there are annotations, so
+        # the y range is recomputed now that we know.
+        self._update_y_range()
         self._update_annotation_labels()
 
     def set_source_annotations_visible(self, visible):
