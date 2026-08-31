@@ -280,6 +280,24 @@ class MainWindow(QtWidgets.QMainWindow):
         self._ica_timer.timeout.connect(
             lambda: self._refresh_signal_view(preserve_view=True))
 
+        # Cleaning is cached per 12 s block, so scrolling back over signal
+        # already cleaned is instant — but scrolling FORWARD hits new blocks
+        # and pays ~0.9 s each time, roughly every second scroll step. That is
+        # the "ICA is slow to scroll" complaint: not slow everywhere, slow
+        # every couple of steps, which is worse than uniformly slow because it
+        # is unpredictable.
+        #
+        # So once the reviewer has settled, the blocks either side are cleaned
+        # into the cache and the result thrown away. The next scroll step is
+        # then a cache hit. It cannot run on a worker thread — the ICA is the
+        # detector's own code and this application does not run it off the main
+        # thread — so it deliberately waits until well after the redraw, when a
+        # brief pause is least likely to be in anyone's way.
+        self._ica_prefetch_timer = QtCore.QTimer(self)
+        self._ica_prefetch_timer.setSingleShot(True)
+        self._ica_prefetch_timer.setInterval(600)
+        self._ica_prefetch_timer.timeout.connect(self._prefetch_ica_neighbours)
+
         self._build_ui()
         self._wire_shortcuts()
         self.statusBar().showMessage('Open an EDF to start.')
@@ -2267,6 +2285,43 @@ class MainWindow(QtWidgets.QMainWindow):
             self.a_blind.setChecked(not checked)
             self.a_blind.blockSignals(False)
 
+    def _prefetch_ica_neighbours(self):
+        """Clean the blocks either side of the view into the cache.
+
+        Nothing is drawn: the only effect is that `clean_span_for_display`
+        already has the answer when the reviewer scrolls into that signal.
+        Silent by design — the reviewer did not ask for this and must not be
+        told a view is loading when nothing on screen is changing.
+        """
+        if not self._ica_display or self._raw_data is None:
+            return
+        if self._ica_view_span is None:
+            return
+        if int(round(float(self._fs))) != 250:
+            return                       # native-rate source; the view is off
+        x0, x1 = self._ica_view_span
+        rec_id = '{}|{}'.format(self._ica_recording_id, self._prob_source)
+        # Beyond the PADDED span, not beyond the view. _display_source already
+        # cleans ICA_SEGMENT_S either side of what is on screen, so prefetching
+        # from the view edge re-requests signal that is already in the cache —
+        # which is exactly what the first version of this did, and why it made
+        # no measurable difference. The next uncleaned sample starts one pad
+        # further out.
+        ahead = min(self._duration_s, x1 + ICA_SEGMENT_S)
+        behind = max(0.0, x0 - ICA_SEGMENT_S)
+        for t0, t1 in ((ahead, min(self._duration_s, ahead + ICA_SEGMENT_S)),
+                       (max(0.0, behind - ICA_SEGMENT_S), behind)):
+            if t1 - t0 <= 0.0:
+                continue
+            try:
+                clean_span_for_display(
+                    self._raw_data, self._fs, t0, t1, recording_id=rec_id,
+                    anchor_s=self._ica_anchor_s)
+            except Exception:                               # noqa: BLE001
+                # A prefetch that fails costs nothing: the real request will
+                # fail the same way and report it properly there.
+                return
+
     def _on_overview_seek(self, centre_s):
         """Click or drag on the whole-recording map moves the page there."""
         if self._raw_data is None:
@@ -2293,6 +2348,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._ica_view_span = (float(x0), float(x1))
         if self._ica_display:
             self._ica_timer.start()
+            # Restarted on every view change, so it only fires once the
+            # reviewer has actually stopped moving.
+            self._ica_prefetch_timer.start()
 
     # ==================================================================
     # Channel inspector popups
