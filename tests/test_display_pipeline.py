@@ -85,23 +85,65 @@ class FullRateMatchesWholeFileFiltering(unittest.TestCase):
             self.assertAlmostEqual(float(t[0]), s0 / float(FS), places=4)
 
     def test_the_padding_is_what_makes_it_match(self):
-        """Remove the pad and the test above should fail — proving it tests it."""
+        """Strip the padding and the match should break — proving it is earned.
+
+        TWO things pad the filtering now, and both have to be neutralised or
+        this test passes for the wrong reason. FILTER_PAD_S is the explicit
+        margin; the block cache is the accidental one, because it filters a
+        region several screens wide and the requested span sits in the middle
+        of it. When the block cache was added this test began passing with
+        FILTER_PAD_S = 0 — the widened block was doing the padding's job.
+
+        So the block is shrunk to exactly the requested span as well, which is
+        the naive implementation this whole design exists to avoid.
+        """
         import gui.display_pipeline as dp
         ref, _ = self._reference('Longitudinal Bipolar')
         s0, s1 = 100 * FS, 130 * FS
-        saved = dp.FILTER_PAD_S
+        saved = (dp.FILTER_PAD_S, dp.BLOCK_SPAN_FACTOR, dp.BLOCK_MIN_S)
         try:
             dp.FILTER_PAD_S = 0.0
+            dp.BLOCK_SPAN_FACTOR = 1
+            dp.BLOCK_MIN_S = 0.0
             p = DisplayPipeline(self.data, FS, hp=self.hp, lp=self.lp,
                                 notch=self.notch, montage='Longitudinal Bipolar')
             unpadded, _ = p.render(s0, s1, target_px=s1 - s0)
         finally:
-            dp.FILTER_PAD_S = saved
+            (dp.FILTER_PAD_S, dp.BLOCK_SPAN_FACTOR,
+             dp.BLOCK_MIN_S) = saved
         err = np.abs(unpadded - ref[:, s0:s1]).max()
         self.assertGreater(
             err, 1.0,
-            'filtering with no padding matched anyway, so the padding test '
-            'proves nothing — check FILTER_PAD_S is actually used')
+            'filtering with no padding and no block widening matched anyway, '
+            'so this test proves nothing — check FILTER_PAD_S is really used')
+
+    def test_the_block_cache_returns_the_same_samples_as_a_fresh_render(self):
+        """Panning inside a cached block must not change what is drawn."""
+        p = DisplayPipeline(self.data, FS, hp=self.hp, lp=self.lp,
+                            notch=self.notch, montage='Longitudinal Bipolar')
+        first, t1 = p.render(100 * FS, 130 * FS, target_px=30 * FS)
+        # a later span inside the same block — served from cache
+        second, t2 = p.render(140 * FS, 170 * FS, target_px=30 * FS)
+        fresh = DisplayPipeline(self.data, FS, hp=self.hp, lp=self.lp,
+                                notch=self.notch,
+                                montage='Longitudinal Bipolar')
+        expect, te = fresh.render(140 * FS, 170 * FS, target_px=30 * FS)
+        np.testing.assert_allclose(second, expect, rtol=0, atol=1e-4)
+        np.testing.assert_array_equal(t2, te)
+
+    def test_changing_a_filter_invalidates_the_block(self):
+        """A stale block would draw the previous filter settings."""
+        p = DisplayPipeline(self.data, FS, hp=1.0, lp=70.0, notch=60.0,
+                            montage='Longitudinal Bipolar')
+        a, _ = p.render(100 * FS, 130 * FS, target_px=30 * FS)
+        p.lp = 15.0                      # as MainWindow rebuilds it
+        q = DisplayPipeline(self.data, FS, hp=1.0, lp=15.0, notch=60.0,
+                            montage='Longitudinal Bipolar')
+        b, _ = q.render(100 * FS, 130 * FS, target_px=30 * FS)
+        c, _ = p.render(100 * FS, 130 * FS, target_px=30 * FS)
+        self.assertGreater(np.abs(a - b).max(), 1.0,
+                           'a 15 Hz low-pass should differ from 70 Hz')
+        np.testing.assert_allclose(c, b, rtol=0, atol=1e-4)
 
     def test_a_span_at_the_recording_start_is_still_correct(self):
         """No padding is available before t=0; the result must still be sane."""

@@ -210,7 +210,22 @@ ANNOT_LANE_FRACTION = 1.4
 ANNOT_LABEL_POSITION = 0.985
 
 
-def _set_label_shown(label, shown):
+def _set_label_shown(label, shown, state, key):
+    """As below, but skips the write when the label is already in that state.
+
+    `setOpacity` repaints the item, so rewriting all 41 labels on every redraw
+    cost 12.2 ms of a 32.6 ms scroll step — more than a third of it — to set
+    most of them to the value they already had. Which labels are shown barely
+    changes while panning at a fixed zoom, so almost every one of those writes
+    was wasted.
+    """
+    if state.get(key) is shown:
+        return
+    state[key] = shown
+    _apply_label_shown(label, shown)
+
+
+def _apply_label_shown(label, shown):
     """Show or hide an InfiniteLine's text label, on either pyqtgraph.
 
     Opacity rather than setVisible, and not by preference: pyqtgraph 0.11.1 —
@@ -296,13 +311,20 @@ class SignalView(QtWidgets.QWidget):
         self._full_offsets = None
         self._ref_intervals = []       # cached (start, stop) tuples for refresh
         self._annot_items = []         # EDF+ technician markers (read-only)
+        self._annot_label_state = {}   # index -> shown, to skip no-op repaints
         self._source_annotations = []
         self._event_cache = []         # cached event dicts for refresh
         self._refs_visible = True      # toolbar toggle state
 
         self._redec_timer = QtCore.QTimer(self)
         self._redec_timer.setSingleShot(True)
-        self._redec_timer.setInterval(30)
+        # Coalescing delay before a redraw. Every range change restarts it, so
+        # this is dead time after the reviewer stops moving — and at 30 ms it
+        # was the largest single component of scroll latency once the redraw
+        # itself came down to 9 ms. A reviewer scrolling a recording reported
+        # it as the trace "taking time to load", which is exactly what a
+        # do-nothing delay looks like.
+        self._redec_timer.setInterval(12)
         self._redec_timer.timeout.connect(self._redecimate_visible)
         pi.sigRangeChanged.connect(lambda *_: self._redec_timer.start())
 
@@ -382,6 +404,7 @@ class SignalView(QtWidgets.QWidget):
         # tries to remove from a plot they are no longer in — and, worse, the
         # previous recording's technician notes still listed as this one's.
         self._annot_items = []
+        self._annot_label_state = {}
         # pi.clear() nuked the hover-cursor overlay; put it back before
         # the user's next mouse move needs it.
         self._time_cursor.reattach()
@@ -584,6 +607,7 @@ class SignalView(QtWidgets.QWidget):
         for it in getattr(self, '_annot_items', []):
             pi.removeItem(it)
         self._annot_items = []
+        self._annot_label_state = {}
         self._source_annotations = list(items or [])
         if not self._source_annotations:
             return
@@ -649,17 +673,18 @@ class SignalView(QtWidgets.QWidget):
         span = max(1e-9, x1 - x0)
         width_px = max(200.0, float(self._pw.viewport().width() or 1500))
         last_px = None
-        for item, a in zip(items, annots):
+        shown_state = self._annot_label_state
+        for i, (item, a) in enumerate(zip(items, annots)):
             label = getattr(item, 'label', None)
             if label is None:                 # a spanning region has no label
                 continue
             onset = float(a.get('onset', 0.0))
             if not (x0 <= onset <= x1):
-                _set_label_shown(label, False)   # off screen; nothing to read
+                _set_label_shown(label, False, shown_state, i)
                 continue
             px = (onset - x0) / span * width_px
             show = last_px is None or (px - last_px) >= MIN_LABEL_GAP_PX
-            _set_label_shown(label, show)
+            _set_label_shown(label, show, shown_state, i)
             if show:
                 last_px = px
 

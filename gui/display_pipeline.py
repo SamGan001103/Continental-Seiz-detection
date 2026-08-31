@@ -65,6 +65,14 @@ FULLRATE_MAX_SPAN_S = 300.0
 # second. 10 s is comfortably past all of them, and the test measures it.
 FILTER_PAD_S = 10.0
 
+# How much signal is filtered and kept at once, so that panning is a slice
+# rather than a re-filter. Several screens wide, floored so that a tight
+# clinical page does not produce a block barely larger than itself. At 250 Hz
+# a 120 s block is 19 ch x 30 000 samples x 4 bytes = 2.3 MB, which is nothing
+# against the ~20 ms per redraw it saves while scrolling.
+BLOCK_SPAN_FACTOR = 6
+BLOCK_MIN_S = 120.0
+
 
 class SplicedSource(object):
     """A full-length read-only view of `raw` with [i0, i0+len(block)) replaced.
@@ -140,6 +148,8 @@ class DisplayPipeline(object):
         self.hp, self.lp, self.notch = hp, lp, notch
         self.montage = montage
         self.n_samples = int(source.shape[1])
+        # (key, block_start, block_stop, rows) for the last full-rate block.
+        self._block = None
         if montage is None:
             self.labels = list(row_labels if row_labels is not None
                                else CH_NAMES_19[:source.shape[0]])
@@ -179,16 +189,51 @@ class DisplayPipeline(object):
         return self._render_overview(s0, s1, target_px)
 
     def _render_fullrate(self, s0, s1, target_px):
-        pad = int(FILTER_PAD_S * self.fs)
-        p0, p1 = max(0, s0 - pad), min(self.n_samples, s1 + pad)
-        raw = self.source[:, p0:p1]
-        filt = apply_filters(raw, self.fs, hp=self.hp, lp=self.lp,
-                             notch=self.notch)
-        filt = filt[:, s0 - p0:s1 - p0]
-        rows = self._montage(filt)
+        rows, base = self._fullrate_block(s0, s1)
+        rows = rows[:, s0 - base:s1 - base]
         rows_ds, t_local = decimate_for_display(rows, self.fs,
                                                 target_px=target_px)
         return rows_ds, (t_local + s0 / float(self.fs)).astype(np.float32)
+
+    def _fullrate_block(self, s0, s1):
+        """Filtered, montaged rows covering [s0, s1), from cache when possible.
+
+        Scrolling re-asks for a span a little further along, and re-filtering
+        from scratch each time made a scroll step cost ~20 ms. So a block
+        several screens wide is filtered at once and kept; panning inside it is
+        then only a slice.
+
+        Correctness is unchanged because of WHERE the padding goes: the block
+        is filtered with FILTER_PAD_S beyond each end and the padding
+        discarded, so every sample inside the block was interior to the
+        filtering. Any sub-range of it is therefore exactly what filtering that
+        sub-range with its own padding would have produced — which is what
+        tests/test_display_pipeline.py measures against whole-file filtering.
+
+        The cache is dropped whenever the filters or montage change, since the
+        key includes them.
+        """
+        key = (self.hp, self.lp, self.notch, self.montage, self.fs)
+        cached = self._block
+        if (cached is not None and cached[0] == key
+                and cached[1] <= s0 and s1 <= cached[2]):
+            return cached[3], cached[1]
+
+        # Widen to several screens so a scroll crosses the boundary rarely.
+        want = max(int(BLOCK_MIN_S * self.fs), (s1 - s0) * BLOCK_SPAN_FACTOR)
+        mid = (s0 + s1) // 2
+        b0 = max(0, mid - want // 2)
+        b1 = min(self.n_samples, b0 + want)
+        b0 = max(0, b1 - want)
+        pad = int(FILTER_PAD_S * self.fs)
+        p0, p1 = max(0, b0 - pad), min(self.n_samples, b1 + pad)
+        raw = self.source[:, p0:p1]
+        filt = apply_filters(raw, self.fs, hp=self.hp, lp=self.lp,
+                             notch=self.notch)
+        filt = filt[:, b0 - p0:b1 - p0]
+        rows = self._montage(filt)
+        self._block = (key, b0, b1, rows)
+        return rows, b0
 
     def _render_overview(self, s0, s1, target_px):
         stride = max(1, (s1 - s0) // max(1, int(target_px)))
