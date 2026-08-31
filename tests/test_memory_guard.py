@@ -134,14 +134,28 @@ class TheRefusalIsActionable(unittest.TestCase):
                     'needed_bytes': r + t + _headroom(r + t),
                     'available_bytes': 6 * GB, 'fits': False}
 
-    def test_it_states_the_numbers_and_a_way_forward(self):
-        text = describe_refusal(self.est)
+    def test_it_states_both_reasons_and_what_to_check(self):
+        """This message means something narrower than it used to.
+
+        A large recording is no longer refused for being large — it is read
+        span by span off disk. This text appears only when THAT failed too,
+        which in practice means the 19 EEG channels could not be resolved.
+        Saying only "not enough memory" would send a reviewer to close
+        programs and buy RAM for a file that would not open on an empty
+        machine either.
+        """
+        text = describe_refusal(self.est).lower()
         self.assertIn('24.0 hours', text)
-        self.assertIn('GB', text)
-        for phrase in ('close other programs', 'more memory', 'split'):
-            self.assertIn(phrase, text.lower(),
-                          'the refusal must tell the reviewer what to do, not '
-                          'only that it failed: missing {!r}'.format(phrase))
+        self.assertIn('gb', text)
+        self.assertIn('too large to load into memory', text,
+                      'the size reason is missing')
+        self.assertIn('from disk instead', text,
+                      'the message does not say that streaming was tried, so '
+                      'the reader cannot tell why RAM alone will not fix it')
+        for phrase in ('19 eeg channels', '10-20', 'more free memory'):
+            self.assertIn(phrase, text,
+                          'the refusal must say what to check: missing '
+                          '{!r}'.format(phrase))
 
     def test_it_survives_unknown_available_memory(self):
         est = dict(self.est, available_bytes=None)

@@ -123,19 +123,35 @@ def edf_open_estimate(path, available=None):
 
 
 def describe_refusal(est):
-    """The dialog text for a recording that will not fit. Numbers, and the
-    way out — never just 'too big'."""
+    """The dialog text for a recording that can be neither held nor streamed.
+
+    This is now a much rarer message than when it was written, and it says
+    something different. A large recording is no longer refused for being
+    large — it is opened span-by-span off disk. This text appears only when
+    that also failed, which in practice means the file's 19 EEG channels
+    cannot be resolved or they are not all at one sampling rate.
+
+    So the size figures are the reason it cannot simply be loaded, and the
+    channel problem is the reason it cannot be streamed either. Saying only
+    the first would send a reviewer off to close programs and buy RAM for a
+    file that would still not open on an empty machine.
+    """
     gb = lambda b: '{:.1f} GB'.format(b / 1e9)     # noqa: E731
     hours = est['duration_s'] / 3600.0
     text = (
-        'This recording is {:.1f} hours long ({} channels at {:.0f} Hz).\n\n'
-        'Opening it needs about {} of memory — {} to hold the signal and '
-        '{} more while it is read — and this computer currently has {} '
-        'available.\n\n'
-        'Loading it anyway would push the machine into swap and can freeze '
-        'it, so the recording was not opened.\n\n'
-        'What works: close other programs and try again, use a computer with '
-        'more memory, or split the recording into shorter files.'
+        'This recording is {:.1f} hours long ({} channels at {:.0f} Hz), and '
+        'it could not be opened either way.\n\n'
+        'It is too large to load into memory: that needs about {} — {} to '
+        'hold the signal and {} more while it is read — and this computer has '
+        '{} available. Loading it anyway would push the machine into swap and '
+        'can freeze it.\n\n'
+        'Reading it directly from disk instead, which is how large recordings '
+        'are normally opened here, also failed. That usually means the 19 EEG '
+        'channels this detector needs could not be found in the file, or they '
+        'are not all recorded at the same sampling rate.\n\n'
+        'What to check first: that this is a 19-channel EEG with standard '
+        '10-20 labels. Failing that, more free memory would let it load the '
+        'ordinary way.'
     ).format(hours, est['channels'], est['fs'], gb(est['needed_bytes']),
              gb(est['resident_bytes']), gb(est['transient_bytes']),
              'unknown' if est['available_bytes'] is None
