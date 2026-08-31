@@ -246,6 +246,16 @@ reproduces itself exactly — the drift harness returns 0.000000 comparing a mac
 two runs in separate processes are bit-identical. So "regenerate on one machine" is a real remedy,
 not a hope.
 
+**"Same machine" means same numeric configuration, and the sensitivity is measured.** While
+building the parallel scorer (2026-08-31), restricting worker processes to one BLAS thread —
+nothing else changed, same machine, same libraries, same seeds — moved p(seizure) by up to
+**0.138** on a real recording. The thread count changes reduction order inside FastICA's linear
+algebra and the non-converging ICA amplifies it, exactly the mechanism behind the cross-machine
+figures above. So the amplifier is confirmed to sit in the ICA, not in anything platform-specific,
+and the practical rule tightens: a reproducible run is one with the same BLAS threading, which is
+why `gui/io/infer_parallel.py` lets workers inherit the default configuration and pays 3.3× instead
+of taking 8.8× with different numbers.
+
 **A source-versus-frozen difference on Windows was NOT this.** Until 2026-08-18 the frozen Windows
 application ran Keras 3 while the same code from source ran Keras 2 (§1). Any figure produced by the
 *frozen* Windows app before that date is a Keras 3 figure and must not be compared against a
