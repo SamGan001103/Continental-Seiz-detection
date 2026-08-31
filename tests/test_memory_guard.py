@@ -22,7 +22,7 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
-from gui.memory import (SAFETY_MARGIN_BYTES, available_bytes,   # noqa: E402
+from gui.memory import (_headroom, available_bytes,             # noqa: E402
                         describe_refusal, estimate_bytes)
 
 GB = 1 << 30
@@ -63,25 +63,52 @@ class TheDecisionBoundary(unittest.TestCase):
     """Uses the estimate directly; edf_open_estimate only adds a header read."""
 
     def _fits(self, resident, transient, available):
-        return resident + transient + SAFETY_MARGIN_BYTES <= available
+        load = resident + transient
+        return load + _headroom(load) <= available
 
-    def test_a_day_long_file_is_refused_on_an_8gb_machine(self):
+    def test_a_day_long_file_is_refused_on_a_busy_ward_pc(self):
+        """An 8 GB machine running Windows and a browser, realistically."""
         r, t = estimate_bytes(19, 24 * 3600 * 250, 250)
-        self.assertFalse(self._fits(r, t, 6 * GB),
-                         'a 24 h recording must be refused with 6 GB free — '
-                         'this is the case that froze a real machine')
+        self.assertFalse(self._fits(r, t, 35 * GB // 10),
+                         'a 24 h recording must be refused with 3.5 GB free — '
+                         'this is the shape of machine the tool deploys to')
+
+    def test_a_short_recording_opens_even_on_a_starved_machine(self):
+        """The regression that made this margin proportional.
+
+        A fixed 1.5 GB margin refused a two-minute recording needing 30 MB
+        whenever the machine was momentarily busy. A review tool that refuses
+        ordinary work is not safer than one that occasionally pages; it is
+        just unusable, and a clinician will route around it.
+        """
+        r, t = estimate_bytes(19, 142 * 250, 250)
+        self.assertTrue(self._fits(r, t, 700 * GB // 1000),
+                        'a 2-minute recording was refused with 0.7 GB free')
+
+    def test_a_half_hour_recording_opens_on_a_busy_machine(self):
+        r, t = estimate_bytes(37, 1818 * 200, 200)
+        self.assertTrue(self._fits(r, t, 15 * GB // 10),
+                        'a 30-minute clinical recording was refused with '
+                        '1.5 GB free')
 
     def test_an_hour_long_file_opens_on_a_modest_machine(self):
         r, t = estimate_bytes(19, 3600 * 250, 250)
         self.assertTrue(self._fits(r, t, 4 * GB),
                         'an hour-long recording must still open on a ward PC')
 
-    def test_the_safety_margin_is_reserved(self):
-        """A file that exactly fills RAM must still be refused."""
+    def test_headroom_is_reserved_beyond_the_read_itself(self):
+        """A file that exactly fills available RAM must still be refused."""
         r, t = estimate_bytes(19, 3600 * 250, 250)
         self.assertFalse(self._fits(r, t, r + t),
-                         'the estimate must reserve headroom for Qt, '
-                         'TensorFlow and the operating system')
+                         'the estimate left no slack, so the load would take '
+                         'the machine to exactly zero free memory')
+
+    def test_headroom_scales_with_the_size_of_the_read(self):
+        small = _headroom(10 * 1024 * 1024)
+        large = _headroom(5 * GB)
+        self.assertGreater(large, small * 4,
+                           'headroom does not scale, so it is either crushing '
+                           'small files or too thin for large ones')
 
     def test_unknown_available_memory_does_not_block_the_user(self):
         """If the machine cannot be queried, the app must not refuse everything."""
@@ -104,7 +131,7 @@ class TheRefusalIsActionable(unittest.TestCase):
         r, t = estimate_bytes(19, 24 * 3600 * 250, 250)
         self.est = {'path': 'x.edf', 'duration_s': 86400.0, 'channels': 19,
                     'fs': 250.0, 'resident_bytes': r, 'transient_bytes': t,
-                    'needed_bytes': r + t + SAFETY_MARGIN_BYTES,
+                    'needed_bytes': r + t + _headroom(r + t),
                     'available_bytes': 6 * GB, 'fits': False}
 
     def test_it_states_the_numbers_and_a_way_forward(self):

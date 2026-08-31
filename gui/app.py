@@ -39,6 +39,7 @@ from gui.io.cache import (load_probs, load_probability_file,
                           save_probability_file)
 from gui.io import csv_bi as csv_bi_module
 from gui.io.csv_bi import read_csv_bi, write_csv_bi
+from gui.io.edf_annotations import annotation_summary, read_edf_annotations
 from gui.io.zuna import (ZunaFullRunner, zuna_session_paths,
                          zuna_available)
 from gui.events import (clamp_interval, rebuild_events, assign_event_ids,
@@ -214,6 +215,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self._fs = 250
         self._duration_s = 0.0
         self._refs = []                # list[(start, stop)]
+        # EDF+ annotations the recording carries. Read-only context (technician
+        # notes, hyperventilation, photic stimulation) — never ground truth,
+        # never exported. Initialised here so a status message before any file
+        # is open cannot reach an undefined attribute.
+        self._source_annots = []
         self._probs = None             # (window_starts, probs) | None
         self._prob_sources = {}         # source key -> cache dict
         self._events_by_source = {}     # source key -> reviewed event list
@@ -893,6 +899,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.prob_strip.set_references(self._refs)
         self.overview_strip.set_references(self._refs)
 
+        # Annotations the recording itself carries — what the technician typed
+        # while the study ran. Read-only context, never ground truth and never
+        # exported: hyperventilation and photic stimulation are deliberate
+        # seizure-activation procedures, so a reviewer judging rhythmic
+        # activity needs to know one was running.
+        self._source_annots = read_edf_annotations(path)
+        # Drawn by _refresh_signal_view below, not here: it rebuilds the plot
+        # and would clear anything set at this point.
+
         # probability cache — run inference on-demand if missing
         cached = load_probs(path)
         if cached is None:
@@ -913,6 +928,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 len(self._refs))
             if unscored:
                 msg += '  |  {} NOT ASSESSED'.format(unscored)
+        annot_msg = annotation_summary(self._source_annots)
+        if annot_msg:
+            msg += '  |  {}'.format(annot_msg)
 
         if self._load_cached_zuna_source():
             msg += ' — cached ZUNA available'
@@ -1625,6 +1643,12 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.signal_view.set_references(self._refs)
         self.signal_view.set_events(self._events)
+        # Re-applied on every rebuild, exactly like the references and events
+        # above: set_provider calls pi.clear(), which removes the markers. Set
+        # once at load they appeared, then vanished at the reviewer's first
+        # filter or montage change — and the status bar still said "41
+        # recording annotations", which is the worst version of the bug.
+        self.signal_view.set_source_annotations(self._source_annots)
         self._refresh_open_inspectors()
 
     # ==================================================================

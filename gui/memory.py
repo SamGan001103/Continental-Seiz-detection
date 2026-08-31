@@ -28,15 +28,29 @@ import sys
 
 TARGET_FS = 250
 BYTES_F32, BYTES_F64, BYTES_FFT = 4, 8, 24
-# Headroom reserved beyond the recording itself, from measurement rather than
-# taste: Qt plus the main window is 0.13 GB and TensorFlow plus the loaded
-# detector another 0.38 GB, so the application occupies about 0.5 GB before a
-# single sample is read. The rest is slack — `available_bytes` is a snapshot,
-# and the moment a machine starts paging a clinician is looking at a frozen
-# screen. At 1.0 GB the estimate let a 24-hour recording through on a machine
-# with 6 GB free, which is the case that caused the freeze this module exists
-# to prevent; that is the wrong side to be wrong on.
-SAFETY_MARGIN_BYTES = 3 << 29          # 1.5 GB
+# Headroom beyond the recording itself, as a floor plus a proportion.
+#
+# A large FIXED margin was wrong twice over. It DOUBLE-COUNTED: the check runs
+# inside the already-running application, so Qt's 0.13 GB and TensorFlow's
+# 0.38 GB are allocated and therefore already excluded from `available_bytes`;
+# reserving them again asks for memory we are holding. And it did not scale —
+# at 1.5 GB fixed, a two-minute recording needing 30 MB was refused on a busy
+# machine, which on a ward PC is a tool that refuses ordinary work all day.
+#
+# What the headroom must actually cover is the snapshot going stale between
+# the check and the load, and leaving the OS enough not to page. Both scale
+# with the size of the read, so the margin does too, with a floor for the
+# small files where a fixed slab would dominate.
+#
+# The estimate it sits on is already deliberately pessimistic (every file
+# channel as float64 AND resample intermediates, simultaneously), so this is
+# slack on top of a worst case, not on top of a guess.
+MIN_HEADROOM_BYTES = 1 << 28           # 256 MB floor
+HEADROOM_FRACTION = 0.25               # ...or a quarter of the read, whichever is larger
+
+
+def _headroom(load_bytes):
+    return max(MIN_HEADROOM_BYTES, int(load_bytes * HEADROOM_FRACTION))
 
 
 def available_bytes():
@@ -98,7 +112,7 @@ def edf_open_estimate(path, available=None):
     finally:
         r.close()
     resident, transient = estimate_bytes(n_ch, n_src, fs)
-    needed = resident + transient + SAFETY_MARGIN_BYTES
+    needed = resident + transient + _headroom(resident + transient)
     avail = available_bytes() if available is None else int(available)
     fits = True if avail is None else needed <= avail
     return {

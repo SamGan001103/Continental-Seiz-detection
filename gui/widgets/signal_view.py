@@ -259,6 +259,8 @@ class SignalView(QtWidgets.QWidget):
         self._provider = None          # DisplayPipeline; renders spans on demand
         self._full_offsets = None
         self._ref_intervals = []       # cached (start, stop) tuples for refresh
+        self._annot_items = []         # EDF+ technician markers (read-only)
+        self._source_annotations = []
         self._event_cache = []         # cached event dicts for refresh
         self._refs_visible = True      # toolbar toggle state
 
@@ -339,6 +341,11 @@ class SignalView(QtWidgets.QWidget):
         self._regions = {}
         self._ref_items = []
         self._grid_lines = []
+        # pi.clear() removed the annotation markers too. Forgetting the list
+        # would leave stale item objects that a later set_source_annotations
+        # tries to remove from a plot they are no longer in — and, worse, the
+        # previous recording's technician notes still listed as this one's.
+        self._annot_items = []
         # pi.clear() nuked the hover-cursor overlay; put it back before
         # the user's next mouse move needs it.
         self._time_cursor.reattach()
@@ -509,6 +516,55 @@ class SignalView(QtWidgets.QWidget):
         self._refs_visible = bool(visible)
         for r in self._ref_items:
             r.setVisible(self._refs_visible)
+
+    # ---- annotations the recording itself carries --------------------
+    def set_source_annotations(self, items):
+        """Markers the technician wrote during the study (EDF+ annotations).
+
+        Drawn in violet, deliberately unlike anything else on this widget:
+        green is the seizure ground truth and the five event colours belong to
+        the detector's proposals and the reviewer's decisions. A note saying
+        "hoest" (cough) must not be mistakable for either — it is context, not
+        a label, and it is never exported.
+
+        Dashed and thin, because these mark instants in a trace the reviewer is
+        reading; a solid band would compete with the signal it exists to
+        explain. Hyperventilation and photic stimulation are seizure-activation
+        procedures, so knowing one was running is often what decides whether a
+        run of rhythmic activity is a finding or a provoked response.
+        """
+        pi = self._pw.getPlotItem()
+        for it in getattr(self, '_annot_items', []):
+            pi.removeItem(it)
+        self._annot_items = []
+        self._source_annotations = list(items or [])
+        if not self._source_annotations:
+            return
+        pen = pg.mkPen((120, 60, 170), width=1, style=QtCore.Qt.DashLine)
+        for a in self._source_annotations:
+            onset = float(a.get('onset', 0.0))
+            text = str(a.get('text', ''))
+            if a.get('instant', True):
+                item = pg.InfiniteLine(
+                    pos=onset, angle=90, pen=pen, movable=False,
+                    label=text,
+                    labelOpts={'position': 0.04, 'color': (120, 60, 170),
+                               'movable': False, 'fill': (255, 255, 255, 190)})
+                item.setZValue(-15)
+                pi.addItem(item, ignoreBounds=True)
+            else:
+                stop = onset + max(0.0, float(a.get('duration', 0.0)))
+                item = pg.LinearRegionItem(
+                    values=(onset, stop), movable=False,
+                    brush=pg.mkBrush(120, 60, 170, 30),
+                    pen=pg.mkPen(120, 60, 170, 110, width=1))
+                item.setZValue(-18)
+                pi.addItem(item)
+            self._annot_items.append(item)
+
+    def set_source_annotations_visible(self, visible):
+        for it in getattr(self, '_annot_items', []):
+            it.setVisible(bool(visible))
 
     # ---- AI-proposed events -----------------------------------------
     def set_selected_event(self, event_id):
