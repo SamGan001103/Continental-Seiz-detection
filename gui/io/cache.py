@@ -82,6 +82,23 @@ def save_probs(edf_path, window_starts, probs, meta=None, skip_code=None):
         return fb
 
 
+# How far the recording's timestamp may drift before its cache is treated as
+# stale. FAT32 — which is what every pre-formatted USB stick is, and how this
+# application is delivered — stores mtime at TWO-second resolution and rounds
+# up, so copying a recording to a stick moves its timestamp by up to 2 s.
+#
+# At the previous 1.0 s this silently invalidated caches in transit: measured
+# on the demo stick, 2 of 9 recordings drifted 1.5 and 1.7 s and arrived
+# "stale". Nothing warns — the app simply rescores on open, which for the
+# 58-minute recording is minutes of frozen window in front of whoever is being
+# shown the tool.
+#
+# 2.05 s is the filesystem's granularity plus a rounding allowance, and it
+# costs nothing: a genuinely regenerated recording differs by far more than
+# that, and the size check below catches edits that preserve the timestamp.
+MTIME_TOLERANCE_S = 2.05
+
+
 def _fresh_for(edf_path, loaded):
     """True if a loaded cache still matches the EDF's size and mtime."""
     if loaded is None:
@@ -95,7 +112,8 @@ def _fresh_for(edf_path, loaded):
         return False
     if int(meta['edf_size']) != int(st.st_size):
         return False
-    return abs(float(meta['edf_mtime']) - float(st.st_mtime)) <= 1.0
+    drift = abs(float(meta['edf_mtime']) - float(st.st_mtime))
+    return drift <= MTIME_TOLERANCE_S
 
 
 def load_probs(edf_path):
