@@ -243,6 +243,102 @@ class DrawingThem(unittest.TestCase):
         finally:
             v.close()
 
+    def _crowded(self, v, n=20, step=3.0):
+        """Markers every `step` seconds — the PHOTO-stimulation pattern."""
+        items = [{'onset': 5.0 + i * step, 'duration': -1.0,
+                  'text': 'PHOTO {}Hz'.format(i), 'instant': True}
+                 for i in range(n)]
+        v.set_source_annotations(items)
+        return items
+
+    def _visible_label_positions(self, v, x0, x1):
+        W = float(v._pw.viewport().width() or 1500)
+        span = max(1e-9, x1 - x0)
+        out = []
+        for it, a in zip(v._annot_items, v._source_annotations):
+            lab = getattr(it, 'label', None)
+            # Shown-ness is opacity, not visibility: pyqtgraph 0.11.1's
+            # InfLineLabel.setVisible(True) raises (see _set_label_shown).
+            if lab is not None and lab.opacity() > 0.5:
+                out.append((a['onset'] - x0) / span * W)
+        return sorted(out)
+
+    def test_labels_thin_out_instead_of_overlapping(self):
+        """Crowded text over the EEG is worse than no text.
+
+        Measured on the real clinical recording before this existed: at a
+        five-minute view, 16 of 18 label pairs overlapped, and across the whole
+        recording 35 of 40. The result was an unreadable smear laid over the
+        trace the reviewer is trying to read.
+        """
+        from gui.widgets.signal_view import MIN_LABEL_GAP_PX
+        v = self._view()
+        try:
+            self._crowded(v, n=20, step=3.0)
+            pi = v._pw.getPlotItem()
+            pi.setXRange(0.0, 70.0, padding=0)     # all 20 on screen at once
+            v._redecimate_visible()
+            pos = self._visible_label_positions(v, 0.0, 70.0)
+            self.assertTrue(pos, 'every label was hidden; at least the first '
+                                 'of a crowded group must still be readable')
+            gaps = [pos[i + 1] - pos[i] for i in range(len(pos) - 1)]
+            self.assertTrue(
+                all(g >= MIN_LABEL_GAP_PX - 1e-6 for g in gaps),
+                'visible labels are still closer than {} px: {}'.format(
+                    MIN_LABEL_GAP_PX, [round(g, 1) for g in gaps]))
+        finally:
+            v.close()
+
+    def test_the_lines_are_all_still_drawn_when_labels_are_thinned(self):
+        """Hiding text must not hide the fact that a marker is there."""
+        v = self._view()
+        try:
+            items = self._crowded(v, n=20, step=3.0)
+            pi = v._pw.getPlotItem()
+            pi.setXRange(0.0, 70.0, padding=0)
+            v._redecimate_visible()
+            self.assertEqual(len(v._annot_items), len(items))
+            self.assertTrue(all(it.isVisible() for it in v._annot_items),
+                            'a marker line was hidden along with its label')
+        finally:
+            v.close()
+
+    def test_zooming_in_brings_the_labels_back(self):
+        v = self._view()
+        try:
+            self._crowded(v, n=20, step=3.0)
+            pi = v._pw.getPlotItem()
+            pi.setXRange(0.0, 70.0, padding=0)
+            v._redecimate_visible()
+            wide = len(self._visible_label_positions(v, 0.0, 70.0))
+            pi.setXRange(5.0, 15.0, padding=0)     # a couple of markers only
+            v._redecimate_visible()
+            near = len(self._visible_label_positions(v, 5.0, 15.0))
+            self.assertGreater(
+                near, 0, 'zoomed in to two markers and neither was labelled')
+            self.assertLess(wide, 20,
+                            'nothing was thinned at the wide zoom, so this '
+                            'test is not exercising the thinning')
+        finally:
+            v.close()
+
+    def test_labels_off_screen_are_not_drawn(self):
+        v = self._view()
+        try:
+            self._crowded(v, n=20, step=3.0)
+            pi = v._pw.getPlotItem()
+            pi.setXRange(0.0, 8.0, padding=0)
+            v._redecimate_visible()
+            for it, a in zip(v._annot_items, v._source_annotations):
+                lab = getattr(it, 'label', None)
+                if lab is not None and a['onset'] > 8.0:
+                    self.assertLessEqual(
+                        lab.opacity(), 0.5,
+                        'a label for a marker at {} s is drawn while the view '
+                        'ends at 8 s'.format(a['onset']))
+        finally:
+            v.close()
+
     def test_an_empty_list_is_safe(self):
         v = self._view()
         try:

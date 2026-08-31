@@ -195,6 +195,33 @@ class _SignalViewBox(pg.ViewBox):
 # redraw for the sake of the next scroll.
 PAN_PAD_S = 60.0
 
+# Minimum horizontal room, in pixels, before a second annotation label is drawn.
+# Sized for the longest text these files actually carry — 'REC START IIB CAL',
+# about 17 characters — plus a gap, so two shown labels never touch.
+MIN_LABEL_GAP_PX = 110.0
+
+
+def _set_label_shown(label, shown):
+    """Show or hide an InfiniteLine's text label, on either pyqtgraph.
+
+    Opacity rather than setVisible, and not by preference: pyqtgraph 0.11.1 —
+    the version on the legacy 3.6 stack — has a broken
+    `InfLineLabel.setVisible`. Making a label visible calls `self.updateText()`,
+    a method that does not exist in that release, so it raises AttributeError.
+    Only the True direction is affected, which is exactly the kind of asymmetry
+    that passes a quick check and fails in use.
+
+    Opacity works on both versions, does the same job, and needs no version
+    test — a runtime probe would be one more thing to keep right.
+    """
+    try:
+        label.setOpacity(1.0 if shown else 0.0)
+    except Exception:                                       # noqa: BLE001
+        # Some other pyqtgraph. A visible label is the safe failure: crowded
+        # text is a legibility problem, a raised exception during a redraw is
+        # a broken application.
+        pass
+
 
 class SignalView(QtWidgets.QWidget):
     regionChanged = QtCore.pyqtSignal(int, float, float)
@@ -448,6 +475,9 @@ class SignalView(QtWidgets.QWidget):
             # Negative-up: the universal EEG display convention. Negating at
             # render only — the arrays feeding inference are untouched.
             curve.setData(t_ds, -clipped[i] + self._full_offsets[i])
+        # Label density depends on the zoom, so it is re-decided here rather
+        # than once when the annotations are set.
+        self._update_annotation_labels()
 
 
     # ------------------------------------------------------------------
@@ -561,10 +591,56 @@ class SignalView(QtWidgets.QWidget):
                 item.setZValue(-18)
                 pi.addItem(item)
             self._annot_items.append(item)
+        self._update_annotation_labels()
 
     def set_source_annotations_visible(self, visible):
         for it in getattr(self, '_annot_items', []):
             it.setVisible(bool(visible))
+
+    def _update_annotation_labels(self):
+        """Show a marker's text only where there is room to read it.
+
+        The lines always draw — they are one pixel wide and each one is a fact
+        about the recording. The TEXT is what collides. Measured on the Nihon
+        Kohden recording's 41 annotations at a 1500 px width:
+
+            30 s view      3 markers    2 of 2 label pairs overlapping
+            300 s view    19 markers   16 of 18 overlapping
+            whole record  41 markers   35 of 40 overlapping
+
+        Two of them even share t=0 (`REC START IIB CAL` and `PAT IIB EEG`), so
+        this is not only a zoomed-out problem. Past a couple of minutes the
+        labels became an unreadable smear laid over the EEG — worse than no
+        labels, because it obscures the trace the reviewer is reading in order
+        to tell them something they cannot make out anyway.
+
+        So labels are thinned by pixel distance, keeping the earliest of any
+        crowded group. Nothing is lost: the line is still there, and zooming in
+        brings the text back. Thinning by pixels rather than by seconds is what
+        makes it stable across zoom levels and window widths.
+        """
+        items = getattr(self, '_annot_items', [])
+        annots = getattr(self, '_source_annotations', [])
+        if not items or len(items) != len(annots):
+            return
+        pi = self._pw.getPlotItem()
+        x0, x1 = pi.viewRange()[0]
+        span = max(1e-9, x1 - x0)
+        width_px = max(200.0, float(self._pw.viewport().width() or 1500))
+        last_px = None
+        for item, a in zip(items, annots):
+            label = getattr(item, 'label', None)
+            if label is None:                 # a spanning region has no label
+                continue
+            onset = float(a.get('onset', 0.0))
+            if not (x0 <= onset <= x1):
+                _set_label_shown(label, False)   # off screen; nothing to read
+                continue
+            px = (onset - x0) / span * width_px
+            show = last_px is None or (px - last_px) >= MIN_LABEL_GAP_PX
+            _set_label_shown(label, show)
+            if show:
+                last_px = px
 
     # ---- AI-proposed events -----------------------------------------
     def set_selected_event(self, event_id):
