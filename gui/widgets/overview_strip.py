@@ -66,12 +66,23 @@ class OverviewStrip(QtWidgets.QWidget):
         # zoom it — the whole point is that this one does not move.
         pi.setMouseEnabled(x=False, y=False)
         pi.setYRange(0, 1)
+        # Explicit ticks: pyqtgraph picks a density from the widget height, so
+        # the strip's scale changed as it was resized. The threshold sits at
+        # 0.5 and a reviewer reads heights against it, so those gradations are
+        # fixed rather than left to the layout.
+        pi.getAxis('left').setTicks(
+            [[(level, '{:g}'.format(level))
+              for level in (0.0, 0.25, 0.5, 0.75, 1.0)]])
         pi.getAxis('left').setWidth(64)
         pi.setLabel('left', 'max score')
         pi.setLabel('bottom', 'whole recording (s)')
         pi.showGrid(x=True, y=True, alpha=0.15)
-        self._pw.setMaximumHeight(96)
-        self._pw.setMinimumHeight(72)
+        # Taller than it was: the page-linked strip above it is hidden by
+        # default now, and at 96 px a decision curve peaking around 0.3 was
+        # only ~30 px of ink — legible, but not something to scan a recording
+        # with. This is the widget a reviewer uses to decide where to look.
+        self._pw.setMaximumHeight(260)
+        self._pw.setMinimumHeight(120)
         self.setToolTip(
             'The whole recording, however far the page above is zoomed in.\n'
             'Each pixel shows the HIGHEST score in the seconds it covers, not '

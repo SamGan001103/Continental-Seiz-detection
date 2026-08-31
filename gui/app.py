@@ -323,12 +323,18 @@ class MainWindow(QtWidgets.QMainWindow):
         # 4:1 rather than 5:1. The strip is the detector's entire output and
         # the thing a reviewer scans to decide where to look; at one sixth of
         # the height a shallow rise near threshold was hard to read at all.
-        lv.addWidget(self.signal_view, 4)
+        lv.addWidget(self.signal_view, 5)
+        # Hidden by default. It shows the score for the PAGE, which at a 10 s
+        # sweep is a nearly flat line, and the events it would reveal are
+        # already drawn on the traces themselves. The whole-recording map below
+        # is the one a reviewer navigates by, so it gets the height instead.
+        # View > Score under the page brings this back.
         lv.addWidget(self.prob_strip, 1)
-        # Fixed height, not a stretch share: the overview is a map, and a map
-        # that grows with the window steals space from the traces, which are
-        # what the reviewer actually reads.
-        lv.addWidget(self.overview_strip, 0)
+        self.prob_strip.setVisible(False)
+        # A share rather than a fixed height, now that it is the only strip:
+        # the peaks were legible but small at 96 px, and this is the widget a
+        # reviewer scans to decide where to look.
+        lv.addWidget(self.overview_strip, 2)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         splitter.addWidget(left)
@@ -586,6 +592,16 @@ class MainWindow(QtWidgets.QMainWindow):
         act_head.setToolTip('Show where each displayed derivation sits on the '
                             'scalp. Display only.')
         m_view.addAction(act_head)
+        # Hidden by default, and recoverable — a panel with no way back is the
+        # bug the electrode-map entry above exists to prevent.
+        self.a_page_strip = m_view.addAction('Score under the &page')
+        self.a_page_strip.setCheckable(True)
+        self.a_page_strip.setChecked(False)
+        self.a_page_strip.setToolTip(
+            'Show the model score for the visible page, beneath the traces. '
+            'The whole-recording map at the bottom is always shown.')
+        self.a_page_strip.toggled.connect(self.prob_strip.setVisible)
+        m_view.addAction(self.a_page_strip)
         m_view.addSeparator()
         self.a_inspector = m_view.addAction('&Channel inspector…')
         self.a_inspector.setShortcut('Ctrl+I')
