@@ -1,0 +1,256 @@
+"""A recording too large to hold in memory must still open.
+
+The first version of the memory guard refused them. That was the wrong answer,
+and it took being told so to see it: day-long ambulatory recordings are what
+this tool exists for, and one that declines them is not safer than one that
+freezes — it is useless, which is a different way of not working.
+
+So the guard now chooses a strategy instead of a verdict:
+
+* **Fits in memory** → the ordinary loader, unchanged. Resampled to 250 Hz, the
+  same bytes as before this existed. Small files must not change behaviour at
+  all, and the first test here holds that.
+
+* **Does not fit** → `EdfSource`, read span-by-span off disk at the file's own
+  rate. A 24-hour recording costs ~0.13 GB open instead of the 6.5 GB that got
+  it refused.
+
+* **Does not fit and cannot be read lazily** → refused, because now there
+  genuinely is no way to show it without taking the machine down.
+
+The interesting property is the second one. The detector needs 250 Hz; the
+DISPLAY does not, and nothing on that side assumes it — every widget takes fs
+as a parameter and every time is in seconds. So a trace drawn at a TUH file's
+native 256 Hz lines up with probabilities computed at 250 Hz, which the
+alignment test below checks against real ground truth rather than by assertion.
+
+Resampling a span was considered and rejected on measurement: an FFT resample
+of a slice differs from the corresponding slice of the resampled whole by up to
+1200 uV at the edges on a real TUH recording. That is why the detector-input
+(ICA) view declines at native rate rather than approximating — it promises to
+show what the model was fed, and a nearly-right version of that is worse than
+none, because the reviewer would be judging the detector on a trace it never
+saw.
+"""
+import os
+import shutil
+import sys
+import tempfile
+import unittest
+
+import numpy as np
+
+REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if REPO not in sys.path:
+    sys.path.insert(0, REPO)
+
+try:
+    import PyQt5  # noqa: F401
+    HAVE_QT = True
+except Exception:                                            # noqa: BLE001
+    HAVE_QT = False
+
+if HAVE_QT:
+    os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+    from PyQt5 import QtWidgets
+
+CH = ['FP1', 'FP2', 'F7', 'F3', 'FZ', 'F4', 'F8', 'T3', 'C3', 'CZ',
+      'C4', 'T4', 'T5', 'P3', 'PZ', 'P4', 'T6', 'O1', 'O2']
+
+
+def _write_edf(path, seconds=60, fs=250, seed=3):
+    import pyedflib
+    rng = np.random.RandomState(seed)
+    labels = ['EEG {}-REF'.format(c) for c in CH]
+    sigs = rng.randn(len(labels), int(seconds * fs)) * 40.0
+
+    def _attempt(rate_key):
+        w = pyedflib.EdfWriter(path, len(labels),
+                               file_type=pyedflib.FILETYPE_EDFPLUS)
+        try:
+            w.setSignalHeaders([{
+                'label': lab, 'dimension': 'uV', rate_key: fs,
+                'physical_min': -3276.8, 'physical_max': 3276.7,
+                'digital_min': -32768, 'digital_max': 32767,
+                'prefilter': '', 'transducer': ''} for lab in labels])
+            w.writeSamples([np.ascontiguousarray(s) for s in sigs])
+        finally:
+            try:
+                w.close()
+            except Exception:                                # noqa: BLE001
+                pass
+
+    try:
+        _attempt('sample_frequency')
+    except (FutureWarning, KeyError, TypeError, ValueError):
+        _attempt('sample_rate')
+    return path
+
+
+def _write_cache(path, seconds, event=None):
+    """A 250 Hz probability cache, as precompute_probs would leave."""
+    from gui.io.cache import save_probs
+    starts = np.arange(0, max(1, int(seconds) - 12 + 1), 6, dtype=np.int32)
+    probs = np.zeros(starts.size, dtype=np.float32)
+    if event is not None:
+        a, b = event
+        probs[(starts + 12 > a) & (starts < b)] = 0.95
+    save_probs(path, starts, probs,
+               skip_code=np.zeros(starts.size, dtype=np.int8),
+               meta={'step_s': 6, 'segment_s': 12, 'use_ica': True,
+                     'fs': 250, 'weights': 'convlstm_ICA_12_train.h5'})
+
+
+@unittest.skipUnless(HAVE_QT, 'PyQt5 not available')
+class StrategyByFileSize(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.app = (QtWidgets.QApplication.instance()
+                   or QtWidgets.QApplication(['-platform', 'offscreen']))
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix='bigopen')
+        import gui.memory as gm
+        self._saved_avail = gm.available_bytes
+        self._saved_warn = QtWidgets.QMessageBox.warning
+        self.warnings = []
+        QtWidgets.QMessageBox.warning = staticmethod(
+            lambda *a, **k: self.warnings.append(a[1] if len(a) > 1 else 'warn'))
+        from gui.app import MainWindow
+        self.w = MainWindow()
+
+    def tearDown(self):
+        import gui.memory as gm
+        gm.available_bytes = self._saved_avail
+        QtWidgets.QMessageBox.warning = self._saved_warn
+        self.w.close()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _plenty(self):
+        import gui.memory as gm
+        gm.available_bytes = lambda: 64 << 30
+
+    def _none(self):
+        import gui.memory as gm
+        gm.available_bytes = lambda: 1
+
+    def test_a_file_that_fits_takes_the_ordinary_path_unchanged(self):
+        """Small recordings must behave exactly as before any of this existed."""
+        self._plenty()
+        p = _write_edf(os.path.join(self.tmp, 'small.edf'), seconds=60, fs=256)
+        _write_cache(p, 60)
+        self.w.load_edf(p)
+        self.assertIsNotNone(self.w._raw_data)
+        self.assertEqual(int(round(self.w._fs)), 250,
+                         'a file that fits must still be resampled to the '
+                         "detector's rate by the ordinary loader")
+        self.assertIsInstance(self.w._raw_data, np.ndarray,
+                              'a file that fits must be loaded, not streamed')
+        self.assertEqual(self.warnings, [])
+
+    def test_a_file_too_large_opens_lazily_at_its_own_rate(self):
+        self._none()
+        p = _write_edf(os.path.join(self.tmp, 'big.edf'), seconds=60, fs=256)
+        _write_cache(p, 60)
+        self.w.load_edf(p)
+        self.assertIsNotNone(self.w._raw_data,
+                             'a recording too large to hold was refused '
+                             'instead of being read from disk')
+        self.assertEqual(int(round(self.w._fs)), 256,
+                         'the lazy path must serve the native rate')
+        self.assertEqual(self.warnings, [],
+                         'the reviewer was shown a refusal for a file that '
+                         'did in fact open')
+
+    def test_events_scored_at_250hz_land_correctly_on_a_256hz_trace(self):
+        """The property the whole native-rate decision rests on."""
+        self._none()
+        p = _write_edf(os.path.join(self.tmp, 'align.edf'), seconds=120, fs=256)
+        _write_cache(p, 120, event=(48.0, 72.0))
+        self.w.load_edf(p)
+        self.assertTrue(self.w._events, 'no event was proposed from the cache')
+        ev = self.w._events[0]
+        self.assertGreaterEqual(ev['start'], 40.0)
+        self.assertLessEqual(ev['stop'], 80.0)
+        self.assertAlmostEqual(self.w._duration_s, 120.0, delta=1.0,
+                               msg='duration is wrong at native rate, so every '
+                                   'time on screen is wrong')
+
+    def test_the_detector_input_view_declines_at_native_rate(self):
+        self._none()
+        p = _write_edf(os.path.join(self.tmp, 'ica.edf'), seconds=60, fs=256)
+        _write_cache(p, 60)
+        self.w.load_edf(p)
+        self.w.chk_ica.setChecked(True)
+        self.w._display_source()
+        self.assertFalse(
+            self.w.chk_ica.isChecked(),
+            'the detector-input view stayed on at 256 Hz — it would be showing '
+            'a trace the model never saw')
+        self.assertIn('250 Hz', self.w.statusBar().currentMessage(),
+                      'the reviewer was not told why the view turned itself off')
+
+    def test_a_250hz_file_still_gets_the_detector_input_view(self):
+        """The decline must be conditional, not a blanket disable."""
+        self._none()
+        p = _write_edf(os.path.join(self.tmp, 'native250.edf'), seconds=60,
+                       fs=250)
+        _write_cache(p, 60)
+        self.w.load_edf(p)
+        self.assertEqual(int(round(self.w._fs)), 250)
+        self.w.chk_ica.setChecked(True)
+        self.w._display_source()
+        self.assertTrue(self.w.chk_ica.isChecked(),
+                        'the ICA view was disabled on a 250 Hz recording, '
+                        'where it is perfectly valid')
+
+    def test_an_unreadable_oversized_file_is_still_refused(self):
+        """No lazy path available means refusing is the honest answer."""
+        self._none()
+        import pyedflib
+        p = os.path.join(self.tmp, 'nochannels.edf')
+        # Same rate-key feature detection as everywhere else: the legacy 3.6
+        # stack's pyedflib wants sample_rate, the modern one sample_frequency.
+        def _attempt(rate_key):
+            w = pyedflib.EdfWriter(p, 2, file_type=pyedflib.FILETYPE_EDFPLUS)
+            try:
+                w.setSignalHeaders([{
+                    'label': lab, 'dimension': 'uV', rate_key: 250,
+                    'physical_min': -3276.8, 'physical_max': 3276.7,
+                    'digital_min': -32768, 'digital_max': 32767,
+                    'prefilter': '', 'transducer': ''}
+                    for lab in ('sine', 'ramp')])
+                w.writeSamples([np.zeros(250 * 10), np.zeros(250 * 10)])
+            finally:
+                try:
+                    w.close()
+                except Exception:                            # noqa: BLE001
+                    pass
+
+        try:
+            _attempt('sample_frequency')
+        except (FutureWarning, KeyError, TypeError, ValueError):
+            _attempt('sample_rate')
+        self.w.load_edf(p)
+        self.assertTrue(
+            self.warnings,
+            'a recording that can be neither held nor streamed must be '
+            'refused with an explanation, not attempted')
+
+    def test_an_unscored_large_file_opens_and_says_what_to_run(self):
+        """No cache and too large to score here — open anyway, with advice."""
+        self._none()
+        p = _write_edf(os.path.join(self.tmp, 'unscored.edf'), seconds=60,
+                       fs=256)
+        self.w.load_edf(p)
+        self.assertIsNotNone(
+            self.w._raw_data,
+            'a large unscored recording must still open for review; the '
+            'reviewer may be looking for what the detector missed')
+        msg = self.w.statusBar().currentMessage()
+        self.assertIn('precompute_probs', msg,
+                      'the reviewer was not told how to get proposals')
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -209,17 +209,36 @@ class SlicingContract(unittest.TestCase):
 
 
 class WhenLazyReadingIsDeclined(unittest.TestCase):
-    def test_a_non_250hz_file_gets_no_lazy_source(self):
-        """Resampling cannot be done span-by-span, so it must decline."""
+    def test_a_non_250hz_file_is_served_at_its_native_rate(self):
+        """It must NOT be resampled, and it must not be refused either.
+
+        This test used to assert the opposite — that a 256 Hz file got no lazy
+        source at all, because a span cannot be resampled to match the whole.
+        The premise was right and the conclusion was wrong: TUH recordings are
+        256 Hz, so declining them left every day-long TUH file refused
+        outright, and a tool for ambulatory EEG that cannot open a day of EEG
+        is not a working tool. The display does not need 250 Hz; only the
+        detector does, and its scores are already cached in seconds.
+        """
         import tempfile
         import shutil
         tmp = tempfile.mkdtemp(prefix='edf256')
         try:
             p = _write_edf(os.path.join(tmp, 'f256.edf'), seconds=60, fs=256)
-            self.assertIsNone(
-                open_source(p, params_path()),
-                'a 256 Hz file must not be read lazily — an FFT resample of a '
-                'span is not the slice of the resampled whole')
+            src = open_source(p, params_path())
+            self.assertIsNotNone(
+                src, 'a 256 Hz file must still be readable span-by-span — '
+                     'refusing it is what made day-long TUH files unopenable')
+            try:
+                self.assertEqual(int(round(src.fs)), 256,
+                                 'the lazy source resampled, which it cannot '
+                                 'do correctly span-by-span')
+                self.assertTrue(src.is_native_rate,
+                                'the source must declare that it is not at '
+                                "the detector's rate, so callers needing 250 "
+                                'Hz can decline rather than approximate')
+            finally:
+                src.close()
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 

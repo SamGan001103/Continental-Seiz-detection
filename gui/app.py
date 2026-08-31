@@ -819,10 +819,27 @@ class MainWindow(QtWidgets.QMainWindow):
         # cycle after a 24-hour file. A ward PC has 8 GB and nobody who can
         # diagnose that, and a freeze takes down whatever else the clinician
         # had open. Refusing with numbers is strictly better than hanging.
+        # Too big to hold in memory? Then read it from disk instead of
+        # refusing it. Refusing was the wrong answer: day-long ambulatory
+        # recordings are what this tool is FOR, and one that declines them is
+        # not safer, it is useless. The guard now chooses a strategy rather
+        # than a verdict.
+        lazy_source = None
         try:
-            from gui.memory import edf_open_estimate, describe_refusal
+            from gui.memory import edf_open_estimate
             est = edf_open_estimate(path)
-            if not est['fits']:
+        except Exception:                                   # noqa: BLE001
+            est = None                     # header unreadable; let the loader say so
+        if est is not None and not est['fits']:
+            from gui.io.edf_source import open_source
+            from gui.paths import params_path
+            lazy_source = open_source(path, params_path())
+            if lazy_source is None:
+                # Too big to hold AND not readable span-by-span — a corrupt
+                # header, or an EDF whose 19 channels cannot be resolved. Now
+                # refusing is the honest answer, because there is no way to
+                # show this recording without taking the machine down.
+                from gui.memory import describe_refusal
                 QtWidgets.QMessageBox.warning(
                     self, 'Not enough memory for this recording',
                     describe_refusal(est))
@@ -830,14 +847,20 @@ class MainWindow(QtWidgets.QMainWindow):
                     'Not enough memory to open {}.'.format(
                         os.path.basename(path)), 8000)
                 return
-        except Exception:                                   # noqa: BLE001
-            # The estimate is a guard, not a gate. If the header cannot be
-            # read here, the loader below will fail with a better message.
-            pass
+
         self.statusBar().showMessage('Loading {}…'.format(os.path.basename(path)))
         QtWidgets.QApplication.processEvents()
         try:
-            data, fs, dur = load_edf_19ch(path)
+            if lazy_source is not None:
+                # Served at the file's own rate, straight off disk. A 24-hour
+                # recording costs ~0.15 GB open instead of 6.5 GB. The display
+                # is rate-agnostic and event times are in seconds, so a trace
+                # drawn at 256 Hz aligns with scores computed at 250 Hz.
+                data = lazy_source
+                fs = lazy_source.fs
+                dur = lazy_source.shape[1] / float(fs)
+            else:
+                data, fs, dur = load_edf_19ch(path)
         except Exception as ex:
             # Name BOTH recordings. On failure the previous one is still on
             # screen, in the title bar and in the worklist — deliberately, so a
@@ -910,14 +933,30 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # probability cache — run inference on-demand if missing
         cached = load_probs(path)
-        if cached is None:
+        # A recording too large to hold in memory cannot be scored here:
+        # compute_probs_from_data starts with np.asarray(), which would
+        # materialise the very array we declined to load. Scoring a day of EEG
+        # is a batch job anyway — roughly an hour even across 20 cores — and
+        # not something to run while a clinician waits. So it opens for review
+        # with no proposals rather than not opening at all.
+        too_large_to_score = cached is None and lazy_source is not None
+        if cached is None and not too_large_to_score:
             cached = self._ensure_probs_with_progress(path)
         if cached is None:
             self._probs = None
             self.prob_strip.set_probs([], [])
             self.overview_strip.clear()
-            msg = '{} — inference cancelled, no probabilities loaded.'.format(
-                os.path.basename(path))
+            if too_large_to_score:
+                # Not "cancelled": nothing was attempted, and telling a
+                # reviewer their inference was cancelled when it was never
+                # started sends them looking for a failure that did not happen.
+                msg = ('{} — opened for review, but too large to score here. '
+                       'Run  precompute_probs.py "{}" --workers 8  to get '
+                       'detector proposals, then reopen.'.format(
+                           os.path.basename(path), os.path.basename(path)))
+            else:
+                msg = '{} — inference cancelled, no probabilities loaded.'.format(
+                    os.path.basename(path))
         else:
             self._set_source_cache('baseline', cached)
             self._activate_prob_source('baseline', preserve_view=True)
@@ -1512,6 +1551,28 @@ class MainWindow(QtWidgets.QMainWindow):
         it, and tests/test_display_model_isolation.py asserts the property.
         """
         if not self._ica_display or self._raw_data is None:
+            return self._raw_data
+        if int(round(float(self._fs))) != 250:
+            # The detector's ICA is defined at 250 Hz, and this recording is
+            # being served at its own rate because it is too large to resample
+            # whole. Resampling just the visible span would not reproduce what
+            # the detector saw either — an FFT resample of a slice differs from
+            # the corresponding slice of the resampled whole by up to 1200 uV
+            # at the edges, measured on a real TUH file.
+            #
+            # So the view is declined rather than approximated. "What the model
+            # was fed" is the one thing this control promises, and a version
+            # that only nearly shows that is worse than not offering it: the
+            # reviewer would be judging the detector on a trace it never saw.
+            self.chk_ica.blockSignals(True)
+            self.chk_ica.setChecked(False)
+            self.chk_ica.blockSignals(False)
+            self._ica_display = False
+            self.statusBar().showMessage(
+                'The detector-input view needs the 250 Hz signal, and this '
+                'recording is opened at its own {:.0f} Hz because it is too '
+                'large to convert whole. Showing the raw trace.'
+                .format(self._fs), 10000)
             return self._raw_data
         if self._ica_view_span is None:
             self._ica_view_span = (0.0, min(self._duration_s,

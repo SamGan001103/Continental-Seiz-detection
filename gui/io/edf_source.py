@@ -73,7 +73,11 @@ class EdfSource(object):
         self.shape = (len(self._map), int(n_samples))
         self.dtype = np.dtype(np.float32)
         self.ndim = 2
-        self.fs = int(fs)
+        # The file's own rate, not the detector's. Callers that need 250 Hz
+        # (only the ICA display view) resample the bounded span they want.
+        self.fs = float(fs)
+        self.native_fs = float(fs)
+        self.is_native_rate = int(round(float(fs))) != TARGET_FS
         # The reader is handed in wherever one is already open: pyedflib's
         # constructor indexes the whole file, which is 28 s for a day-long
         # recording, and resolving the channel map needs a reader anyway.
@@ -238,18 +242,24 @@ def open_source(path, params_path_):
         mapping, fs, n, reader = resolve_channel_map(path, params_path_)
     except Exception:                                        # noqa: BLE001
         return None
-    if int(round(fs)) != TARGET_FS:
-        # Resampling cannot be done span-by-span without changing the numbers:
-        # an FFT resample of a slice is not the corresponding slice of the
-        # resampled whole. TUH recordings are 256 Hz and take this path, so
-        # they load the ordinary way and the memory guard applies.
-        try:
-            reader.close()
-        except Exception:                                    # noqa: BLE001
-            pass
-        return None
     try:
-        return EdfSource(path, mapping, n, fs=TARGET_FS, reader=reader)
+        # Served at the file's NATIVE rate, whatever that is.
+        #
+        # This module used to refuse anything but 250 Hz, on the grounds that
+        # an FFT resample of a span is not the corresponding slice of the
+        # resampled whole — measured on a real TUH recording, the two differ by
+        # up to 1200 uV at the edges. That reasoning was right and the
+        # conclusion was wrong: it made the reader decline every TUH file (they
+        # are 256 Hz), which left day-long recordings refused outright, and a
+        # tool for ambulatory EEG that cannot open a day of EEG is not a tool.
+        #
+        # The resampling was only ever needed for the DETECTOR, which requires
+        # 250 Hz. The display does not: every widget on that side takes fs as a
+        # parameter, times are in seconds, and the cached probabilities are
+        # keyed by second — so a trace drawn at 256 Hz lines up with events
+        # scored at 250 Hz exactly as it should. Not resampling is also the
+        # more faithful thing to draw.
+        return EdfSource(path, mapping, n, fs=fs, reader=reader)
     except Exception:                                        # noqa: BLE001
         try:
             reader.close()
