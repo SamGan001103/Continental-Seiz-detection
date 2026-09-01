@@ -168,16 +168,53 @@ class _ChannelAxis(pg.AxisItem):
 # ---------------------------------------------------------------------- ViewBox
 
 class _SignalViewBox(pg.ViewBox):
-    """ViewBox with a softened wheel-zoom factor. ~8% per wheel tick —
-    roughly half of pyqtgraph's default (~12%), so scrolling feels
-    smooth without slogging through increments. Reused by the channel
-    inspector so wheel behaviour is consistent across windows."""
+    """ViewBox where an unmodified scroll PANS and only a modified one zooms.
+
+    pyqtgraph zooms on any wheel event. On a laptop that is the wrong default
+    and on this application it was unsafe: a trackpad two-finger scroll is a
+    wheel event, so the ordinary "move through the recording" gesture zoomed
+    out instead — and kept going until the whole recording was on screen,
+    because the x-limits stop exactly there. A reviewer could arrive at a view
+    that is for navigation, not morphology, without having asked for it and
+    with nothing on screen having been touched.
+
+    So the gestures are separated the way every document viewer separates
+    them: scroll moves, modifier+scroll zooms. On macOS Qt reports Command as
+    ControlModifier, so one test covers Command, Control and Meta.
+
+    Zoom keeps the softened ~8% per tick — roughly half pyqtgraph's ~12% — so
+    it does not lurch. Reused by the channel inspector, so wheel behaviour is
+    the same in every window.
+    """
 
     WHEEL_STEP = 1.08            # ~8% per 120-unit wheel tick
+    PAN_FRACTION = 0.15          # of the visible span, per 120-unit tick
+
+    @staticmethod
+    def _delta(ev):
+        """Scroll amount, taking a horizontal trackpad swipe when there is one."""
+        if hasattr(ev, 'angleDelta'):
+            d = ev.angleDelta()
+            return d.x() if d.x() else d.y()
+        return ev.delta()
 
     def wheelEvent(self, ev, axis=None):
+        delta = self._delta(ev)
+        if not delta:
+            ev.accept()
+            return
+        zoom = bool(ev.modifiers() & (QtCore.Qt.ControlModifier
+                                      | QtCore.Qt.MetaModifier))
+        if not zoom:
+            # Scroll down / right advances through the recording, matching the
+            # direction a document scrolls. setLimits still bounds it, so a
+            # pan cannot run off either end.
+            (x0, x1), _ = self.viewRange()
+            self.translateBy(x=(-delta / 120.0) * self.PAN_FRACTION
+                             * (x1 - x0))
+            ev.accept()
+            return
         mask = self.state['mouseEnabled']
-        delta = ev.delta() if hasattr(ev, 'delta') else ev.angleDelta().y()
         # Negative delta (wheel down) zooms OUT → factor > 1
         s = self.WHEEL_STEP ** (-delta / 120.0)
         sx = s if mask[0] else 1.0
