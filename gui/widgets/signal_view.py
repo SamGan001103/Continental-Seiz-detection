@@ -193,6 +193,8 @@ class _SignalViewBox(pg.ViewBox):
 # coalescing timer fires. Bounded: it used to be a whole extra span either
 # side, which at a 10-minute view meant deriving 30 minutes of signal per
 # redraw for the sake of the next scroll.
+from gui.display_pipeline import FULLRATE_MAX_SPAN_S
+
 PAN_PAD_S = 60.0
 
 # Minimum horizontal room, in pixels, before a second annotation label is drawn.
@@ -396,6 +398,10 @@ class SignalView(QtWidgets.QWidget):
 
         pi.clear()
         self._curves = []
+        # Curves are rebuilt with the trace pen below, so any envelope
+        # pen from the previous file is gone; say so or the next redraw
+        # at the same zoom will not re-apply it.
+        self._pen_is_envelope = False
         self._regions = {}
         self._ref_items = []
         self._grid_lines = []
@@ -511,6 +517,20 @@ class SignalView(QtWidgets.QWidget):
         # identical to the old clip-then-decimate order.
         lvl = self._clip_level()
         clipped = np.clip(data_ds, -lvl, lvl)
+        # Past the full-rate boundary each column is a min/max RANGE, not a
+        # sample, so it must not be drawn as though it were a waveform. A
+        # lighter, thinner pen reads as a band and tells the reviewer, without
+        # a dialog, that morphology is not judged at this zoom. It also
+        # answers the objection that sent this view to stride decimation in
+        # the first place: at a trace-weight pen, sustained peaks at the clip
+        # level fill the lane and look like black boxes.
+        envelope = (x1 - x0) > FULLRATE_MAX_SPAN_S
+        if envelope != self._pen_is_envelope:
+            pen = (pg.mkPen((120, 120, 120), width=0.5) if envelope
+                   else pg.mkPen((40, 40, 40), width=0.7))
+            for curve in self._curves:
+                curve.setPen(pen)
+            self._pen_is_envelope = envelope
         for i, curve in enumerate(self._curves):
             # Negative-up: the universal EEG display convention. Negating at
             # render only — the arrays feeding inference are untouched.
