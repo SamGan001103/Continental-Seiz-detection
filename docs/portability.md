@@ -35,10 +35,20 @@ release notes.*
 Windows build closely enough to leave the reviewer's event list unchanged.**
 
 An earlier version of this document claimed the opposite — "closely enough that no detection
-decision changes" — on the strength of 74 windows from two recordings. Measured properly over
-3 870 windows from 111 recordings, that claim is false, and the section below gives the
-distribution that replaces it. The *mechanism* described here was right; the *magnitude* was
-taken from a sample that never reached the tail.
+decision changes" — on the strength of 74 windows from two recordings. Measured over 1 723
+windows from 50 recordings, with Keras held constant so that the comparison is of platforms and
+not of library versions, that claim is false: **11 windows change a detection decision and one
+proposed event of 31 is lost.**
+
+Two corrections were needed to get there, and both are worth stating because each looked like a
+result. The 74-window sample characterised the bulk of the distribution and never reached the
+tail, so the magnitude was wrong. And every modern-stack figure measured before 2026-08-11 10:11
+— including the 3 870-window Linux run that first replaced the 74-window one — compared Keras 3
+against a Keras 2 reference, so it measured a library version and called it a platform. About
+four fifths of the drift reported at that stage was the Keras mismatch.
+
+The *mechanism* described here has been right throughout. Only the magnitude has moved, twice,
+in opposite directions.
 
 The disagreement is inherent rather than fixable, for reasons this document explains. What
 follows from it is a handling rule, not a repair: **regenerate caches on the machine you evaluate
@@ -97,55 +107,108 @@ not align exactly, and any whose file fingerprint does not match the reference, 
 difference cannot be reported as a platform difference. Run against the machine that wrote the
 reference it returns 0.000000 over 710 windows, so a non-zero result is real.
 
-**Windows (Python 3.6 / MNE 0.19.2 / TF 1.15) against Linux x86-64 (Python 3.12 / MNE 1.12.1 /
-TF 2.21), 111 recordings, 3 870 windows:**
+> **Correction, 2026-09-01: the figures in this section measured the Keras version, not the
+> platform.** `tf-keras` was not pinned, and nothing anywhere set `TF_USE_LEGACY_KERAS`, until
+> 36a56b6 on 2026-08-11 10:11. Every modern-stack run before that timestamp therefore used
+> Keras 3, whose reimplemented `ConvLSTM2D` loads the same weights and returns different
+> probabilities with no error. The Linux arm was measured at 02:24 that morning and the
+> 74-window figure the day before, so both compared Keras 3 against a Keras 2.2.5 reference and
+> reported the difference as platform drift.
+>
+> Established by re-scoring one recording both ways. Forcing Keras 3 reproduces the published run
+> exactly — 0.9664 / 0.4602 / 0.4367 on the three windows that decide `aaaaatao_s003_t000` — and
+> forcing Keras 2 reproduces the Windows reference exactly — 0.9779 / 0.5990 / 0.6511 —
+> recovering the event that run had lost. Under matched Keras those two platforms agree on that
+> recording to four decimal places on every window.
+>
+> The mismatched figures are kept below, marked, because they are what a Keras 3 build really
+> does and the reasoning around them is sound. They are not platform drift.
+
+### Keras held constant
+
+**Windows (Python 3.6 / MNE 0.19.2 / TF 1.15 / Keras 2.2.5) against macOS arm64 (Python 3.12 /
+MNE 1.12.1 / TF 2.21 / tf-keras 2.21), 50 recordings, 1 723 windows.** Same recordings, same
+harness, re-run with `TF_USE_LEGACY_KERAS=1`:
+
+| | Keras mismatched | **Keras matched** |
+|---|---|---|
+| median Δ p(seizure) | 0.000124 | **0.000000** |
+| p95 Δ | 0.190 | 0.022 |
+| p99 Δ | 0.400 | 0.235 |
+| max Δ | 0.956 | **0.929** |
+| **windows changing a detection decision** | 50 (2.9 %) | **11 / 1 723 (0.64 %)** |
+| recordings whose maximum exceeds 0.136 | 27 / 50 | 10 / 50 |
+
+About four fifths of what was reported as platform drift was the Keras mismatch. What remains
+still contradicts the original claims, and by less:
+
+* the **median is now exactly zero** — more than half of all windows agree bit for bit across two
+  operating systems, two CPU architectures and two Python stacks. That is better than the 0.0001
+  originally published, not worse.
+* the **maximum is 0.929, 6.8× the published 0.136**. The tail claim was wrong independently of
+  Keras: 74 windows characterise the bulk and never reach the tail.
+* **11 of 1 723 decisions change**, so "no detection decision changes" remains false.
+
+The shape is the documented mechanism rather than a systematic offset. On the worst recording,
+`aaaaarpv_s002_t007`, the median window difference is exactly **zero** and one window moves
+**0.93** — most of the pipeline is deterministic across platforms and a few windows are not,
+which is what a non-converged FastICA amplifying a 10⁻¹⁵ whitening difference looks like.
+
+**Events, over the same 50 recordings:**
 
 | | value |
 |---|---|
-| median Δ p(seizure) | **0.000058** |
+| events proposed on Windows | 31 |
+| events proposed on macOS | 33 |
+| matched (any temporal overlap) | 30 |
+| **present on Windows, absent on macOS** | **1** |
+| present on macOS, absent on Windows | 3 |
+| recordings whose event list changed | 4 / 50 |
+| largest boundary shift on a surviving event | 6.0 s |
+
+One event of 31 is lost, not 41 %. The window and event figures still must not be used as
+proxies for one another — 0.64 % of windows against 4 of 50 recordings changing — but the
+clinical picture is an event list that is nearly, not substantially, stable.
+
+### The Keras-mismatched figures, kept for the record
+
+Everything below compares Keras 3 against Keras 2 and is **not** a platform measurement. The
+Linux arm has not yet been re-taken with Keras held constant; until it is, no Linux drift figure
+should be quoted.
+
+**Windows (Python 3.6 / MNE 0.19.2 / TF 1.15) against Linux x86-64 (Python 3.12 / MNE 1.12.1 /
+TF 2.21), 111 recordings, 3 870 windows — Keras 3 against Keras 2:**
+
+| | value |
+|---|---|
+| median Δ p(seizure) | 0.000058 |
 | p95 Δ | 0.087 |
 | p99 Δ | 0.303 |
-| max Δ | **0.788** |
-| **windows changing a detection decision** | **57 / 3 870 (1.5 %)** |
-
-The median is the one figure that survives from the 74-window measurement — 0.00006 against
-0.0001. That is exactly why the small sample looked safe: it characterises the bulk of the
-distribution correctly and never sampled the tail. The maximum is **5.8×** the previously
-published 0.136.
-
-### The window figure understates what a reviewer sees
-
-Windows are internal. A reviewer steps through *events*, after per-second averaging, thresholding,
-merging runs closer than `MAX_MERGE_GAP_S` and discarding runs shorter than
-`MIN_EVENT_DURATION_S`. Over the same 111 recordings:
+| max Δ | 0.788 |
+| windows changing a detection decision | 57 / 3 870 (1.5 %) |
 
 | | value |
 |---|---|
 | events proposed on Windows | 44 |
 | events proposed on Linux | 33 |
 | matched (any temporal overlap) | 26 |
-| **present on Windows, absent on Linux** | **18 (41 % of the reference's events)** |
+| present on Windows, absent on Linux | 18 |
 | present on Linux, absent on Windows | 7 |
 | recordings whose event list changed | 14 / 111 |
 | largest boundary shift on a surviving event | 12.0 s |
 
-**41 % of proposed events do not survive the platform change**, against 1.5 % of windows. The two
-numbers differ by more than an order of magnitude and the window one must not be quoted as a
-proxy for clinical impact.
+Two observations from that run survive the correction, because neither depends on the magnitude:
 
-They are not even related monotonically. `aaaaaarq_s014_t003` lost an event with **zero** window
-flips: per-second averaging means two windows can each stay on the same side of the threshold
-while their average crosses it. And on `aaaaatao_s003_t000` the highest-scoring window in the
-recording — 0.9779 — produced **no event on either platform**, because averaging it with quiet
-neighbours gives (0.9779 + 0.0011)/2 = 0.489. The event that did exist there came from two
-adjacent moderate windows, 0.599 and 0.651, and vanished on Linux when both fell below 0.5.
+Window flips and event changes are **not related monotonically**. `aaaaaarq_s014_t003` lost an
+event with **zero** window flips — per-second averaging means two windows can each stay on the
+same side of the threshold while their average crosses it. So a window-level figure cannot be
+used as a proxy for what a reviewer sees, in either direction.
 
-### macOS
-
-An independent run on Apple Silicon (Python 3.12 / TF 2.21) against the same Windows reference,
-51 recordings and 1 772 windows, gives **61 window flips (3.4 %)** and a maximum of **0.9561** —
-the same picture, a heavier tail. Its event-level figures have not been taken yet and are **not**
-inferable from the window counts, for the reason given above.
+And on `aaaaatao_s003_t000` the highest-scoring window in the recording — 0.9779 — produced **no
+event on either platform**, because averaging it with quiet neighbours gives
+(0.9779 + 0.0011)/2 = 0.489. The event that exists there comes from two adjacent moderate
+windows, 0.599 and 0.651. That is a property of the shipped decision stage, not of drift: a
+window scoring 0.98 can be invisible to a reviewer while two scoring 0.6 are not.
 
 ### Scope, stated plainly
 
@@ -221,7 +284,8 @@ This also unifies previously separate observations, all the same mechanism:
 - the **0.107** drift between a fresh run and the stored caches (`RESULTS.md` §9),
 - the **0.90** attributed to "MNE 1.12" — which now reads as an ordinary draw from this tail
   rather than one unlucky window,
-- the **0.788** maximum measured here, and the **0.956** measured on macOS.
+- the **0.929** maximum measured here with Keras held constant. The 0.788 and 0.956
+  recorded earlier were Keras-mismatched and measure a library version, not a platform.
 
 Two facts rule out the explanations that would have made this fixable. The ICA *implementation*
 is bit-identical on every platform: `utils/fastica_pinned` is verified installed on both stacks,
@@ -231,9 +295,10 @@ And the fault is not TensorFlow's: swapping TF alone moves p(seizure) by 6.8 × 
 The consequence is a statement the thesis should make once, clearly: **this pipeline is
 statistically reproducible in the bulk of its distribution and not reproducible in its tail, and
 the cause is the non-converged ICA the weights were trained with.** For per-window probabilities
-that means quoting two significant figures. For **events** it means something stronger — the list
-of candidates a reviewer is shown is machine-dependent, and 41 % of them changed between two
-correct builds of the same application. Caches must be regenerated in a single pass per platform,
+that means quoting two significant figures. For **events** it means something weaker than the 41 %
+once recorded here, and still not nothing — the list of candidates a reviewer is shown is
+machine-dependent, and 1 of 31 changed between two correct builds of the same application, on
+4 of 50 recordings. Caches must be regenerated in a single pass per platform,
 which `RESULTS.md` already requires for other reasons.
 
 ### What this does and does not say about the tool

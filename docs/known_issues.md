@@ -193,10 +193,11 @@ compare against.
 The only thing lost is *identical library versions across platforms*.
 
 This section previously argued the point was academic, citing a median **0.0001** in `p(seizure)`
-and **no detection decision changing** over 74 windows. Measured over 3 870 windows from 111
-recordings, the median holds at 0.00006 but the rest does not: 1.5 % of windows change decision,
-the maximum is 0.788 against the 0.136 quoted, and **41 % of proposed events present on Windows
-are absent on Linux** (`docs/portability.md`).
+and **no detection decision changing** over 74 windows. Measured over 1 723 windows from 50
+recordings with Keras held constant, the median holds — it is now exactly **0.000000** — but the
+rest does not: **0.64 %** of windows change decision, the maximum is **0.929** against the 0.136
+quoted, and **1 proposed event of 31** present on Windows is absent on macOS
+(`docs/portability.md`).
 
 That does **not** make the Windows freeze urgent, and it is worth being precise about why. Closing
 this issue would give Windows the *modern* stack — the same one macOS and Linux run — which would
@@ -232,10 +233,33 @@ The ICA does not converge — verified on real data, `n_iter_` reaches `max_iter
 window — so a 10⁻¹⁵ difference in linear algebra between two machines produces a different
 decomposition.
 
-**"Third decimal" was wrong.** That was measured over 74 windows and describes only the bulk of
-the distribution. Over 3 870 windows the median is 0.00006 but p99 is 0.30 and the maximum 0.79,
-and at the level a reviewer actually sees, 41 % of proposed events differ between two correct
-builds. See `docs/portability.md` for the distribution and for why neither machine is "right".
+**"Third decimal" was wrong, and so was the figure that first replaced it.** The original came
+from 74 windows, which characterise the bulk of the distribution and never reach the tail. The
+3 870-window replacement — median 0.00006, p99 0.30, maximum 0.79, 41 % of proposed events
+differing — was measured before `tf-keras` was pinned (36a56b6, 2026-08-11 10:11) and therefore
+compared **Keras 3 against a Keras 2 reference**. It measured a library version and reported it
+as a platform.
+
+Held constant, over 1 723 windows from 50 recordings, Windows against macOS arm64:
+
+| | value |
+|---|---|
+| median Δ p(seizure) | **0.000000** |
+| p95 Δ | 0.022 |
+| p99 Δ | 0.235 |
+| max Δ | **0.929** |
+| windows changing a detection decision | **11 / 1 723 (0.64 %)** |
+| proposed events lost | **1 of 31** |
+
+More than half of all windows now agree bit for bit across two operating systems and two CPU
+architectures — better than the 0.0001 originally published. The maximum is still **6.8×** the
+published 0.136 and decisions still change, so the handling rule below stands; it is the
+magnitude that was overstated, by roughly five times, in the correction that was supposed to fix
+it. See `docs/portability.md` for the distribution and for why neither machine is "right".
+
+**The Linux arm has not been re-taken** with Keras held constant. Its venv received `tf_keras` at
+09:50 on 2026-08-11, seven and a half hours after the run. No Linux drift figure should be quoted
+until it is re-measured.
 
 **Do not mix figures from two machines in one table.** Previously advice about precision, this is
 now a correctness requirement: such a table can disagree with itself about whether a seizure was
