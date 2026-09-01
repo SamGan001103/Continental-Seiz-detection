@@ -1,21 +1,19 @@
-"""The view must not be changed by accident, nor described wrongly.
+"""The sweep control must state the span that is actually on screen.
 
-Two defects, one cause: the toolbar and the display could disagree, and the
-gesture that made them disagree was the ordinary one.
+It was write-only: it set the span and was never told when anything else
+changed it. Zoom is free and unmodified — a wheel tick, or a trackpad
+two-finger scroll — so the view moved constantly while the control did not,
+and after a scroll to the whole recording it read `10` over a view of 1818 s.
+That is wrong by two orders of magnitude, in the direction that flatters the
+view: it under-reported the span, making the display look more trustworthy
+than it was, and the span is the number a reviewer uses to judge whether they
+are looking at morphology or at a navigation view.
 
-* pyqtgraph zooms on any wheel event. A trackpad two-finger scroll IS a wheel
-  event, so scrolling through a recording zoomed out instead, and kept going
-  until the whole recording was on screen because the x-limits stop exactly
-  there. Past 300 s the renderer switches to a navigation view that is not for
-  judging morphology, so a reviewer could arrive there without asking.
-
-* The sweep control was write-only. It set the span and was never told when
-  anything else changed it, so after that zoom it read `10` over a view of
-  1818 s — wrong by two orders of magnitude, and it is the number a reviewer
-  would use to judge what they are looking at.
-
-Neither is caught by a test of the renderer, because the renderer was doing
-what it was asked. These test the asking.
+Free zoom on an unmodified wheel is deliberate and is tested here too, because
+it was briefly taken away and should not be again by accident: it is how this
+view is driven, and the danger that motivated removing it is now handled where
+it belongs — the wide view draws the min/max of the filtered signal instead of
+one sample in 187, and says so with a lighter pen.
 """
 import os
 import sys
@@ -60,7 +58,9 @@ class _Wheel(object):
 
 
 @unittest.skipUnless(HAVE_QT, 'PyQt5 not available')
-class ScrollMovesAndOnlyAModifierZooms(unittest.TestCase):
+class ScrollZoomsWithoutAModifier(unittest.TestCase):
+    """Free zoom is the primary gesture; keep it that way."""
+
     def setUp(self):
         self.vb = _SignalViewBox()
         self.pw = pg.PlotWidget(viewBox=self.vb)
@@ -70,37 +70,25 @@ class ScrollMovesAndOnlyAModifierZooms(unittest.TestCase):
         (x0, x1), _ = self.vb.viewRange()
         return x1 - x0
 
-    def _x0(self):
-        return self.vb.viewRange()[0][0]
-
-    def test_a_plain_scroll_does_not_change_the_span(self):
-        """The regression: this used to zoom, and zoom out to the whole file."""
+    def test_a_plain_scroll_zooms_out(self):
         before = self._span()
         self.vb.wheelEvent(_Wheel(-120))
-        self.assertAlmostEqual(self._span(), before, places=3,
-                               msg='an unmodified scroll changed the zoom')
+        self.assertGreater(
+            self._span(), before * 1.02,
+            'an unmodified scroll no longer zooms — that is the gesture this '
+            'view is driven by, and requiring a modifier for it was reverted '
+            'on purpose')
 
-    def test_a_plain_scroll_moves_through_the_recording(self):
-        before = self._x0()
-        self.vb.wheelEvent(_Wheel(-120))
-        self.assertGreater(self._x0(), before,
-                           'scrolling down did not advance through the '
-                           'recording')
-        forward = self._x0()
+    def test_a_plain_scroll_the_other_way_zooms_in(self):
+        before = self._span()
         self.vb.wheelEvent(_Wheel(120))
-        self.assertLess(self._x0(), forward, 'scrolling up did not go back')
+        self.assertLess(self._span(), before * 0.99)
 
-    def test_a_modified_scroll_still_zooms(self):
+    def test_zooming_is_gentler_than_pyqtgraph_default(self):
+        """~8% per tick, not ~12%, so a zoom does not lurch."""
         before = self._span()
-        self.vb.wheelEvent(_Wheel(-120, QtCore.Qt.ControlModifier))
-        self.assertGreater(self._span(), before * 1.02,
-                           'modifier+scroll no longer zooms out')
-
-    def test_command_on_macos_zooms_too(self):
-        """Qt reports Command as ControlModifier, but Meta is accepted too."""
-        before = self._span()
-        self.vb.wheelEvent(_Wheel(-120, QtCore.Qt.MetaModifier))
-        self.assertGreater(self._span(), before * 1.02)
+        self.vb.wheelEvent(_Wheel(-120))
+        self.assertLess(self._span() / before, 1.10)
 
 
 @unittest.skipUnless(HAVE_QT, 'PyQt5 not available')
