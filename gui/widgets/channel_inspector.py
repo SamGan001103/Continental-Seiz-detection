@@ -280,10 +280,24 @@ class ChannelInspector(QtWidgets.QDialog):
         ctrl.addWidget(self.chk_autofit)
 
         self.chk_spec = QtWidgets.QCheckBox('Power spectrum')
-        self.chk_spec.setChecked(True)
+        # Off by default on the reviewing neurologist's advice: asked what he
+        # needed from the inspector, his answer about the frequency panel was
+        # "no need for FFT". Reading seizures off a trace is a morphology and
+        # evolution judgement, not a spectral one, and a panel a reviewer does
+        # not use still costs them screen and attention.
+        #
+        # Hidden rather than deleted, and recoverable from this same checkbox,
+        # because the band powers are genuinely useful for the artefact
+        # questions this widget also answers — is that 50 Hz, is that muscle —
+        # and because a panel with no way back is the failure the View menu
+        # entries exist to prevent. Unchecked also stops it being recomputed,
+        # which is the other reason to default it off on a hospital machine.
+        self.chk_spec.setChecked(False)
         self.chk_spec.setToolTip(
-            'Show the spectrum of the visible span. Turning it off also stops '
-            'it being recomputed, which is worth doing on a slow machine.')
+            'Show the spectrum of the visible span. Off by default — a '
+            'reviewing neurologist asked for it to be. Useful for artefact '
+            'questions (mains hum, muscle), not for reading seizures. '
+            'Turning it off also stops it being recomputed.')
         self.chk_spec.toggled.connect(self._on_spec_toggled)
         ctrl.addWidget(self.chk_spec)
 
@@ -325,6 +339,11 @@ class ChannelInspector(QtWidgets.QDialog):
 
         # ---- spectrum panel --------------------------------------------
         self._build_spectrum_panel(v)
+        # The checkbox is set before this panel exists, and setChecked(False)
+        # on an already-unchecked box emits nothing, so the handler has never
+        # run and the panel would be built visible regardless. Apply the
+        # initial state once, here, where everything it touches exists.
+        self._on_spec_toggled(self.chk_spec.isChecked())
 
         # One-shot initial amplitude pick from the initial visible range.
         if initial_x_range is not None:

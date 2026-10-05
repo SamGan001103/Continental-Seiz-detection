@@ -33,7 +33,7 @@ REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
-from gui.io.edf import load_edf_19ch
+from gui.io.edf import load_edf_19ch, read_start_datetime
 from gui.display_pipeline import DisplayPipeline, SplicedSource
 from gui.io.cache import (load_probs, load_probability_file,
                           save_probability_file)
@@ -90,6 +90,18 @@ TITLE_SUFFIX = ' — RESEARCH PROTOTYPE, NOT FOR DIAGNOSTIC USE'
 # interpreter and no utils/zuna_bridge.py. Leaving a dead button on the toolbar
 # of a clinical build invites a press that can only end in a subprocess error.
 ZUNA_AVAILABLE = zuna_available()
+
+
+def _count_phrase(n_decisions, marks):
+    """"3 decision(s)", "4 interictal mark(s)", or both, for the restore
+    prompt. Kept apart rather than summed because they are different kinds of
+    work and a reviewer reading "7 items" would not know what was recovered."""
+    parts = []
+    if n_decisions:
+        parts.append('{} decision(s)'.format(n_decisions))
+    if marks:
+        parts.append('{} interictal mark(s)'.format(len(marks)))
+    return ' and '.join(parts) or 'Work'
 
 
 def _git_commit():
@@ -220,6 +232,12 @@ class MainWindow(QtWidgets.QMainWindow):
         # never exported. Initialised here so a status message before any file
         # is open cannot reach an undefined attribute.
         self._source_annots = []
+        self._start_time = None
+        # Reviewer-marked interictal discharges. A separate object
+        # from the seizure events and a separate export file: the
+        # detector cannot produce these, and a reader must never be
+        # able to mistake a reviewer's spike mark for a detection.
+        self._ied_marks = []
         self._probs = None             # (window_starts, probs) | None
         self._prob_sources = {}         # source key -> cache dict
         self._events_by_source = {}     # source key -> reviewed event list
@@ -320,10 +338,14 @@ class MainWindow(QtWidgets.QMainWindow):
         left = QtWidgets.QWidget()
         lv = QtWidgets.QVBoxLayout(left)
         lv.setContentsMargins(0, 0, 0, 0)
-        # 4:1 rather than 5:1. The strip is the detector's entire output and
-        # the thing a reviewer scans to decide where to look; at one sixth of
-        # the height a shallow rise near threshold was hard to read at all.
-        lv.addWidget(self.signal_view, 5)
+        lv.setSpacing(2)
+        # The traces have been given progressively more of the column as the
+        # reviewing clinician and the user have asked for it: 5 parts, then 7,
+        # now 11 against the overview's 2. The traces are what is actually
+        # being READ; every other panel here exists to help someone decide
+        # where to look at them, and the overview only needs enough height for
+        # a peak to be legible against the threshold line.
+        lv.addWidget(self.signal_view, 11)
         # Hidden by default. It shows the score for the PAGE, which at a 10 s
         # sweep is a nearly flat line, and the events it would reveal are
         # already drawn on the traces themselves. The whole-recording map below
@@ -341,11 +363,13 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter.addWidget(self.event_list)
         # The worklist holds five narrow columns and was given 380 px of a
         # 1600 px window - width taken directly from the traces, which are the
-        # thing being read. 300 is enough for the widest row.
-        splitter.setStretchFactor(0, 6)
+        # thing being read. Narrowed again on the clinician's request to make
+        # the EEG larger: 260 still fits the widest row, and the splitter is
+        # draggable for anyone who wants it back.
+        splitter.setStretchFactor(0, 9)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([1300, 300])
-        self.event_list.setMaximumWidth(420)
+        splitter.setSizes([1400, 260])
+        self.event_list.setMaximumWidth(340)
         self.setCentralWidget(splitter)
 
         # Head map. Shows where a derivation actually sits on the scalp, which
@@ -365,6 +389,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self._head_dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea |
                                         QtCore.Qt.RightDockWidgetArea)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self._head_dock)
+        # Hidden until asked for. Measured: it was taking 276 px of width on
+        # the right, beside the 340 px worklist, so on a 1920 px screen over
+        # 600 px of the window was showing something other than EEG. It is a
+        # static reference diagram — where a derivation sits on the scalp —
+        # which a reviewer consults occasionally and reads continuously never.
+        #
+        # Recoverable from View > Electrode map, which also ticks to show its
+        # state. That entry is why hiding it is safe: a panel with no way back
+        # is the bug the View menu exists to prevent. Window state is restored
+        # after this, so a reviewer who opens it keeps it.
+        self._head_dock.setVisible(False)
 
         self._build_toolbar()
         self._build_menu()
@@ -384,6 +419,16 @@ class MainWindow(QtWidgets.QMainWindow):
             'not a medical device, has not been clinically validated, and must '
             'not be used for diagnosis or patient care.')
         self.statusBar().addPermanentWidget(self._proto_lbl)
+
+        # Running interictal tally. Permanent rather than a transient message:
+        # the output of marking discharges is a location and a rate, so the
+        # per-derivation count is what the reviewer is building and it has to
+        # stay on screen while they build it. Hidden until there is something
+        # to say.
+        self._ied_label = QtWidgets.QLabel('')
+        self._ied_label.setStyleSheet('color:#b07800; font-weight:600;')
+        self._ied_label.setVisible(False)
+        self.statusBar().addPermanentWidget(self._ied_label)
 
         # hover time readout in status bar
         self._hover_lbl = QtWidgets.QLabel('')
@@ -575,6 +620,15 @@ class MainWindow(QtWidgets.QMainWindow):
                          'never add one.')
         a_add.setShortcutContext(QtCore.Qt.ApplicationShortcut)
         a_add.triggered.connect(self._add_event_at_view)
+        a_ied = m_edit.addAction('Mark &interictal discharge at cursor')
+        a_ied.setShortcut('D')
+        a_ied.setToolTip(
+            'Mark a spike or sharp wave on the derivation under the pointer. '
+            'The detector does not find these — it is a seizure model — so '
+            'these are the reviewer\'s own marks, and they export to their '
+            'own file, never into the seizure annotation.')
+        a_ied.setShortcutContext(QtCore.Qt.ApplicationShortcut)
+        a_ied.triggered.connect(self._mark_ied_at_cursor)
         a_rev = m_edit.addAction('&Revert extent to detector')
         a_rev.setShortcut('Ctrl+R')
         a_rev.setShortcutContext(QtCore.Qt.ApplicationShortcut)
@@ -858,6 +912,21 @@ class MainWindow(QtWidgets.QMainWindow):
         # recordings are what this tool is FOR, and one that declines them is
         # not safer, it is useless. The guard now chooses a strategy rather
         # than a verdict.
+        # Everything that needs its own EdfReader on this file MUST happen
+        # before the lazy source opens one, because edflib refuses a second
+        # open of the same path — and tearing down that refused open frees the
+        # handle the lazy source is holding. The reader then survives, returns
+        # its zero-filled buffer for every request, and the reviewer is shown
+        # 19 perfectly flat traces for a 24-hour recording with no error
+        # anywhere. Measured: 34.98 uV of signal becomes 0.00 purely by the
+        # order of these three calls.
+        #
+        # The only symptom is `read -1, less than N requested!!!` on stderr
+        # from the C layer, which is invisible in a frozen build and which I
+        # spent a session dismissing as a harmless over-read past the end.
+        self._source_annots = read_edf_annotations(path)
+        self._start_time = read_start_datetime(path)
+
         lazy_source = None
         try:
             from gui.memory import edf_open_estimate
@@ -893,6 +962,18 @@ class MainWindow(QtWidgets.QMainWindow):
                 data = lazy_source
                 fs = lazy_source.fs
                 dur = lazy_source.shape[1] / float(fs)
+                # If a decimated level was precomputed beside the recording,
+                # attach it: zooming out then slices a 26 MB array instead of
+                # walking the span off disk, which was measured as 96-103% of
+                # the whole wide render. Absent, nothing changes and nothing is
+                # built here — a build is about a minute, and a reviewer
+                # waiting on a file to open must not pay it.
+                try:
+                    from gui.io.decimated_level import attach
+                    if attach(lazy_source, path, fs) is not None:
+                        self._has_level = True
+                except Exception:                            # noqa: BLE001
+                    pass       # display speed is never worth failing an open
             else:
                 data, fs, dur = load_edf_19ch(path)
         except Exception as ex:
@@ -938,6 +1019,10 @@ class MainWindow(QtWidgets.QMainWindow):
         ica_cache_clear()      # the previous recording's windows are dead
         self._events = []
         self._events_by_source = {}
+        # Interictal marks belong to the recording they were made on. Leaving
+        # them here would carry one patient's spikes into the next recording
+        # opened and export them against it.
+        self._ied_marks = []
         self._undo_stack = []
         self._dirty = False
         self._prob_sources = {}
@@ -961,9 +1046,17 @@ class MainWindow(QtWidgets.QMainWindow):
         # exported: hyperventilation and photic stimulation are deliberate
         # seizure-activation procedures, so a reviewer judging rhythmic
         # activity needs to know one was running.
-        self._source_annots = read_edf_annotations(path)
-        # Drawn by _refresh_signal_view below, not here: it rebuilds the plot
-        # and would clear anything set at this point.
+        # Read at the top of this method, BEFORE the lazy source opened its
+        # reader — see the note there. Drawn by _refresh_signal_view below,
+        # not here: it rebuilds the plot and would clear anything set now.
+
+        # _start_time was read at the top of this method for the same reason.
+        # Push it to the axes here, once the widgets exist.
+        for w in (self.signal_view, self.prob_strip, self.overview_strip):
+            try:
+                w.set_start_time(self._start_time)
+            except AttributeError:                           # noqa: PERF203
+                pass
 
         # probability cache — run inference on-demand if missing
         cached = load_probs(path)
@@ -1008,6 +1101,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if self._load_cached_zuna_source():
             msg += ' — cached ZUNA available'
 
+        # Candidates a detector found ahead of time, if anyone ran one. Before
+        # the signal view is refreshed, so they are on screen from the first
+        # paint rather than appearing a moment later.
+        self._load_ied_sidecar(path)
         # Fresh file: do reset the viewport to the start.
         self._refresh_signal_view(preserve_view=False)
         self._rebuild_events_from_probs(preserve_review=False)
@@ -1744,6 +1841,19 @@ class MainWindow(QtWidgets.QMainWindow):
         # filter or montage change — and the status bar still said "41
         # recording annotations", which is the worst version of the bug.
         self.signal_view.set_source_annotations(self._source_annots)
+        # Same reason, same bug if omitted: the marks are drawn as plot items
+        # and pi.clear() takes them with everything else, so a reviewer who
+        # marked twenty spikes and then changed the montage would watch them
+        # all disappear while the count in the provenance still said twenty.
+        drawn = self.signal_view.set_ied_marks(self._ied_marks)
+        self.overview_strip.set_ied_marks(self._ied_marks)
+        hidden = len(self._ied_marks) - (drawn or 0)
+        if hidden > 0:
+            # Say it rather than let the reviewer conclude their work is gone.
+            self.statusBar().showMessage(
+                '{} interictal mark(s) were made on a different montage and '
+                'are not shown here. They are still recorded and will still '
+                'export.'.format(hidden), 8000)
         self._refresh_open_inspectors()
 
     # ==================================================================
@@ -1931,14 +2041,166 @@ class MainWindow(QtWidgets.QMainWindow):
             'Added an event at {:.1f}–{:.1f}s. Drag its edges to adjust, or '
             'Ctrl+Z to undo.'.format(s, e), 8000)
 
+    def _mark_ied_at_cursor(self):
+        """Mark an interictal discharge where the pointer is. Bound to D.
+
+        The reviewing neurologist asked for interictal discharges alongside the
+        seizure proposals, and the detector cannot supply them: it is a
+        pretrained seizure model and this project trains nothing. So the
+        reviewer marks them, and the tool's job is to make that fast and to
+        keep the marks clearly separate from anything the detector produced.
+
+        Hover-and-press, because a discharge belongs to a derivation. A mark
+        without a channel would throw away most of the clinical information.
+        """
+        if not self._edf_path:
+            self.statusBar().showMessage('Open a recording first.', 4000)
+            return
+        at = self.signal_view.cursor_time_and_row()
+        if at is None:
+            self.statusBar().showMessage(
+                'Point at the trace where you see the discharge, then press '
+                'D. The mark records which derivation it was on.', 6000)
+            return
+        t, row = at
+        names = self.signal_view.channel_names()
+        if not (0 <= row < len(names)):
+            return
+        t = max(0.0, min(float(t), float(self._duration_s or t)))
+
+        self._push_undo('mark interictal discharge')
+        # The montage is recorded with the mark because the channel name only
+        # means something within one: 'Fp1-F7' does not exist in a referential
+        # view. Without it, an exported mark cannot be interpreted later.
+        # `source` is stated rather than left to default: once a detector can
+        # add marks to this same list, a mark with no source is ambiguous, and
+        # the one thing that must never be ambiguous is whether a human
+        # asserted it.
+        from gui.io.ied_marks import SOURCE_REVIEWER
+        mark = {'time': float(t), 'channel': names[row],
+                'montage': self._montage, 'note': '',
+                'source': SOURCE_REVIEWER}
+        self._ied_marks.append(mark)
+        # Draw just this one. Rebuilding the whole set made each keypress cost
+        # as much as every mark already placed, which with a detector's output
+        # loaded is hundreds of items for one D.
+        if not self.signal_view.add_ied_mark(mark):
+            self.signal_view.set_ied_marks(self._ied_marks)
+        self.overview_strip.set_ied_marks(self._ied_marks)
+        self._update_ied_summary()
+        self._mark_dirty()
+        self.statusBar().showMessage(
+            'Interictal discharge marked on {} at {:.2f}s. Ctrl+Z to '
+            'undo.'.format(names[row], t), 5000)
+
     # ---- undo -------------------------------------------------------
     UNDO_DEPTH = 50
 
+    def _load_ied_sidecar(self, path):
+        """Read `<stem>.ied.csv` beside the recording, if it exists.
+
+        The application has written this file since interictal marking was
+        added, and never read it back — so a reviewer's exported marks, and
+        anything `precompute_ieds.py` found, were invisible the moment the
+        file was closed.
+
+        Marks arrive here with a `source`: 'reviewer' for a human's, or a
+        detector's name for an automatic candidate. They are kept in one list
+        because they are the same kind of object on screen, and told apart by
+        that field everywhere it matters — the tally, the export and the
+        colour they are drawn in.
+        """
+        try:
+            from gui.io.ied_marks import (ied_path_for, matches_recording,
+                                          read_ied_header, read_ied_marks)
+            side = ied_path_for(path)
+            if not matches_recording(read_ied_header(side), path):
+                # Stale marks assert a discharge AT A TIMESTAMP. Against the
+                # wrong recording that is a claim about a moment which does
+                # not exist, so they are refused rather than shown.
+                self.statusBar().showMessage(
+                    'Interictal marks beside this recording were made against '
+                    'a different version of it and were not loaded.', 8000)
+                return 0
+            marks = read_ied_marks(side)
+        except Exception:                                     # noqa: BLE001
+            return 0            # a damaged sidecar must never block opening
+        if not marks:
+            return 0
+        self._ied_marks = sorted(marks, key=lambda m: float(m['time']))
+        self._update_ied_summary()
+        return len(marks)
+
+    def _update_ied_summary(self):
+        """Keep the persistent interictal readout current.
+
+        A transient status-bar line is the wrong place for this. What a
+        neurologist writes down about interictal activity is a LOCATION and a
+        RATE — "frequent left temporal discharges, maximal T3" — so the running
+        tally per derivation is the actual output of marking, and it has to be
+        visible while they work rather than for five seconds after each press.
+        """
+        lbl = getattr(self, '_ied_label', None)
+        if lbl is None:
+            return
+        if not self._ied_marks:
+            lbl.setText('')
+            lbl.setToolTip('')
+            lbl.setVisible(False)
+            return
+        from gui.io.ied_marks import summarise
+        s = summarise(self._ied_marks)
+        # Never one total. A reviewer's confirmed marks and a detector's
+        # unconfirmed proposals are different claims, and a single number
+        # would read as though a human had asserted all of them.
+        bits = []
+        if s['reviewer']:
+            bits.append('IED {}'.format(s['reviewer']))
+        if s['automatic']:
+            bits.append('{} proposed'.format(s['automatic']))
+        per_ch = {c: n for c, n in s['per_channel'].items()
+                  if c != '(unknown)'}
+        top = list(per_ch.items())[:3]
+        if top:
+            bits.append('  '.join('{} {}'.format(c, n) for c, n in top))
+            more = len(per_ch) - len(top)
+            if more > 0:
+                bits.append('+{} more'.format(more))
+        lbl.setText('  ·  '.join(bits))
+
+        tip = []
+        if s['reviewer']:
+            tip.append('{} interictal discharge(s) you marked.'
+                       .format(s['reviewer']))
+        for src, n in s['per_source'].items():
+            if src == 'reviewer':
+                continue
+            tip.append('{} candidate(s) proposed by {} — UNVALIDATED on this '
+                       'data. Confirm or reject each one; they are not '
+                       'findings.'.format(n, src))
+        if per_ch:
+            tip.append('')
+            tip.append('By derivation:')
+            tip.extend('  {}: {}'.format(c, n) for c, n in per_ch.items())
+        if s['automatic']:
+            tip.append('')
+            tip.append('Proposals carry no derivation: the detector scores the '
+                       'whole montage and does not localise.')
+        lbl.setToolTip('\n'.join(tip))
+        lbl.setVisible(True)
+
     def _push_undo(self, label):
-        """Snapshot the event list before a change. Cheap: tens of dicts."""
+        """Snapshot the review before a change. Cheap: tens of dicts.
+
+        Events and interictal marks are snapshotted together, deliberately.
+        They are separate objects with separate export files, but they are one
+        review, and a Ctrl+Z that undid only half of it would be worse than no
+        undo at all.
+        """
         if not hasattr(self, '_undo_stack'):
             self._undo_stack = []
-        self._undo_stack.append((label, [dict(e) for e in self._events]))
+        self._undo_stack.append((label, [dict(e) for e in self._events],
+                                 [dict(m) for m in self._ied_marks]))
         del self._undo_stack[:-self.UNDO_DEPTH]
 
     def _undo(self):
@@ -1946,9 +2208,13 @@ class MainWindow(QtWidgets.QMainWindow):
         if not stack:
             self.statusBar().showMessage('Nothing to undo.', 3000)
             return
-        label, events = stack.pop()
+        label, events, marks = stack.pop()
         self._events = events
+        self._ied_marks = marks
         self.signal_view.set_events(self._events)
+        self.signal_view.set_ied_marks(self._ied_marks)
+        self.overview_strip.set_ied_marks(self._ied_marks)
+        self._update_ied_summary()
         self.event_list.set_events(self._events)
         self._mark_discarded_runs()
         self._autosave_review()
@@ -2060,6 +2326,12 @@ class MainWindow(QtWidgets.QMainWindow):
                          None if ev.get('prob') is None
                          else float(ev['prob']))}
                     for ev in self._reviewed_events()],
+                # Marking a spike is reviewing work exactly as deciding a
+                # candidate is, and it was not being saved at all — a reviewer
+                # forty marks into a recording lost every one of them to a
+                # crash, silently, because nothing else records them until an
+                # export happens.
+                'interictal_marks': [dict(m) for m in self._ied_marks],
                 'note': 'Autosaved reviewer decisions. Not an annotation file.',
             }
             blob = json.dumps(payload, indent=2, sort_keys=True) + '\n'
@@ -2097,7 +2369,12 @@ class MainWindow(QtWidgets.QMainWindow):
                     blob = json.load(f)
             except (OSError, ValueError):
                 continue        # unreadable or truncated by the crash itself
-            if not isinstance(blob, dict) or not blob.get('events'):
+            if not isinstance(blob, dict):
+                continue
+            # Marks alone are worth recovering: a reviewer can spend a session
+            # marking spikes without accepting or rejecting a single seizure
+            # candidate, and requiring `events` threw that whole session away.
+            if not blob.get('events') and not blob.get('interictal_marks'):
                 continue
             if mtime > best_mtime:
                 best, best_mtime = blob, mtime
@@ -2140,21 +2417,32 @@ class MainWindow(QtWidgets.QMainWindow):
                 restorable.append((by_span[span], rec))
             elif rec.get('status') == 'added':
                 added_back.append(rec)      # a seizure the detector never proposed
-        if not restorable and not added_back:
+
+        # Only the reviewer's own marks are restored. Automatic candidates are
+        # reproducible from the recording and are reloaded from the sidecar on
+        # open, so restoring them here too would double every one of them.
+        saved_marks = [m for m in (blob.get('interictal_marks') or [])
+                       if isinstance(m, dict) and 'time' in m
+                       and (m.get('source') or 'reviewer') == 'reviewer']
+        if not restorable and not added_back and not saved_marks:
             return
 
         n = len(restorable) + len(added_back)
         box = QtWidgets.QMessageBox(self)
         box.setIcon(QtWidgets.QMessageBox.Question)
         box.setWindowTitle('Unfinished review found')
-        box.setText('{} decision(s) for this recording were autosaved and '
-                    'never exported.'.format(n))
+        box.setText('{} for this recording {} autosaved and never exported.'
+                    .format(_count_phrase(n, saved_marks),
+                            'were' if n + len(saved_marks) != 1 else 'was'))
         detail = ('Restore them and continue where you left off?\n\n'
                   'Declining leaves the autosave file untouched — nothing is '
                   'lost either way.')
         if added_back:
             detail += ('\n\n{} of them are seizures you marked that the '
                        'detector did not propose.'.format(len(added_back)))
+        if saved_marks:
+            detail += ('\n\n{} interictal discharge mark(s) you made will be '
+                       'restored too.'.format(len(saved_marks)))
         box.setInformativeText(detail)
         box.setStandardButtons(QtWidgets.QMessageBox.Yes |
                                QtWidgets.QMessageBox.No)
@@ -2181,6 +2469,17 @@ class MainWindow(QtWidgets.QMainWindow):
         # same helper _add_event_at_view uses, so a restored event is
         # indistinguishable from one added by hand.
         self._events = assign_event_ids(self._events)
+
+        # Reviewer marks, keyed on time so re-running the detector or
+        # reopening the file cannot stack duplicates on the same spike.
+        if saved_marks:
+            have = {round(float(m['time']), 3) for m in self._ied_marks
+                    if (m.get('source') or 'reviewer') == 'reviewer'}
+            for m in saved_marks:
+                if round(float(m['time']), 3) not in have:
+                    self._ied_marks.append(dict(m))
+            self._ied_marks.sort(key=lambda m: float(m['time']))
+            self._update_ied_summary()
 
         self._dirty = True
         self._update_title()
@@ -2669,7 +2968,50 @@ class MainWindow(QtWidgets.QMainWindow):
                      bname=os.path.splitext(os.path.basename(self._edf_path))[0],
                      duration_s=self._duration_s,
                      events=events,
-                     ai_source=self._prob_source)
+                     ai_source=self._prob_source,
+                     start_time=self._start_time)
+        # An EDF+ companion beside the csv_bi. Asked for by the reviewing
+        # neurologist, and the survey answer to "what export is best" is that
+        # no clinical EEG system imports third-party seizure annotations —
+        # every vendor exports its own and reads nobody else's. So the useful
+        # target is the container the recording arrived in: EDFbrowser, MNE,
+        # MATLAB and EDFlib all open EDF+ annotations directly.
+        #
+        # Best-effort: a failure here must not cost the reviewer the export
+        # that actually matters, which is already safely on disk above.
+        try:
+            from gui.io.edf_review_annotations import (
+                review_edf_path_for, write_review_edf)
+            # The SAME events the csv_bi carries — confirmed only. `events`
+            # has the clamped times but not the status; `exported_scores` has
+            # the status and the model score, built in lockstep above. Writing
+            # self._events here instead would put REJECTED events into the
+            # companion as if the reviewer had confirmed them.
+            annotated = [
+                {'start': a['start'], 'stop': a['stop'],
+                 'status': b.get('status'),
+                 'prob': b.get('model_score_uncalibrated')}
+                for a, b in zip(events, exported_scores)]
+            write_review_edf(review_edf_path_for(path), annotated,
+                             self._duration_s, self._start_time)
+        except Exception as ex:                              # noqa: BLE001
+            print('review EDF+ companion not written: {}'.format(ex))
+        # Interictal marks go to their OWN file, never into the csv_bi. That
+        # format is binary and term-based by construction — seiz/bckg, one
+        # label across all channels — and interictal marks are per-channel and
+        # neither label. The separation is also what keeps the claim that a
+        # reviewed csv_bi is indistinguishable from a TUSZ reference true.
+        try:
+            from gui.io.ied_marks import ied_path_for, write_ied_marks
+            if self._ied_marks:
+                write_ied_marks(
+                    ied_path_for(path),
+                    os.path.splitext(os.path.basename(self._edf_path))[0],
+                    self._duration_s, self._ied_marks,
+                    reviewer=self._reviewer_id, start_time=self._start_time,
+                    source_path=self._edf_path)
+        except Exception as ex:                              # noqa: BLE001
+            print('interictal marks not written: {}'.format(ex))
         self._write_export_provenance(path, len(events),
                                       exported_scores=exported_scores)
         # The review is now on disk, so the session is no longer at risk.
@@ -2679,6 +3021,23 @@ class MainWindow(QtWidgets.QMainWindow):
         self.statusBar().showMessage(
             'Exported {} reviewed event(s) → {}'.format(len(events), path),
             10000)
+
+    def _ied_summary(self, marks):
+        """Interictal marks for the provenance sidecar: how many, and where.
+
+        Where the spikes are is most of the clinical information, so the
+        per-derivation breakdown matters more than the total. `source` is
+        stated explicitly because nothing else in the sidecar distinguishes a
+        reviewer's mark from a model output, and the detector cannot produce
+        these at all.
+        """
+        try:
+            from gui.io.ied_marks import summarise
+            out = summarise(marks)
+        except Exception:                                    # noqa: BLE001
+            out = {'total': len(marks or []), 'per_channel': {}}
+        out['source'] = 'reviewer, not the detector'
+        return out
 
     def _write_export_provenance(self, csv_bi_path, n_events,
                                  exported_scores=None):
@@ -2740,6 +3099,11 @@ class MainWindow(QtWidgets.QMainWindow):
                  'review_note': e.get('review_note')}
                 for e in self._events],
             'windows_not_assessed': self._unscored_count(),
+            # Reviewer-marked interictal discharges. Recorded here as well as
+            # in their own file because the provenance is meant to describe
+            # the whole review session, and "the reviewer marked 40 spikes on
+            # T3-T5" is part of what they did. Explicitly NOT detector output.
+            'interictal_marks': self._ied_summary(self._ied_marks),
         }
         if self._prob_source == 'zuna':
             payload['zuna_npz'] = (

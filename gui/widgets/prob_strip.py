@@ -5,6 +5,8 @@ threshold line, and tick markers for reference (ground-truth) seizures
 so the reviewer sees AI output and truth side-by-side on the same time
 axis."""
 from PyQt5 import QtCore, QtWidgets
+
+from gui.widgets.time_axis import axis_label, make_time_axis
 import pyqtgraph as pg
 import numpy as np
 
@@ -88,7 +90,9 @@ class ProbStrip(QtWidgets.QWidget):
         v = QtWidgets.QVBoxLayout(self)
         v.setContentsMargins(0, 0, 0, 0)
 
-        self._pw = pg.PlotWidget(background='w')
+        self._t_axis = make_time_axis('bottom')
+        self._pw = pg.PlotWidget(background='w',
+                                 axisItems={'bottom': self._t_axis})
         pi = self._pw.getPlotItem()
         # Same reasoning as SignalView: the context menu can turn the score
         # curve into its own FFT, which is meaningless here and unrecoverable
@@ -96,7 +100,7 @@ class ProbStrip(QtWidgets.QWidget):
         pi.setMenuEnabled(False)
         pi.hideButtons()
         self._pw.setMenuEnabled(False)
-        pi.setLabel('bottom', 'time (s)')
+        pi.setLabel('bottom', axis_label(None))
         # Not "p(seiz)": this is a raw softmax output with no post-hoc
         # calibration, so it does not carry the frequentist meaning a
         # probability label implies. Modern networks are systematically
@@ -154,6 +158,13 @@ class ProbStrip(QtWidgets.QWidget):
 
     def plot_item(self):
         return self._pw.getPlotItem()
+
+    def set_start_time(self, start):
+        """Clock time, matching the traces this strip sits under. It is
+        x-linked to them, so an axis in different units would be worse than
+        none at all."""
+        self._t_axis.set_start(start)
+        self._pw.getPlotItem().setLabel('bottom', axis_label(start))
 
     def set_probs(self, window_starts, probs, segment_s=12, skip_code=None,
                   duration_s=None, average=None):

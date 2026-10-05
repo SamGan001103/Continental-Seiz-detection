@@ -45,6 +45,8 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt5 import QtCore, QtWidgets
 
+from gui.widgets.time_axis import make_time_axis
+
 
 class OverviewStrip(QtWidgets.QWidget):
     """Whole-recording score map. Emits `seek_requested(centre_seconds)`."""
@@ -57,7 +59,9 @@ class OverviewStrip(QtWidgets.QWidget):
         v.setContentsMargins(0, 0, 0, 0)
         v.setSpacing(0)
 
-        self._pw = pg.PlotWidget(background='w')
+        self._t_axis = make_time_axis('bottom')
+        self._pw = pg.PlotWidget(background='w',
+                                 axisItems={'bottom': self._t_axis})
         pi = self._pw.getPlotItem()
         pi.setMenuEnabled(False)
         pi.hideButtons()
@@ -75,14 +79,17 @@ class OverviewStrip(QtWidgets.QWidget):
               for level in (0.0, 0.25, 0.5, 0.75, 1.0)]])
         pi.getAxis('left').setWidth(64)
         pi.setLabel('left', 'max score')
-        pi.setLabel('bottom', 'whole recording (s)')
+        pi.setLabel('bottom', 'whole recording')
         pi.showGrid(x=True, y=True, alpha=0.15)
         # Taller than it was: the page-linked strip above it is hidden by
         # default now, and at 96 px a decision curve peaking around 0.3 was
         # only ~30 px of ink — legible, but not something to scan a recording
         # with. This is the widget a reviewer uses to decide where to look.
-        self._pw.setMaximumHeight(260)
-        self._pw.setMinimumHeight(120)
+        # Capped lower than it was (260): the clinician asked for a larger
+        # trace area, and beyond about 200 px this strip is taking height from
+        # the thing being read rather than earning it.
+        self._pw.setMaximumHeight(150)
+        self._pw.setMinimumHeight(90)
         self.setToolTip(
             'The whole recording, however far the page above is zoomed in.\n'
             'Each pixel shows the HIGHEST score in the seconds it covers, not '
@@ -116,6 +123,61 @@ class OverviewStrip(QtWidgets.QWidget):
         self._duration_s = 0.0
         self._suppress = False
         self._pw.scene().sigMouseClicked.connect(self._on_click)
+
+    def set_ied_marks(self, marks):
+        """Reviewer-marked interictal discharges, along the whole recording.
+
+        This is where marking them earns its keep. A tick on the trace says
+        "there is one here", which the reviewer already knew — they just
+        pointed at it. What they cannot see from the trace is the thing the
+        marks are FOR: whether the discharges cluster in the small hours,
+        whether they stop after a medication change, whether there are six in a
+        week or six hundred. Over a 24-hour recording that distribution is the
+        clinical observation, and it only exists at this scale.
+
+        Drawn at the foot of the strip, with the reviewer's own marks in solid
+        amber and a detector's proposals paler and shorter beneath them. The
+        two are never merged into one row of ticks: a proposal is unvalidated
+        on this data and must not read as something a clinician asserted.
+        """
+        pi = self._pw.getPlotItem()
+        for it in getattr(self, '_ied_items', []):
+            pi.removeItem(it)
+        self._ied_items = []
+        mine, proposed = [], []
+        for m in (marks or []):
+            try:
+                t = float(m['time'])
+            except (KeyError, TypeError, ValueError):
+                continue
+            (mine if (m.get('source') or 'reviewer') == 'reviewer'
+             else proposed).append(t)
+        # Proposals sit lower and paler so a dense automatic pass cannot bury
+        # the handful of marks the reviewer actually confirmed.
+        self._add_ticks(pi, proposed, 0.0, 0.04, (230, 170, 60))
+        self._add_ticks(pi, mine, 0.045, 0.115, (200, 120, 0))
+
+    def _add_ticks(self, pi, times, y0, y1, colour):
+        """Every tick in one PlotDataItem, NaN-separated — pyqtgraph paints
+        each item on every frame regardless of whether it is on screen, so an
+        item per mark makes a day's worth of detections cost a redraw."""
+        if not times:
+            return
+        xs = np.repeat(np.asarray(times, dtype=np.float64), 3)
+        ys = np.tile(np.array([y0, y1, np.nan]), len(times))
+        it = pg.PlotDataItem(xs, ys, connect='finite',
+                             pen=pg.mkPen(colour, width=1))
+        it.setZValue(15)
+        pi.addItem(it)
+        self._ied_items.append(it)
+
+    def set_start_time(self, start):
+        """Clock time on the map too, so the reviewer can see that the
+        detector fired at four in the morning rather than at second 48,213."""
+        self._t_axis.set_start(start)
+        self._pw.getPlotItem().setLabel(
+            'bottom', 'whole recording' if start is None
+            else 'whole recording — {}'.format(start.strftime('%d %b %Y')))
 
     # -- data ------------------------------------------------------------
     def plot_item(self):

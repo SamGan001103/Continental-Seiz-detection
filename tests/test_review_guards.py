@@ -290,6 +290,13 @@ class ClosedPanelsCanBeReopened(unittest.TestCase):
             view = [m for m in w.menuBar().actions()
                     if 'View' in m.text()][0].menu()
             act = [a for a in view.actions() if 'Electrode' in a.text()][0]
+            # The dock now starts HIDDEN — it was taking 276 px of width beside
+            # the worklist, and it is a static reference diagram rather than
+            # something a reviewer reads. What this test is about is the round
+            # trip, so open it first and then exercise close-and-reopen; the
+            # default itself is pinned by TheElectrodeMapStartsOutOfTheWay.
+            if not w._head_dock.isVisible():
+                act.trigger()
             self.assertTrue(w._head_dock.isVisible())
             w._head_dock.close()
             self.assertFalse(w._head_dock.isVisible())
@@ -525,3 +532,43 @@ class TheIcaViewIsBounded(unittest.TestCase):
         self.w._display_source()
         self.assertFalse(self.w._ica_capped,
                          'the cap must not bind at normal sweep speeds')
+
+
+@unittest.skipUnless(HAVE_QT, 'PyQt5 not available')
+class TheElectrodeMapStartsOutOfTheWay(unittest.TestCase):
+    """The electrode map is hidden until it is asked for.
+
+    Measured on a loaded recording: the dock held 276 px of width on the right,
+    beside the 340 px worklist, so on a 1920 px screen more than 600 px of the
+    window was showing something other than EEG. It is a static reference —
+    where a derivation sits on the scalp — consulted occasionally and read
+    continuously never, and the user asked twice for more room for the traces.
+
+    Hiding a panel is only safe because the View menu can bring it back and
+    ticks to show its state, which the test above exercises. If that entry ever
+    goes, this default has to go with it.
+    """
+
+    def test_it_is_hidden_when_the_window_opens(self):
+        w = MainWindow()
+        w.show()
+        try:
+            self.assertFalse(
+                w._head_dock.isVisible(),
+                'the electrode map should start hidden; it costs width the '
+                'traces need and is recoverable from the View menu')
+        finally:
+            w.close()
+
+    def test_the_view_menu_still_offers_it(self):
+        """A hidden panel with no menu entry is a deleted panel."""
+        w = MainWindow()
+        w.show()
+        try:
+            view = [m for m in w.menuBar().actions()
+                    if 'View' in m.text()][0].menu()
+            entries = [a for a in view.actions() if 'Electrode' in a.text()]
+            self.assertEqual(len(entries), 1)
+            self.assertTrue(entries[0].isCheckable())
+        finally:
+            w.close()

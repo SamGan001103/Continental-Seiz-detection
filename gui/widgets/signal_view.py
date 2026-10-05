@@ -4,30 +4,18 @@ One pyqtgraph PlotWidget holds all traces at vertical offsets. The
 y-axis is a custom `_ChannelAxis` that labels each row and lets the
 user drag it to rescale sensitivity (like commercial EEG viewers).
 The viewbox uses a gentler wheel-zoom factor for smooth scrolling."""
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 import numpy as np
 
 from gui.processing import decimate_for_display
+from gui.widgets.time_axis import axis_label, format_cursor, make_time_axis
 
 pg.setConfigOptions(antialias=False, useOpenGL=False, background='w',
                     foreground='k')
 
 
 # ---------------------------------------------------------------------- helpers
-
-def fmt_time(t_sec):
-    """Format a time in seconds as [h:]mm:ss.sss for cursor readouts."""
-    if t_sec < 0:
-        t_sec = 0.0
-    h = int(t_sec // 3600)
-    rem = t_sec - h * 3600
-    m = int(rem // 60)
-    s = rem - m * 60
-    if h:
-        return '{:d}:{:02d}:{:06.3f}'.format(h, m, s)
-    return '{:02d}:{:06.3f}'.format(m, s)
-
 
 class TimeCursor:
     """Dashed vertical cursor that follows the mouse X across a pyqtgraph
@@ -82,17 +70,16 @@ _TIME_LBL_STYLE = (
 def _make_time_label():
     """Small monospace QLabel, right-aligned, sits below the plot's time
     axis and shows the hover time."""
-    lbl = QtWidgets.QLabel('t = --:--.---')
+    lbl = QtWidgets.QLabel(format_cursor(None))
     lbl.setStyleSheet(_TIME_LBL_STYLE)
     lbl.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
     return lbl
 
 
-def _update_time_label(lbl, t):
-    if t is None:
-        lbl.setText('t = --:--.---')
-    else:
-        lbl.setText('t = {}'.format(fmt_time(t)))
+def _update_time_label(lbl, t, start=None):
+    """`start` is the recording's start datetime, or None if the header had
+    none — then the readout is elapsed time only, as before."""
+    lbl.setText(format_cursor(t, start))
 
 
 # ---------------------------------------------------------------------- axis
@@ -184,6 +171,13 @@ class _SignalViewBox(pg.ViewBox):
         sy = s if mask[1] else 1.0
         center = self.mapToView(ev.pos())
         self.scaleBy((sx, sy), center=center)
+        # Measured dead end, recorded so it is not tried again: calling
+        # self.updateMatrix() here was supposed to collapse the two scene
+        # repaints a range change produces into one, by doing eagerly what
+        # pyqtgraph defers to `prepareForPaint` inside the paint event. It
+        # changes nothing — 2.00 repaints per tick either way over six
+        # interleaved rounds, rendered frame byte-identical. The repaints come
+        # from somewhere else.
         ev.accept()
 
 
@@ -268,11 +262,16 @@ class SignalView(QtWidgets.QWidget):
         self._ch_axis._sens_of_spacing = lambda: self._sensitivity_uv
 
         vb = _SignalViewBox()
+        # Clock time, not elapsed seconds. See gui/widgets/time_axis.py: on a
+        # day-long recording "48,213 seconds" cannot be matched against a
+        # nursing note or a video review, and 03:22 can.
+        self._t_axis = make_time_axis('bottom')
         self._pw = pg.PlotWidget(viewBox=vb,
-                                 axisItems={'left': self._ch_axis})
+                                 axisItems={'left': self._ch_axis,
+                                            'bottom': self._t_axis})
         pi = self._pw.getPlotItem()
         pi.setMouseEnabled(x=True, y=False)
-        pi.setLabel('bottom', 'time (s)')
+        pi.setLabel('bottom', axis_label(None))
         pi.showGrid(x=True, y=False, alpha=0.2)
         # pyqtgraph's right-click menu is removed, not merely tidied. It
         # offers "Transforms > Power Spectrum (FFT)" and "Log X/Y", each one
@@ -296,9 +295,12 @@ class SignalView(QtWidgets.QWidget):
         self._time_lbl = _make_time_label()
         v.addWidget(self._time_lbl)
 
+        # The start time is read back off the axis rather than kept here too,
+        # so there is one source of truth for when the recording began.
         self._time_cursor = TimeCursor(
             self._pw,
-            on_hover=lambda t: _update_time_label(self._time_lbl, t))
+            on_hover=lambda t: _update_time_label(
+                self._time_lbl, t, self._t_axis.start()))
 
         self._curves = []
         self._ref_items = []
@@ -588,6 +590,160 @@ class SignalView(QtWidgets.QWidget):
             r.setVisible(self._refs_visible)
 
     # ---- annotations the recording itself carries --------------------
+    def channel_names(self):
+        """The derivations currently displayed, in row order."""
+        return list(getattr(self, '_channel_names', []) or [])
+
+    def cursor_time_and_row(self):
+        """(seconds, channel index) under the pointer, or None.
+
+        Marking an interictal discharge is a hover-and-press gesture: the
+        reviewer sees a spike on one derivation and marks it there. That makes
+        the pointer position the input, and a mark without a channel would be
+        useless — where the spikes are is most of the clinical information.
+
+        Read from the live cursor rather than from tracked mouse-move state, so
+        it cannot go stale when the view scrolls under a stationary pointer.
+        """
+        pi = self._pw.getPlotItem()
+        vb = pi.vb if pi is not None else None
+        if vb is None or not getattr(self, '_channel_names', None):
+            return None
+        scene_pos = self._pw.mapToScene(
+            self._pw.mapFromGlobal(QtGui.QCursor.pos()))
+        if not vb.sceneBoundingRect().contains(scene_pos):
+            return None
+        view_pos = vb.mapSceneToView(scene_pos)
+        row = int(round(-view_pos.y() / self._spacing))
+        if not (0 <= row < len(self._channel_names)):
+            return None
+        return float(view_pos.x()), row
+
+    def set_ied_marks(self, marks):
+        """Draw reviewer-marked interictal discharges on their own rows.
+
+        A short tick on the derivation it was seen on, not a band across every
+        channel: an interictal discharge is a per-channel observation, unlike
+        a seizure, which is why it also exports to a different file.
+        """
+        pi = self._pw.getPlotItem()
+        for it in getattr(self, '_ied_items', []):
+            pi.removeItem(it)
+        self._ied_items = []
+        names = {n: i for i, n in enumerate(
+            getattr(self, '_channel_names', []) or [])}
+        half = 0.35 * self._spacing
+
+        # Grouped by row and drawn as ONE item per row, joined by NaN, the way
+        # overview_strip already draws its marks. One PlotDataItem per mark was
+        # fine for the handful a reviewer places by hand; a detector pass over
+        # a day-long recording produces hundreds, and pyqtgraph paints every
+        # item on every frame whether or not it is on screen, so the old shape
+        # taxed every zoom and pan by the size of the whole recording's mark
+        # set. Measured at 29 ms per zoom with 400 marks.
+        per_row = {}
+        proposed = []
+        hidden = 0
+        for m in marks or []:
+            try:
+                t = float(m['time'])
+            except (KeyError, TypeError, ValueError):
+                continue
+            channel = m.get('channel')
+            if not channel:
+                # The detector scores the whole montage and localises nothing,
+                # so its marks have no derivation to sit on. They go in the
+                # lane above the traces rather than being dropped — which is
+                # what the per-row code did to them, silently.
+                proposed.append(t)
+                continue
+            # A montage change renames every derivation: 'Fp1-F7' has no
+            # counterpart in a referential view. Such a mark cannot be drawn,
+            # and the count is reported rather than swallowed so a reviewer
+            # never thinks their marks vanished.
+            row = names.get(channel)
+            if row is None:
+                hidden += 1
+                continue
+            per_row.setdefault(row, []).append(t)
+
+        drawn = 0
+        self._ied_row_items = {}
+        for row, times in per_row.items():
+            y = -row * self._spacing
+            self._ied_row_items[row] = self._add_tick_item(
+                pi, times, y - half, y + half, (200, 120, 0), 2)
+            drawn += len(times)
+        if proposed:
+            # Thinner and paler than a reviewer's own mark, in the head lane:
+            # these are proposals, and must not read as a clinician's
+            # assertion. See gui/io/ied_detect.py on why they are unvalidated.
+            top = 0.30 * self._spacing
+            self._add_tick_item(pi, proposed, top, top + 0.25 * self._spacing,
+                                (230, 170, 60), 1)
+            drawn += len(proposed)
+        self._ied_hidden = hidden
+        return drawn
+
+    def add_ied_mark(self, mark):
+        """Draw ONE new mark without rebuilding the rest.
+
+        Pressing D rebuilt every mark on the recording, so the cost of placing
+        a mark grew with how many you had already placed — the reviewer who
+        had done the most work waited the longest, which is exactly backwards.
+        With a detector's output loaded as well it is hundreds of items rebuilt
+        for one keypress.
+
+        Returns True if it was drawn. False means the mark's derivation is not
+        in the current montage, and the caller should fall back to a full
+        rebuild so the hidden count stays right.
+        """
+        try:
+            t = float(mark['time'])
+        except (KeyError, TypeError, ValueError):
+            return False
+        channel = mark.get('channel')
+        if not channel:
+            return False          # proposals arrive in batches, not one by one
+        names = {n: i for i, n in enumerate(
+            getattr(self, '_channel_names', []) or [])}
+        row = names.get(channel)
+        if row is None:
+            return False
+        item = getattr(self, '_ied_row_items', {}).get(row)
+        if item is None:
+            return False
+        xs, ys = item.getData()
+        half = 0.35 * self._spacing
+        y = -row * self._spacing
+        item.setData(
+            np.concatenate([xs, [t, t, np.nan]]),
+            np.concatenate([ys, [y - half, y + half, np.nan]]),
+            connect='finite')
+        return True
+
+    def _add_tick_item(self, pi, times, y0, y1, colour, width):
+        """One PlotDataItem carrying every tick in a row, NaN-separated."""
+        xs = np.repeat(np.asarray(times, dtype=np.float64), 3)
+        ys = np.tile(np.array([y0, y1, np.nan]), len(times))
+        it = pg.PlotDataItem(xs, ys, connect='finite',
+                             pen=pg.mkPen(colour, width=width))
+        it.setZValue(30)
+        pi.addItem(it)
+        self._ied_items.append(it)
+        return it
+
+    def set_start_time(self, start):
+        """When the recording began, so the x axis can show clock time.
+
+        `start` is a datetime from the EDF header, or None when the header
+        carried no usable date — in which case the axis keeps counting from
+        the beginning of the file, formatted as h:mm:ss rather than raw
+        seconds.
+        """
+        self._t_axis.set_start(start)
+        self._pw.getPlotItem().setLabel('bottom', axis_label(start))
+
     def set_source_annotations(self, items):
         """Markers the technician wrote during the study (EDF+ annotations).
 

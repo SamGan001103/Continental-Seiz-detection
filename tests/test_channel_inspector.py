@@ -26,6 +26,17 @@ import unittest
 
 import numpy as np
 
+
+def _drain_deletions():
+    """Run pending deleteLater destructions to completion, now."""
+    from PyQt5 import QtCore, QtWidgets
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        return
+    app.processEvents()
+    app.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
+    app.processEvents()
+
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if REPO not in sys.path:
     sys.path.insert(0, REPO)
@@ -81,6 +92,12 @@ class ChannelInspectorSpectrumTests(unittest.TestCase):
             channel_idx=3, channel_name='F3', fs=FS, data1d=self.data,
             t=self.t, reference_intervals=[(5.0, 15.0)],
             initial_x_range=(0.0, 30.0))
+        # The panel is OFF by default now, on the reviewing neurologist's
+        # advice ("no need for FFT"). These tests are about what the spectrum
+        # does when it is shown, so they turn it on explicitly rather than
+        # relying on a default that is no longer theirs to assume.
+        # ChannelInspectorSpectrumDefault below pins the default itself.
+        self.insp.chk_spec.setChecked(True)
 
     def tearDown(self):
         self.insp.close()
@@ -172,6 +189,7 @@ class ChannelInspectorSpectrumTests(unittest.TestCase):
         window — so it samples. Sampling silently would be the bad version."""
         data, t = _two_tone(10.0, 10.0, seconds=MAX_SPECTRUM_SECONDS * 3)
         insp = ChannelInspector(0, 'C3', FS, data, t, initial_x_range=(0.0, 30.0))
+        insp.chk_spec.setChecked(True)   # panel is off by default now
         try:
             insp.set_filters(1.0, 70.0, 60.0)
             insp.set_x_range(0.0, MAX_SPECTRUM_SECONDS * 3)
@@ -264,6 +282,7 @@ class ChannelInspectorSpectrumTests(unittest.TestCase):
         data, t = _two_tone(9.0, 9.0, seconds=60.0, fs=100.0)
         insp = ChannelInspector(0, 'O1', 100.0, data, t,
                                 initial_x_range=(0.0, 20.0))
+        insp.chk_spec.setChecked(True)   # panel is off by default now
         try:
             insp.set_filters(1.0, 70.0, 60.0)
             QTest.qWait(SETTLE_MS)
@@ -378,6 +397,7 @@ class DegenerateSpansDoNotBreakTheSpectrum(unittest.TestCase):
         t = np.arange(data.size) / 250.0
         insp = ChannelInspector(0, 'Fp1', 250.0, data, t,
                                 initial_x_range=(0.0, 30.0))
+        insp.chk_spec.setChecked(True)   # see the note in the class above
         insp.set_filters(1.0, 70.0, 60.0)
         return insp
 
@@ -435,3 +455,75 @@ class DegenerateSpansDoNotBreakTheSpectrum(unittest.TestCase):
             insp.refresh_spectrum()
         finally:
             insp.close()
+
+
+class ChannelInspectorSpectrumDefault(unittest.TestCase):
+    """The frequency panel starts hidden, because a clinician asked.
+
+    Armin, the reviewing neurologist, went through the interface and said of
+    the frequency panel: "no need for FFT". Reading a seizure off a trace is a
+    judgement about morphology and evolution, not about spectral content, and
+    a panel a reviewer does not use still costs them screen space and
+    attention on a recording that is days long.
+
+    It is hidden rather than deleted for two reasons. The band powers are
+    genuinely useful for the artefact questions this widget also answers — is
+    that mains hum, is that muscle — and a panel with no way back is the
+    failure the View menu entries in the main window exist to prevent. So the
+    contract this pins is: off when it opens, one click away, and not computed
+    while it is off.
+    """
+
+    def _inspector(self):
+        import numpy as np
+        data, t = _two_tone(10.0, 40.0)
+        insp = ChannelInspector(0, 'Fp1', FS, data, t,
+                                initial_x_range=(0.0, 30.0))
+        # Drain the deferred deletion before the next test runs an event
+        # loop. deleteLater only schedules destruction, so without this the
+        # PREVIOUS inspector is torn down in the middle of a later
+        # QTest.qWait -- and pyqtgraph paints its InfiniteLine while the
+        # ViewBox is already gone, which raises inside Qt's paint and aborts
+        # the whole process. It surfaced only once the suite grew enough for
+        # the timing to line up, and it took out 600 unrelated tests.
+        self.addCleanup(_drain_deletions)
+        self.addCleanup(insp.deleteLater)
+        self.addCleanup(insp.close)
+        del np
+        return insp
+
+    def test_it_is_off_when_the_inspector_opens(self):
+        insp = self._inspector()
+        self.assertFalse(
+            insp.chk_spec.isChecked(),
+            'the frequency panel should start hidden — a reviewing '
+            'neurologist asked for it to be')
+
+    def test_the_panel_is_actually_hidden_not_merely_unticked(self):
+        """The checkbox is set before the panel is built, and setChecked(False)
+        on an already-unchecked box emits nothing, so the handler never ran and
+        the panel was built visible with the box unticked."""
+        insp = self._inspector()
+        insp.show()
+        self.assertFalse(insp._spec_pw.isVisible())
+        for chip in insp._band_chips.values():
+            self.assertFalse(chip.isVisible())
+
+    def test_nothing_is_computed_while_it_is_hidden(self):
+        insp = self._inspector()
+        insp.show()
+        QTest.qWait(SETTLE_MS)
+        self.assertIsNone(
+            insp.current_band_powers(),
+            'the spectrum should not be computed while it is hidden — not '
+            'computing it is half the reason to default it off')
+
+    def test_one_click_brings_it_back_and_it_works(self):
+        insp = self._inspector()
+        insp.show()
+        insp.chk_spec.setChecked(True)
+        QTest.qWait(SETTLE_MS)
+        self.assertTrue(insp._spec_pw.isVisible())
+        powers = insp.current_band_powers()
+        self.assertIsNotNone(powers, 'turning it back on must recompute it')
+        self.assertTrue(len(powers) > 0)
