@@ -47,6 +47,8 @@ and never duplicated; tests/test_display_model_isolation.py holds that line.
 Framework-free: numpy and gui.processing only, so it is testable without Qt
 and — like gui.processing — must never be imported by the model path.
 """
+from collections import OrderedDict
+
 import numpy as np
 
 from gui.processing import (CH_NAMES_19, apply_filters, apply_montage,
@@ -70,8 +72,25 @@ FILTER_PAD_S = 10.0
 # clinical page does not produce a block barely larger than itself. At 250 Hz
 # a 120 s block is 19 ch x 30 000 samples x 4 bytes = 2.3 MB, which is nothing
 # against the ~20 ms per redraw it saves while scrolling.
+#
+# 600 s rather than 120 after measuring a reviewer scrolling a day-long
+# recording a page at a time. The cost of a MISS is what hurts, not the cost of
+# a hit: hits were 34 ms, misses 110-190 ms, and at a 10 s page a 120 s block
+# missed every twelfth step — frequent enough to read as constant lag. Five
+# times the block makes the stall five times rarer, and the memory is still
+# trivial: 600 s is 19 ch x 150 000 samples x 4 bytes = 11 MB. The lazy
+# day-long path pays an extra disk read per refill, measured at 2 ms.
+#
+# The number is deliberately not larger. A miss costs a filter over the whole
+# block, so a very large block trades frequent small stalls for rare long ones,
+# and a rare 1 s freeze is worse to review through than a regular 150 ms one.
 BLOCK_SPAN_FACTOR = 6
-BLOCK_MIN_S = 120.0
+BLOCK_MIN_S = 600.0
+
+# How many wide (decimated) views to remember. A reviewer cycles between
+# a handful of them — the whole recording, the current hour, the current
+# ten minutes — and each entry is only about 122 kB.
+OVERVIEW_CACHE_ENTRIES = 8
 
 
 class SplicedSource(object):
@@ -150,6 +169,7 @@ class DisplayPipeline(object):
         self.n_samples = int(source.shape[1])
         # (key, block_start, block_stop, rows) for the last full-rate block.
         self._block = None
+        self._overview_cache = OrderedDict()
         if montage is None:
             self.labels = list(row_labels if row_labels is not None
                                else CH_NAMES_19[:source.shape[0]])
@@ -236,8 +256,38 @@ class DisplayPipeline(object):
         return rows, b0
 
     def _render_overview(self, s0, s1, target_px):
+        # Cached, because this is the expensive regime and a reviewer returns
+        # to the same wide view constantly: zoom out to find the next event,
+        # zoom in to read it, zoom out again. Measured on a 24-hour recording
+        # before caching, every one of those cost 400-490 ms, identically,
+        # because the strided read walks the whole 1.2 GB file each time.
+        #
+        # Keyed on the request AND the display settings, so changing a filter
+        # or the montage cannot serve a stale picture — the same rule the
+        # full-rate block cache follows. Entries are ~122 kB (19 rows x 1600
+        # points x 4 bytes), so a handful costs about a megabyte.
+        ck = (s0, s1, int(target_px), self.hp, self.lp, self.notch,
+              self.montage, self.fs)
+        hit = self._overview_cache.get(ck)
+        if hit is not None:
+            return hit
+
         stride = max(1, (s1 - s0) // max(1, int(target_px)))
-        raw_ds = self.source[:, s0:s1:stride]
+        # Served from the in-RAM decimated level when there is one. This read
+        # was measured at 96-103% of the whole wide render -- 1.7 s at a two
+        # hour view -- because it walks the span off disk to draw 1600 points.
+        # The level holds every 64th sample of the recording (26 MB for a day)
+        # and makes the same picture a slice of an array.
+        #
+        # It is read off the SOURCE, not held here: this pipeline is rebuilt
+        # whenever a filter, the montage or the sensitivity changes, and a
+        # level rebuilt that often would cost far more than it saves.
+        level = getattr(self.source, 'level', None)
+        if level is not None and level.covers(stride):
+            raw_ds, first, stride = level.slice(s0, s1, stride)
+        else:
+            raw_ds = self.source[:, s0:s1:stride]
+            first = s0
         fs_ds = self.fs / float(stride)
         nyq = 0.5 * fs_ds
         # Cutoffs the decimated rate cannot represent are dropped rather than
@@ -247,8 +297,18 @@ class DisplayPipeline(object):
         hp = self.hp if (self.hp and self.hp < nyq) else None
         filt = apply_filters(raw_ds, fs_ds, hp=hp, lp=lp, notch=notch)
         rows = self._montage(filt)
-        t = (s0 + np.arange(rows.shape[1]) * stride) / float(self.fs)
-        return rows, t.astype(np.float32)
+        # From the index of the first sample actually taken, not from s0: the
+        # level starts on its own stride grid, so assuming s0 would slide the
+        # whole trace sideways by up to one level step.
+        t = (first + np.arange(rows.shape[1]) * stride) / float(self.fs)
+        out = (rows, t.astype(np.float32))
+        # Bounded by insertion order: the oldest wide view is the one the
+        # reviewer is least likely to return to, and an unbounded cache on a
+        # widget that lives as long as the window is a slow leak.
+        if len(self._overview_cache) >= OVERVIEW_CACHE_ENTRIES:
+            self._overview_cache.pop(next(iter(self._overview_cache)))
+        self._overview_cache[ck] = out
+        return out
 
     def channel(self, row, s0, s1):
         """One montage row at full rate over [s0, s1), for the inspector.
