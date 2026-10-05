@@ -34,8 +34,16 @@ Three decisions keep that promise cheap to trust:
 * Workers do preprocessing only. `model.predict` stays in the parent, one
   window at a time, in ascending index order — exactly the serial call
   pattern. Batching windows through predict() would be ~10× less TensorFlow
-  overhead and is deliberately NOT done: a batched matmul may reduce in a
-  different order, and this project does not ship "should be identical".
+  overhead and is deliberately NOT the default: a batched matmul may reduce in
+  a different order, and this project does not ship "should be identical".
+
+  It is now available as an explicit opt-in (`batch_size`), because once the
+  ICA is spread across workers the serial predict() becomes roughly three
+  quarters of what is left, and that matters for the hardware this is meant to
+  run on. Measured per window: 42.3 ms at a batch of one, 7.1 ms at 32, 5.0 ms
+  at 48. The price is a real but tiny divergence — see `batch_size` below for
+  the measured bound. Off by default, so no cache changes unless someone asks
+  for it and records that they did.
 
 * Workers never import TensorFlow. `gui.io.infer` defers that import into
   `_build_model`, so a worker importing this module pays for numpy, MNE and
@@ -98,14 +106,85 @@ def _silence_worker():
     sys.stdout = open(os.devnull, 'w')
 
 
+_WORKER_MODEL = [None]
+
+
+def _score_one(args):
+    """The WHOLE window pipeline in a worker: detect, ICA, STFT, predict.
+
+    The alternative — workers preprocess, parent predicts — puts the two
+    stages in series. The parent spends 43 ms predicting each window, during
+    which it cannot drain the queue and the workers stall, which is why twelve
+    of them bought 1.7x rather than 12x. Threading the parent's predict does
+    not help either: measured, `model.predict` holds the interpreter lock and
+    only 22 % of it overlaps with other Python work.
+
+    So the prediction moves here. Each worker keeps one model, built once and
+    reused for every window it is given, and every call is still a batch of
+    ONE on the same code path — which is what keeps this bit-identical rather
+    than merely close. The cost is a copy of TensorFlow per worker.
+
+    **Measured, and it is SLOWER. Do not turn this on.** On a 91-window
+    recording, against a 314 ms/window serial reference:
+
+        4 workers, predict in parent     118.8 ms/window    2.64x
+        4 workers, predict in workers    160.9 ms/window    1.95x
+        6 workers, predict in workers    151.0 ms/window    2.08x
+
+    All three are bit-identical, so the option is numerically sound and simply
+    does not pay. The reason is thread contention: TensorFlow spawns its own
+    intra-op pool in every process, so four workers each running a model
+    oversubscribe the machine far worse than one parent doing it, and the ICA
+    in those same workers is competing for the same threads. Removing the
+    serialisation cost less than the contention it created.
+
+    Kept, documented and off, so the next person to have this idea can read
+    the number instead of spending an evening on it.
+    """
+    i, seg, fs = args
+    from utils.preprocessing import detect_interupted_data, ica_arti_remove
+    if detect_interupted_data(seg.transpose(), fs):
+        return (i, SKIP_INTERRUPTED, 0.0)
+    proc = ica_arti_remove(seg, fs, CHANNELS_19)
+    if proc is None:
+        return (i, SKIP_ICA_FAILED, 0.0)
+    if _WORKER_MODEL[0] is None:
+        from gui.io.infer import _build_model
+        _WORKER_MODEL[0] = _build_model()
+    x = np.expand_dims(_calc_stft(proc), -1)
+    return (i, SKIP_NONE,
+            float(_WORKER_MODEL[0].predict(x, verbose=0)[0, 1]))
+
+
 def compute_probs_parallel(data, fs, step_s=6, workers=None,
-                           progress_cb=None, model=None):
+                           progress_cb=None, model=None, batch_size=1,
+                           predict_in_workers=False):
     """`compute_probs_from_data`, same numbers, wall-clock divided by ~workers.
 
     Returns ``(window_starts, probs, skip_code)`` with identical dtypes and
     identical values to the serial function. `workers=None` uses cpu_count-2,
     capped at 16 — the parent needs a core for predict(), and past the memory
     bandwidth the extra workers only queue.
+
+    batch_size
+        How many windows to hand `model.predict` at once. **1 is the default
+        and the only value that is bit-identical to the serial loop.**
+
+        Anything larger trades that for speed, and the trade is worth
+        understanding before taking it. Spreading the ICA across workers does
+        not speed up predict(), so once the workers are busy the serial
+        predict becomes roughly three quarters of the remaining cost: at 12
+        workers this module reached only 1.7x, not 12x. Batching addresses
+        exactly that bottleneck — 42.3 ms per window at 1, 7.1 ms at 32,
+        5.0 ms at 48.
+
+        What it costs: a batched matmul reduces in a different order, so the
+        probabilities move. Measured on real windows, batch 32 against batch 1:
+        maximum difference 1.3e-09, and no decision changed at the 0.5
+        threshold. For scale, this project accepts 6.8e-09 between TensorFlow
+        1.15 and 2.21, and measured 0.138 from BLAS thread count alone. So the
+        deviation is small — but it is a deviation, it is opt-in, and a cache
+        built with it is not bit-comparable to one built without it.
     """
     import multiprocessing
 
@@ -171,8 +250,13 @@ def compute_probs_parallel(data, fs, step_s=6, workers=None,
     # rejected here because it drains the whole iterable up front — for a
     # day-long recording that is ~3 GB of queued segments, in the exact
     # scenario this module exists to make tractable.
-    tasks = ((i, data[:, starts[i] * fs:starts[i] * fs + window_len], fs)
-             for i in range(n_full))
+    # np.array on the slice, not the slice itself: `data` may be a memmap (the
+    # parent maps a day-long recording rather than holding 1.5 GB of it), and
+    # a memmap slice pickled to a worker would carry the mapping with it. One
+    # window is 228 KB either way; this just guarantees it is 228 KB of plain
+    # bytes. Same values, same dtype.
+    tasks = ((i, np.array(data[:, starts[i] * fs:starts[i] * fs + window_len]),
+              fs) for i in range(n_full))
 
     done = 0
     # Workers inherit the parent's BLAS threading untouched. DO NOT pin them
@@ -199,14 +283,51 @@ def compute_probs_parallel(data, fs, step_s=6, workers=None,
         # imap (not imap_unordered): results arrive in index order, so
         # predict() runs in ascending order — the serial loop's exact call
         # pattern. Workers stay ahead of the parent by a bounded prefetch.
+        if predict_in_workers:
+            # Whole pipeline per worker: nothing is serialised in the parent,
+            # so the scaling is no longer capped by predict's 43 ms.
+            for i, code, p in pool.imap(_score_one, tasks, chunksize=4):
+                assert i == done, 'imap broke ordering: got %d at %d' % (
+                    i, done)
+                skip_code[i] = code
+                probs[i] = p
+                done += 1
+                if progress_cb is not None:
+                    progress_cb(done, n_full)
+            return np.array(starts, dtype=np.int32), probs, skip_code
+
+        batch_size = max(1, int(batch_size))
+        pending_idx = []
+        pending_x = []
+
+        def _flush():
+            """Score whatever has accumulated. At batch_size 1 this is the
+            original call, unchanged, so the default path is untouched."""
+            if not pending_idx:
+                return
+            if len(pending_idx) == 1:
+                probs[pending_idx[0]] = float(
+                    model.predict(pending_x[0], verbose=0)[0, 1])
+            else:
+                out = model.predict(np.concatenate(pending_x, axis=0),
+                                    batch_size=len(pending_x), verbose=0)
+                for k, idx in enumerate(pending_idx):
+                    probs[idx] = float(out[k, 1])
+            del pending_idx[:]
+            del pending_x[:]
+
         for i, code, x in pool.imap(_preprocess_one, tasks, chunksize=4):
             assert i == done, 'imap broke ordering: got %d at %d' % (i, done)
             skip_code[i] = code
             if code == SKIP_NONE:
-                probs[i] = float(model.predict(x, verbose=0)[0, 1])
+                pending_idx.append(i)
+                pending_x.append(x)
+                if len(pending_idx) >= batch_size:
+                    _flush()
             done += 1
             if progress_cb is not None:
                 progress_cb(done, n_full)
+        _flush()
     finally:
         pool.terminate()
         pool.join()
