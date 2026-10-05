@@ -45,3 +45,43 @@ def load_edf_19ch(path):
     fs = int(round(fs))          # pyedflib returns float; callers slice with it
     duration_s = data.shape[1] / fs
     return data.astype(np.float32), fs, duration_s
+
+
+def read_start_datetime(path):
+    """When the recording began, from the EDF header, or None.
+
+    Every EDF carries a start date and time and this application was reading
+    neither, so the x axis could only ever count seconds. On a day-long
+    recording that is the difference between "48,213 seconds" and "03:22" —
+    and clock time is what every nursing note, video review and clinician's
+    recollection is written in, so it is the only thing the trace can be
+    cross-referenced against.
+
+    Returns None rather than raising: a missing or malformed header date is a
+    reason to fall back to elapsed time, never a reason not to open a
+    recording. Some vendors write a placeholder date (1985-01-01 is the EDF
+    spec's own "unknown"), which is treated as absent.
+    """
+    import datetime
+    try:
+        import pyedflib
+        r = pyedflib.EdfReader(os.path.abspath(path))
+    except Exception:                                        # noqa: BLE001
+        return None
+    try:
+        dt = r.getStartdatetime()
+    except Exception:                                        # noqa: BLE001
+        return None
+    finally:
+        try:
+            r.close()
+        except Exception:                                    # noqa: BLE001
+            pass
+    if not isinstance(dt, datetime.datetime):
+        return None
+    # The EDF spec uses 1985-01-01 as "date unknown", and a year of 1900 or
+    # earlier is a writer that left the field empty. Either way the clock time
+    # may still be real, but the date is not, so do not present it as one.
+    if dt.year <= 1900:
+        return None
+    return dt

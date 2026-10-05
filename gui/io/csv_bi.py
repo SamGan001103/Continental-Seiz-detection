@@ -37,7 +37,7 @@ def read_csv_bi(path):
 
 def write_csv_bi(path, bname, duration_s, events,
                  montage_file='$NEDC_NFC/lib/nedc_eas_default_montage.txt',
-                 ai_source=None):
+                 ai_source=None, start_time=None):
     """Write reviewer-confirmed events in TUSZ csv_bi format.
 
     events    : list of dicts with keys start, stop, label ('seiz'|'bckg'),
@@ -45,11 +45,30 @@ def write_csv_bi(path, bname, duration_s, events,
     ai_source : which probability source the reviewer worked from
                 ('baseline' or 'zuna'). Recorded because a ZUNA-derived review
                 was performed against a reconstructed signal, not original EEG.
+    start_time: when the recording began, as a datetime, written into the
+                header as ISO 8601.
+
+        Event times in this format are seconds from the start of the file, and
+        on a half-hour clip that is fine. On the day-long recordings this tool
+        now targets it is not: "48,213 s" cannot be matched against a nursing
+        note, a video review or a clinician's own recollection, all of which
+        are written in clock time. The recording's start is in the EDF header
+        and nothing was carrying it across into the export, so an event could
+        not be located in the patient's day without the original file to hand.
+
+        It goes in a `#` comment because `read_csv_bi` and NEDC's own tooling
+        skip those, which makes this backward compatible with every file
+        already produced.
     """
     with open(path, 'w') as f:
         f.write('# version = csv_v1.0.0\n')
         f.write('# bname = {}\n'.format(bname))
         f.write('# duration = {:.2f} secs\n'.format(duration_s))
+        if start_time is not None:
+            try:
+                f.write('# start_time = {}\n'.format(start_time.isoformat()))
+            except (AttributeError, ValueError):
+                pass
         f.write('# montage_file = {}\n'.format(montage_file))
         f.write('# tool = {}\n'.format(TOOL_NAME))
         f.write('# status = {}\n'.format(NOT_FOR_CLINICAL_USE))
