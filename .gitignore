@@ -204,3 +204,13 @@ USB_STAGING/
 build_log.txt
 build_modern.log
 regen_shard_*.log
+
+# SpikeNet1 weights: fetched locally by experiments/fetch_spikenet.py, never
+# committed. Upstream states two contradictory licences (CC BY-NC in
+# LICENSE.txt, CC BY-ND in README.md); see models/spikenet1/NOTICE.txt.
+models/spikenet1/
+
+# Frozen PyInstaller build: 1.4 GB, regenerable from source, and one of its
+# bundled DLLs is over GitHub's 100 MB file limit, so a push containing it
+# is rejected outright.
+dist_modern/
