@@ -1,0 +1,1368 @@
+{
+  "edf": "C:\\Users\\User\\Continental-Seiz-detection\\sample_data\\v2.0.0\\edf\\eval\\aaaaaaaq\\s006_2014_08_18\\01_tcp_ar\\aaaaaaaq_s006_t000.edf",
+  "reference_csv_bi": "C:\\Users\\User\\Continental-Seiz-detection\\sample_data\\v2.0.0\\edf\\eval\\aaaaaaaq\\s006_2014_08_18\\01_tcp_ar\\aaaaaaaq_s006_t000.csv_bi",
+  "rows": [
+    {
+      "duration_s": 3337.0,
+      "false_alarms_per_24h": 1553.4911597243033,
+      "false_positive_indexes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "false_positives": 60,
+      "hits": 2,
+      "matches": [
+        {
+          "offset_abs_error_s": 453.09090000000015,
+          "onset_abs_error_s": 21.969700000000103,
+          "overlap_s": 0.0,
+          "pred_index": 36,
+          "ref_index": 0
+        },
+        {
+          "offset_abs_error_s": 11.909099999999853,
+          "onset_abs_error_s": 0.39390000000003056,
+          "overlap_s": 6.090900000000147,
+          "pred_index": 44,
+          "ref_index": 1
+        }
+      ],
+      "max_prob": 0.9695419669151306,
+      "mean_offset_abs_error_s": 232.5,
+      "mean_onset_abs_error_s": 11.181800000000067,
+      "mean_prob": 0.18057645857334137,
+      "missed_reference_indexes": [],
+      "misses": 0,
+      "n_pred": 62,
+      "n_refs": 2,
+      "name": "baseline",
+      "p90_prob": 0.739407229423523,
+      "pred_events": [
+        {
+          "id": 1,
+          "prob": 0.9019269347190857,
+          "source_start": 54.0,
+          "source_stop": 66.0,
+          "start": 54.0,
+          "status": "proposed",
+          "stop": 66.0
+        },
+        {
+          "id": 2,
+          "prob": 0.9695419669151306,
+          "source_start": 102.0,
+          "source_stop": 126.0,
+          "start": 102.0,
+          "status": "proposed",
+          "stop": 126.0
+        },
+        {
+          "id": 3,
+          "prob": 0.9678929448127747,
+          "source_start": 126.0,
+          "source_stop": 144.0,
+          "start": 126.0,
+          "status": "proposed",
+          "stop": 144.0
+        },
+        {
+          "id": 4,
+          "prob": 0.5085903406143188,
+          "source_start": 162.0,
+          "source_stop": 174.0,
+          "start": 162.0,
+          "status": "proposed",
+          "stop": 174.0
+        },
+        {
+          "id": 5,
+          "prob": 0.8423553705215454,
+          "source_start": 192.0,
+          "source_stop": 204.0,
+          "start": 192.0,
+          "status": "proposed",
+          "stop": 204.0
+        },
+        {
+          "id": 6,
+          "prob": 0.9575367569923401,
+          "source_start": 222.0,
+          "source_stop": 240.0,
+          "start": 222.0,
+          "status": "proposed",
+          "stop": 240.0
+        },
+        {
+          "id": 7,
+          "prob": 0.787872314453125,
+          "source_start": 258.0,
+          "source_stop": 276.0,
+          "start": 258.0,
+          "status": "proposed",
+          "stop": 276.0
+        },
+        {
+          "id": 8,
+          "prob": 0.7930622696876526,
+          "source_start": 276.0,
+          "source_stop": 288.0,
+          "start": 276.0,
+          "status": "proposed",
+          "stop": 288.0
+        },
+        {
+          "id": 9,
+          "prob": 0.8745753765106201,
+          "source_start": 306.0,
+          "source_stop": 318.0,
+          "start": 306.0,
+          "status": "proposed",
+          "stop": 318.0
+        },
+        {
+          "id": 10,
+          "prob": 0.9155797958374023,
+          "source_start": 324.0,
+          "source_stop": 336.0,
+          "start": 324.0,
+          "status": "proposed",
+          "stop": 336.0
+        },
+        {
+          "id": 11,
+          "prob": 0.6653010845184326,
+          "source_start": 354.0,
+          "source_stop": 366.0,
+          "start": 354.0,
+          "status": "proposed",
+          "stop": 366.0
+        },
+        {
+          "id": 12,
+          "prob": 0.9121431112289429,
+          "source_start": 426.0,
+          "source_stop": 438.0,
+          "start": 426.0,
+          "status": "proposed",
+          "stop": 438.0
+        },
+        {
+          "id": 13,
+          "prob": 0.9141689538955688,
+          "source_start": 480.0,
+          "source_stop": 498.0,
+          "start": 480.0,
+          "status": "proposed",
+          "stop": 498.0
+        },
+        {
+          "id": 14,
+          "prob": 0.8298288583755493,
+          "source_start": 504.0,
+          "source_stop": 516.0,
+          "start": 504.0,
+          "status": "proposed",
+          "stop": 516.0
+        },
+        {
+          "id": 15,
+          "prob": 0.9680644869804382,
+          "source_start": 552.0,
+          "source_stop": 570.0,
+          "start": 552.0,
+          "status": "proposed",
+          "stop": 570.0
+        },
+        {
+          "id": 16,
+          "prob": 0.8882272243499756,
+          "source_start": 582.0,
+          "source_stop": 594.0,
+          "start": 582.0,
+          "status": "proposed",
+          "stop": 594.0
+        },
+        {
+          "id": 17,
+          "prob": 0.7357468605041504,
+          "source_start": 606.0,
+          "source_stop": 618.0,
+          "start": 606.0,
+          "status": "proposed",
+          "stop": 618.0
+        },
+        {
+          "id": 18,
+          "prob": 0.7226177453994751,
+          "source_start": 618.0,
+          "source_stop": 630.0,
+          "start": 618.0,
+          "status": "proposed",
+          "stop": 630.0
+        },
+        {
+          "id": 19,
+          "prob": 0.6666715145111084,
+          "source_start": 660.0,
+          "source_stop": 672.0,
+          "start": 660.0,
+          "status": "proposed",
+          "stop": 672.0
+        },
+        {
+          "id": 20,
+          "prob": 0.8019180297851562,
+          "source_start": 702.0,
+          "source_stop": 714.0,
+          "start": 702.0,
+          "status": "proposed",
+          "stop": 714.0
+        },
+        {
+          "id": 21,
+          "prob": 0.7964845299720764,
+          "source_start": 846.0,
+          "source_stop": 858.0,
+          "start": 846.0,
+          "status": "proposed",
+          "stop": 858.0
+        },
+        {
+          "id": 22,
+          "prob": 0.9000085592269897,
+          "source_start": 870.0,
+          "source_stop": 882.0,
+          "start": 870.0,
+          "status": "proposed",
+          "stop": 882.0
+        },
+        {
+          "id": 23,
+          "prob": 0.8604404926300049,
+          "source_start": 888.0,
+          "source_stop": 900.0,
+          "start": 888.0,
+          "status": "proposed",
+          "stop": 900.0
+        },
+        {
+          "id": 24,
+          "prob": 0.8637761473655701,
+          "source_start": 912.0,
+          "source_stop": 936.0,
+          "start": 912.0,
+          "status": "proposed",
+          "stop": 936.0
+        },
+        {
+          "id": 25,
+          "prob": 0.9493504762649536,
+          "source_start": 996.0,
+          "source_stop": 1026.0,
+          "start": 996.0,
+          "status": "proposed",
+          "stop": 1026.0
+        },
+        {
+          "id": 26,
+          "prob": 0.5199530124664307,
+          "source_start": 1032.0,
+          "source_stop": 1044.0,
+          "start": 1032.0,
+          "status": "proposed",
+          "stop": 1044.0
+        },
+        {
+          "id": 27,
+          "prob": 0.8182704448699951,
+          "source_start": 1062.0,
+          "source_stop": 1092.0,
+          "start": 1062.0,
+          "status": "proposed",
+          "stop": 1092.0
+        },
+        {
+          "id": 28,
+          "prob": 0.5891366004943848,
+          "source_start": 1092.0,
+          "source_stop": 1104.0,
+          "start": 1092.0,
+          "status": "proposed",
+          "stop": 1104.0
+        },
+        {
+          "id": 29,
+          "prob": 0.9060751795768738,
+          "source_start": 1116.0,
+          "source_stop": 1134.0,
+          "start": 1116.0,
+          "status": "proposed",
+          "stop": 1134.0
+        },
+        {
+          "id": 30,
+          "prob": 0.8576495051383972,
+          "source_start": 1134.0,
+          "source_stop": 1146.0,
+          "start": 1134.0,
+          "status": "proposed",
+          "stop": 1146.0
+        },
+        {
+          "id": 31,
+          "prob": 0.609378457069397,
+          "source_start": 1194.0,
+          "source_stop": 1206.0,
+          "start": 1194.0,
+          "status": "proposed",
+          "stop": 1206.0
+        },
+        {
+          "id": 32,
+          "prob": 0.6658515930175781,
+          "source_start": 1308.0,
+          "source_stop": 1320.0,
+          "start": 1308.0,
+          "status": "proposed",
+          "stop": 1320.0
+        },
+        {
+          "id": 33,
+          "prob": 0.8526288866996765,
+          "source_start": 1326.0,
+          "source_stop": 1338.0,
+          "start": 1326.0,
+          "status": "proposed",
+          "stop": 1338.0
+        },
+        {
+          "id": 34,
+          "prob": 0.6027451753616333,
+          "source_start": 1446.0,
+          "source_stop": 1458.0,
+          "start": 1446.0,
+          "status": "proposed",
+          "stop": 1458.0
+        },
+        {
+          "id": 35,
+          "prob": 0.7818206548690796,
+          "source_start": 1458.0,
+          "source_stop": 1470.0,
+          "start": 1458.0,
+          "status": "proposed",
+          "stop": 1470.0
+        },
+        {
+          "id": 36,
+          "prob": 0.6783031225204468,
+          "source_start": 1560.0,
+          "source_stop": 1572.0,
+          "start": 1560.0,
+          "status": "proposed",
+          "stop": 1572.0
+        },
+        {
+          "id": 37,
+          "prob": 0.8532622456550598,
+          "source_start": 1764.0,
+          "source_stop": 1782.0,
+          "start": 1764.0,
+          "status": "proposed",
+          "stop": 1782.0
+        },
+        {
+          "id": 38,
+          "prob": 0.634577214717865,
+          "source_start": 1842.0,
+          "source_stop": 1854.0,
+          "start": 1842.0,
+          "status": "proposed",
+          "stop": 1854.0
+        },
+        {
+          "id": 39,
+          "prob": 0.5455785393714905,
+          "source_start": 1884.0,
+          "source_stop": 1896.0,
+          "start": 1884.0,
+          "status": "proposed",
+          "stop": 1896.0
+        },
+        {
+          "id": 40,
+          "prob": 0.813938319683075,
+          "source_start": 1914.0,
+          "source_stop": 1932.0,
+          "start": 1914.0,
+          "status": "proposed",
+          "stop": 1932.0
+        },
+        {
+          "id": 41,
+          "prob": 0.8761687874794006,
+          "source_start": 1974.0,
+          "source_stop": 1998.0,
+          "start": 1974.0,
+          "status": "proposed",
+          "stop": 1998.0
+        },
+        {
+          "id": 42,
+          "prob": 0.6483149528503418,
+          "source_start": 2034.0,
+          "source_stop": 2046.0,
+          "start": 2034.0,
+          "status": "proposed",
+          "stop": 2046.0
+        },
+        {
+          "id": 43,
+          "prob": 0.9044957160949707,
+          "source_start": 2118.0,
+          "source_stop": 2130.0,
+          "start": 2118.0,
+          "status": "proposed",
+          "stop": 2130.0
+        },
+        {
+          "id": 44,
+          "prob": 0.9189659357070923,
+          "source_start": 2226.0,
+          "source_stop": 2250.0,
+          "start": 2226.0,
+          "status": "proposed",
+          "stop": 2250.0
+        },
+        {
+          "id": 45,
+          "prob": 0.9642229080200195,
+          "source_start": 2268.0,
+          "source_stop": 2286.0,
+          "start": 2268.0,
+          "status": "proposed",
+          "stop": 2286.0
+        },
+        {
+          "id": 46,
+          "prob": 0.8771985173225403,
+          "source_start": 2286.0,
+          "source_stop": 2304.0,
+          "start": 2286.0,
+          "status": "proposed",
+          "stop": 2304.0
+        },
+        {
+          "id": 47,
+          "prob": 0.8710256218910217,
+          "source_start": 2304.0,
+          "source_stop": 2316.0,
+          "start": 2304.0,
+          "status": "proposed",
+          "stop": 2316.0
+        },
+        {
+          "id": 48,
+          "prob": 0.8482505679130554,
+          "source_start": 2316.0,
+          "source_stop": 2328.0,
+          "start": 2316.0,
+          "status": "proposed",
+          "stop": 2328.0
+        },
+        {
+          "id": 49,
+          "prob": 0.9090882539749146,
+          "source_start": 2346.0,
+          "source_stop": 2364.0,
+          "start": 2346.0,
+          "status": "proposed",
+          "stop": 2364.0
+        },
+        {
+          "id": 50,
+          "prob": 0.8673104047775269,
+          "source_start": 2424.0,
+          "source_stop": 2436.0,
+          "start": 2424.0,
+          "status": "proposed",
+          "stop": 2436.0
+        },
+        {
+          "id": 51,
+          "prob": 0.9653577208518982,
+          "source_start": 2472.0,
+          "source_stop": 2496.0,
+          "start": 2472.0,
+          "status": "proposed",
+          "stop": 2496.0
+        },
+        {
+          "id": 52,
+          "prob": 0.5110307335853577,
+          "source_start": 2508.0,
+          "source_stop": 2520.0,
+          "start": 2508.0,
+          "status": "proposed",
+          "stop": 2520.0
+        },
+        {
+          "id": 53,
+          "prob": 0.5038056969642639,
+          "source_start": 2622.0,
+          "source_stop": 2634.0,
+          "start": 2622.0,
+          "status": "proposed",
+          "stop": 2634.0
+        },
+        {
+          "id": 54,
+          "prob": 0.9435745477676392,
+          "source_start": 2634.0,
+          "source_stop": 2664.0,
+          "start": 2634.0,
+          "status": "proposed",
+          "stop": 2664.0
+        },
+        {
+          "id": 55,
+          "prob": 0.735054612159729,
+          "source_start": 2700.0,
+          "source_stop": 2712.0,
+          "start": 2700.0,
+          "status": "proposed",
+          "stop": 2712.0
+        },
+        {
+          "id": 56,
+          "prob": 0.5835005640983582,
+          "source_start": 2712.0,
+          "source_stop": 2724.0,
+          "start": 2712.0,
+          "status": "proposed",
+          "stop": 2724.0
+        },
+        {
+          "id": 57,
+          "prob": 0.8754718899726868,
+          "source_start": 2754.0,
+          "source_stop": 2772.0,
+          "start": 2754.0,
+          "status": "proposed",
+          "stop": 2772.0
+        },
+        {
+          "id": 58,
+          "prob": 0.7408069372177124,
+          "source_start": 2778.0,
+          "source_stop": 2790.0,
+          "start": 2778.0,
+          "status": "proposed",
+          "stop": 2790.0
+        },
+        {
+          "id": 59,
+          "prob": 0.8033152222633362,
+          "source_start": 2796.0,
+          "source_stop": 2808.0,
+          "start": 2796.0,
+          "status": "proposed",
+          "stop": 2808.0
+        },
+        {
+          "id": 60,
+          "prob": 0.9075963497161865,
+          "source_start": 2952.0,
+          "source_stop": 2964.0,
+          "start": 2952.0,
+          "status": "proposed",
+          "stop": 2964.0
+        },
+        {
+          "id": 61,
+          "prob": 0.7596800923347473,
+          "source_start": 3024.0,
+          "source_stop": 3036.0,
+          "start": 3024.0,
+          "status": "proposed",
+          "stop": 3036.0
+        },
+        {
+          "id": 62,
+          "prob": 0.6613682508468628,
+          "source_start": 3036.0,
+          "source_stop": 3048.0,
+          "start": 3036.0,
+          "status": "proposed",
+          "stop": 3048.0
+        }
+      ],
+      "reference_events": [
+        {
+          "label": "seiz",
+          "start": 1785.9697,
+          "stop": 2235.0909
+        },
+        {
+          "label": "seiz",
+          "start": 2267.6061,
+          "stop": 2274.0909
+        }
+      ],
+      "sensitivity": 1.0,
+      "source": {
+        "meta": {
+          "fs": 250,
+          "segment_s": 12,
+          "step_s": 6,
+          "use_ica": true,
+          "weights": "convlstm_ICA_12_train.h5"
+        },
+        "mode": "EDF sidecar cache",
+        "path": "C:\\Users\\User\\Continental-Seiz-detection\\sample_data\\v2.0.0\\edf\\eval\\aaaaaaaq\\s006_2014_08_18\\01_tcp_ar\\aaaaaaaq_s006_t000.probs.npz"
+      },
+      "threshold": 0.5
+    },
+    {
+      "duration_s": 3337.0,
+      "false_alarms_per_24h": 1553.4911597243033,
+      "false_positive_indexes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "false_positives": 60,
+      "hits": 2,
+      "matches": [
+        {
+          "offset_abs_error_s": 453.09090000000015,
+          "onset_abs_error_s": 21.969700000000103,
+          "overlap_s": 0.0,
+          "pred_index": 36,
+          "ref_index": 0
+        },
+        {
+          "offset_abs_error_s": 11.909099999999853,
+          "onset_abs_error_s": 0.39390000000003056,
+          "overlap_s": 6.090900000000147,
+          "pred_index": 44,
+          "ref_index": 1
+        }
+      ],
+      "max_prob": 0.9695419669151306,
+      "mean_offset_abs_error_s": 232.5,
+      "mean_onset_abs_error_s": 11.181800000000067,
+      "mean_prob": 0.18057645857334137,
+      "missed_reference_indexes": [],
+      "misses": 0,
+      "n_pred": 62,
+      "n_refs": 2,
+      "name": "zuna",
+      "p90_prob": 0.739407229423523,
+      "pred_events": [
+        {
+          "id": 1,
+          "prob": 0.9019269347190857,
+          "source_start": 54.0,
+          "source_stop": 66.0,
+          "start": 54.0,
+          "status": "proposed",
+          "stop": 66.0
+        },
+        {
+          "id": 2,
+          "prob": 0.9695419669151306,
+          "source_start": 102.0,
+          "source_stop": 126.0,
+          "start": 102.0,
+          "status": "proposed",
+          "stop": 126.0
+        },
+        {
+          "id": 3,
+          "prob": 0.9678929448127747,
+          "source_start": 126.0,
+          "source_stop": 144.0,
+          "start": 126.0,
+          "status": "proposed",
+          "stop": 144.0
+        },
+        {
+          "id": 4,
+          "prob": 0.5085903406143188,
+          "source_start": 162.0,
+          "source_stop": 174.0,
+          "start": 162.0,
+          "status": "proposed",
+          "stop": 174.0
+        },
+        {
+          "id": 5,
+          "prob": 0.8423553705215454,
+          "source_start": 192.0,
+          "source_stop": 204.0,
+          "start": 192.0,
+          "status": "proposed",
+          "stop": 204.0
+        },
+        {
+          "id": 6,
+          "prob": 0.9575367569923401,
+          "source_start": 222.0,
+          "source_stop": 240.0,
+          "start": 222.0,
+          "status": "proposed",
+          "stop": 240.0
+        },
+        {
+          "id": 7,
+          "prob": 0.787872314453125,
+          "source_start": 258.0,
+          "source_stop": 276.0,
+          "start": 258.0,
+          "status": "proposed",
+          "stop": 276.0
+        },
+        {
+          "id": 8,
+          "prob": 0.7930622696876526,
+          "source_start": 276.0,
+          "source_stop": 288.0,
+          "start": 276.0,
+          "status": "proposed",
+          "stop": 288.0
+        },
+        {
+          "id": 9,
+          "prob": 0.8745753765106201,
+          "source_start": 306.0,
+          "source_stop": 318.0,
+          "start": 306.0,
+          "status": "proposed",
+          "stop": 318.0
+        },
+        {
+          "id": 10,
+          "prob": 0.9155797958374023,
+          "source_start": 324.0,
+          "source_stop": 336.0,
+          "start": 324.0,
+          "status": "proposed",
+          "stop": 336.0
+        },
+        {
+          "id": 11,
+          "prob": 0.6653010845184326,
+          "source_start": 354.0,
+          "source_stop": 366.0,
+          "start": 354.0,
+          "status": "proposed",
+          "stop": 366.0
+        },
+        {
+          "id": 12,
+          "prob": 0.9121431112289429,
+          "source_start": 426.0,
+          "source_stop": 438.0,
+          "start": 426.0,
+          "status": "proposed",
+          "stop": 438.0
+        },
+        {
+          "id": 13,
+          "prob": 0.9141689538955688,
+          "source_start": 480.0,
+          "source_stop": 498.0,
+          "start": 480.0,
+          "status": "proposed",
+          "stop": 498.0
+        },
+        {
+          "id": 14,
+          "prob": 0.8298288583755493,
+          "source_start": 504.0,
+          "source_stop": 516.0,
+          "start": 504.0,
+          "status": "proposed",
+          "stop": 516.0
+        },
+        {
+          "id": 15,
+          "prob": 0.9680644869804382,
+          "source_start": 552.0,
+          "source_stop": 570.0,
+          "start": 552.0,
+          "status": "proposed",
+          "stop": 570.0
+        },
+        {
+          "id": 16,
+          "prob": 0.8882272243499756,
+          "source_start": 582.0,
+          "source_stop": 594.0,
+          "start": 582.0,
+          "status": "proposed",
+          "stop": 594.0
+        },
+        {
+          "id": 17,
+          "prob": 0.7357468605041504,
+          "source_start": 606.0,
+          "source_stop": 618.0,
+          "start": 606.0,
+          "status": "proposed",
+          "stop": 618.0
+        },
+        {
+          "id": 18,
+          "prob": 0.7226177453994751,
+          "source_start": 618.0,
+          "source_stop": 630.0,
+          "start": 618.0,
+          "status": "proposed",
+          "stop": 630.0
+        },
+        {
+          "id": 19,
+          "prob": 0.6666715145111084,
+          "source_start": 660.0,
+          "source_stop": 672.0,
+          "start": 660.0,
+          "status": "proposed",
+          "stop": 672.0
+        },
+        {
+          "id": 20,
+          "prob": 0.8019180297851562,
+          "source_start": 702.0,
+          "source_stop": 714.0,
+          "start": 702.0,
+          "status": "proposed",
+          "stop": 714.0
+        },
+        {
+          "id": 21,
+          "prob": 0.7964845299720764,
+          "source_start": 846.0,
+          "source_stop": 858.0,
+          "start": 846.0,
+          "status": "proposed",
+          "stop": 858.0
+        },
+        {
+          "id": 22,
+          "prob": 0.9000085592269897,
+          "source_start": 870.0,
+          "source_stop": 882.0,
+          "start": 870.0,
+          "status": "proposed",
+          "stop": 882.0
+        },
+        {
+          "id": 23,
+          "prob": 0.8604404926300049,
+          "source_start": 888.0,
+          "source_stop": 900.0,
+          "start": 888.0,
+          "status": "proposed",
+          "stop": 900.0
+        },
+        {
+          "id": 24,
+          "prob": 0.8637761473655701,
+          "source_start": 912.0,
+          "source_stop": 936.0,
+          "start": 912.0,
+          "status": "proposed",
+          "stop": 936.0
+        },
+        {
+          "id": 25,
+          "prob": 0.9493504762649536,
+          "source_start": 996.0,
+          "source_stop": 1026.0,
+          "start": 996.0,
+          "status": "proposed",
+          "stop": 1026.0
+        },
+        {
+          "id": 26,
+          "prob": 0.5199530124664307,
+          "source_start": 1032.0,
+          "source_stop": 1044.0,
+          "start": 1032.0,
+          "status": "proposed",
+          "stop": 1044.0
+        },
+        {
+          "id": 27,
+          "prob": 0.8182704448699951,
+          "source_start": 1062.0,
+          "source_stop": 1092.0,
+          "start": 1062.0,
+          "status": "proposed",
+          "stop": 1092.0
+        },
+        {
+          "id": 28,
+          "prob": 0.5891366004943848,
+          "source_start": 1092.0,
+          "source_stop": 1104.0,
+          "start": 1092.0,
+          "status": "proposed",
+          "stop": 1104.0
+        },
+        {
+          "id": 29,
+          "prob": 0.9060751795768738,
+          "source_start": 1116.0,
+          "source_stop": 1134.0,
+          "start": 1116.0,
+          "status": "proposed",
+          "stop": 1134.0
+        },
+        {
+          "id": 30,
+          "prob": 0.8576495051383972,
+          "source_start": 1134.0,
+          "source_stop": 1146.0,
+          "start": 1134.0,
+          "status": "proposed",
+          "stop": 1146.0
+        },
+        {
+          "id": 31,
+          "prob": 0.609378457069397,
+          "source_start": 1194.0,
+          "source_stop": 1206.0,
+          "start": 1194.0,
+          "status": "proposed",
+          "stop": 1206.0
+        },
+        {
+          "id": 32,
+          "prob": 0.6658515930175781,
+          "source_start": 1308.0,
+          "source_stop": 1320.0,
+          "start": 1308.0,
+          "status": "proposed",
+          "stop": 1320.0
+        },
+        {
+          "id": 33,
+          "prob": 0.8526288866996765,
+          "source_start": 1326.0,
+          "source_stop": 1338.0,
+          "start": 1326.0,
+          "status": "proposed",
+          "stop": 1338.0
+        },
+        {
+          "id": 34,
+          "prob": 0.6027451753616333,
+          "source_start": 1446.0,
+          "source_stop": 1458.0,
+          "start": 1446.0,
+          "status": "proposed",
+          "stop": 1458.0
+        },
+        {
+          "id": 35,
+          "prob": 0.7818206548690796,
+          "source_start": 1458.0,
+          "source_stop": 1470.0,
+          "start": 1458.0,
+          "status": "proposed",
+          "stop": 1470.0
+        },
+        {
+          "id": 36,
+          "prob": 0.6783031225204468,
+          "source_start": 1560.0,
+          "source_stop": 1572.0,
+          "start": 1560.0,
+          "status": "proposed",
+          "stop": 1572.0
+        },
+        {
+          "id": 37,
+          "prob": 0.8532622456550598,
+          "source_start": 1764.0,
+          "source_stop": 1782.0,
+          "start": 1764.0,
+          "status": "proposed",
+          "stop": 1782.0
+        },
+        {
+          "id": 38,
+          "prob": 0.634577214717865,
+          "source_start": 1842.0,
+          "source_stop": 1854.0,
+          "start": 1842.0,
+          "status": "proposed",
+          "stop": 1854.0
+        },
+        {
+          "id": 39,
+          "prob": 0.5455785393714905,
+          "source_start": 1884.0,
+          "source_stop": 1896.0,
+          "start": 1884.0,
+          "status": "proposed",
+          "stop": 1896.0
+        },
+        {
+          "id": 40,
+          "prob": 0.813938319683075,
+          "source_start": 1914.0,
+          "source_stop": 1932.0,
+          "start": 1914.0,
+          "status": "proposed",
+          "stop": 1932.0
+        },
+        {
+          "id": 41,
+          "prob": 0.8761687874794006,
+          "source_start": 1974.0,
+          "source_stop": 1998.0,
+          "start": 1974.0,
+          "status": "proposed",
+          "stop": 1998.0
+        },
+        {
+          "id": 42,
+          "prob": 0.6483149528503418,
+          "source_start": 2034.0,
+          "source_stop": 2046.0,
+          "start": 2034.0,
+          "status": "proposed",
+          "stop": 2046.0
+        },
+        {
+          "id": 43,
+          "prob": 0.9044957160949707,
+          "source_start": 2118.0,
+          "source_stop": 2130.0,
+          "start": 2118.0,
+          "status": "proposed",
+          "stop": 2130.0
+        },
+        {
+          "id": 44,
+          "prob": 0.9189659357070923,
+          "source_start": 2226.0,
+          "source_stop": 2250.0,
+          "start": 2226.0,
+          "status": "proposed",
+          "stop": 2250.0
+        },
+        {
+          "id": 45,
+          "prob": 0.9642229080200195,
+          "source_start": 2268.0,
+          "source_stop": 2286.0,
+          "start": 2268.0,
+          "status": "proposed",
+          "stop": 2286.0
+        },
+        {
+          "id": 46,
+          "prob": 0.8771985173225403,
+          "source_start": 2286.0,
+          "source_stop": 2304.0,
+          "start": 2286.0,
+          "status": "proposed",
+          "stop": 2304.0
+        },
+        {
+          "id": 47,
+          "prob": 0.8710256218910217,
+          "source_start": 2304.0,
+          "source_stop": 2316.0,
+          "start": 2304.0,
+          "status": "proposed",
+          "stop": 2316.0
+        },
+        {
+          "id": 48,
+          "prob": 0.8482505679130554,
+          "source_start": 2316.0,
+          "source_stop": 2328.0,
+          "start": 2316.0,
+          "status": "proposed",
+          "stop": 2328.0
+        },
+        {
+          "id": 49,
+          "prob": 0.9090882539749146,
+          "source_start": 2346.0,
+          "source_stop": 2364.0,
+          "start": 2346.0,
+          "status": "proposed",
+          "stop": 2364.0
+        },
+        {
+          "id": 50,
+          "prob": 0.8673104047775269,
+          "source_start": 2424.0,
+          "source_stop": 2436.0,
+          "start": 2424.0,
+          "status": "proposed",
+          "stop": 2436.0
+        },
+        {
+          "id": 51,
+          "prob": 0.9653577208518982,
+          "source_start": 2472.0,
+          "source_stop": 2496.0,
+          "start": 2472.0,
+          "status": "proposed",
+          "stop": 2496.0
+        },
+        {
+          "id": 52,
+          "prob": 0.5110307335853577,
+          "source_start": 2508.0,
+          "source_stop": 2520.0,
+          "start": 2508.0,
+          "status": "proposed",
+          "stop": 2520.0
+        },
+        {
+          "id": 53,
+          "prob": 0.5038056969642639,
+          "source_start": 2622.0,
+          "source_stop": 2634.0,
+          "start": 2622.0,
+          "status": "proposed",
+          "stop": 2634.0
+        },
+        {
+          "id": 54,
+          "prob": 0.9435745477676392,
+          "source_start": 2634.0,
+          "source_stop": 2664.0,
+          "start": 2634.0,
+          "status": "proposed",
+          "stop": 2664.0
+        },
+        {
+          "id": 55,
+          "prob": 0.735054612159729,
+          "source_start": 2700.0,
+          "source_stop": 2712.0,
+          "start": 2700.0,
+          "status": "proposed",
+          "stop": 2712.0
+        },
+        {
+          "id": 56,
+          "prob": 0.5835005640983582,
+          "source_start": 2712.0,
+          "source_stop": 2724.0,
+          "start": 2712.0,
+          "status": "proposed",
+          "stop": 2724.0
+        },
+        {
+          "id": 57,
+          "prob": 0.8754718899726868,
+          "source_start": 2754.0,
+          "source_stop": 2772.0,
+          "start": 2754.0,
+          "status": "proposed",
+          "stop": 2772.0
+        },
+        {
+          "id": 58,
+          "prob": 0.7408069372177124,
+          "source_start": 2778.0,
+          "source_stop": 2790.0,
+          "start": 2778.0,
+          "status": "proposed",
+          "stop": 2790.0
+        },
+        {
+          "id": 59,
+          "prob": 0.8033152222633362,
+          "source_start": 2796.0,
+          "source_stop": 2808.0,
+          "start": 2796.0,
+          "status": "proposed",
+          "stop": 2808.0
+        },
+        {
+          "id": 60,
+          "prob": 0.9075963497161865,
+          "source_start": 2952.0,
+          "source_stop": 2964.0,
+          "start": 2952.0,
+          "status": "proposed",
+          "stop": 2964.0
+        },
+        {
+          "id": 61,
+          "prob": 0.7596800923347473,
+          "source_start": 3024.0,
+          "source_stop": 3036.0,
+          "start": 3024.0,
+          "status": "proposed",
+          "stop": 3036.0
+        },
+        {
+          "id": 62,
+          "prob": 0.6613682508468628,
+          "source_start": 3036.0,
+          "source_stop": 3048.0,
+          "start": 3036.0,
+          "status": "proposed",
+          "stop": 3048.0
+        }
+      ],
+      "reference_events": [
+        {
+          "label": "seiz",
+          "start": 1785.9697,
+          "stop": 2235.0909
+        },
+        {
+          "label": "seiz",
+          "start": 2267.6061,
+          "stop": 2274.0909
+        }
+      ],
+      "sensitivity": 1.0,
+      "source": {
+        "meta": {
+          "fs": 250,
+          "segment_s": 12,
+          "step_s": 6,
+          "use_ica": true,
+          "weights": "convlstm_ICA_12_train.h5"
+        },
+        "mode": "probability file",
+        "path": "sample_data\\v2.0.0\\edf\\eval\\aaaaaaaq\\s006_2014_08_18\\01_tcp_ar\\aaaaaaaq_s006_t000.probs.npz"
+      },
+      "threshold": 0.5
+    }
+  ],
+  "segment_s": 12,
+  "step_s": 6,
+  "threshold": 0.5,
+  "tolerance_s": 5.0
+}

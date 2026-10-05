@@ -1,0 +1,115 @@
+{
+  "edf": "C:\\Users\\User\\Continental-Seiz-detection\\sample_data\\v2.0.0\\edf\\eval\\aaaaaarq\\s016_2014_06_28\\01_tcp_ar\\aaaaaarq_s016_t002.edf",
+  "reference_csv_bi": "C:\\Users\\User\\Continental-Seiz-detection\\sample_data\\v2.0.0\\edf\\eval\\aaaaaarq\\s016_2014_06_28\\01_tcp_ar\\aaaaaarq_s016_t002.csv_bi",
+  "rows": [
+    {
+      "duration_s": 300.0,
+      "false_alarms_per_24h": 0.0,
+      "false_positive_indexes": [],
+      "false_positives": 0,
+      "hits": 0,
+      "matches": [],
+      "max_prob": 0.0345708392560482,
+      "mean_offset_abs_error_s": null,
+      "mean_onset_abs_error_s": null,
+      "mean_prob": 0.002738724462687969,
+      "missed_reference_indexes": [
+        0,
+        1,
+        2
+      ],
+      "misses": 3,
+      "n_pred": 0,
+      "n_refs": 3,
+      "name": "baseline",
+      "p90_prob": 0.0035993307828903354,
+      "pred_events": [],
+      "reference_events": [
+        {
+          "label": "seiz",
+          "start": 131.9976,
+          "stop": 146.5264
+        },
+        {
+          "label": "seiz",
+          "start": 160.0119,
+          "stop": 178.9804
+        },
+        {
+          "label": "seiz",
+          "start": 275.013,
+          "stop": 279.3995
+        }
+      ],
+      "sensitivity": 0.0,
+      "source": {
+        "meta": {
+          "segment_s": 12,
+          "step_s": 6,
+          "use_ica": true
+        },
+        "mode": "computed in 14.4s",
+        "path": "C:\\Users\\User\\Continental-Seiz-detection\\sample_data\\v2.0.0\\edf\\eval\\aaaaaarq\\s016_2014_06_28\\01_tcp_ar\\aaaaaarq_s016_t002.edf"
+      },
+      "threshold": 0.5
+    },
+    {
+      "duration_s": 300.0,
+      "false_alarms_per_24h": 0.0,
+      "false_positive_indexes": [],
+      "false_positives": 0,
+      "hits": 0,
+      "matches": [],
+      "max_prob": 0.05403485521674156,
+      "mean_offset_abs_error_s": null,
+      "mean_onset_abs_error_s": null,
+      "mean_prob": 0.0018627513200044632,
+      "missed_reference_indexes": [
+        0,
+        1,
+        2
+      ],
+      "misses": 3,
+      "n_pred": 0,
+      "n_refs": 3,
+      "name": "zuna",
+      "p90_prob": 0.002146616950631143,
+      "pred_events": [],
+      "reference_events": [
+        {
+          "label": "seiz",
+          "start": 131.9976,
+          "stop": 146.5264
+        },
+        {
+          "label": "seiz",
+          "start": 160.0119,
+          "stop": 178.9804
+        },
+        {
+          "label": "seiz",
+          "start": 275.013,
+          "stop": 279.3995
+        }
+      ],
+      "sensitivity": 0.0,
+      "source": {
+        "meta": {
+          "duration_s": 300.0,
+          "fs": 250,
+          "segment_s": 12,
+          "source_npz": "artifacts\\zuna_thesis\\npz\\aaaaaarq_s016_t002.zuna_19ch.npz",
+          "step_s": 6,
+          "use_ica": true
+        },
+        "mode": "computed in 12.5s",
+        "path": "artifacts\\zuna_thesis\\npz\\aaaaaarq_s016_t002.zuna_19ch.npz"
+      },
+      "threshold": 0.5
+    }
+  ],
+  "segment_s": 12,
+  "step_s": 6,
+  "threshold": 0.5,
+  "tolerance_s": 5.0
+}

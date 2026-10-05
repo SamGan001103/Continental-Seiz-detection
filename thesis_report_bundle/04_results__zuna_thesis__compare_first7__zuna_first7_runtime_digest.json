@@ -1,0 +1,33 @@
+{
+  "baseline": {
+    "duration_s": 1203.0,
+    "false_alarms_per_24h": 430.92269326683294,
+    "false_positives": 6,
+    "hits": 5,
+    "misses": 4,
+    "n_files": 7,
+    "n_pred": 11,
+    "n_refs": 9,
+    "sensitivity": 0.5555555555555556
+  },
+  "completed_eeg_duration_hms": "20m 03s",
+  "completed_eeg_duration_s": 1203.0,
+  "files_completed_in_report": 7,
+  "peak_completed_rss_gib": 41.25850296020508,
+  "slowdown_vs_eeg_duration": 6.055694098088113,
+  "zuna": {
+    "duration_s": 1203.0,
+    "false_alarms_per_24h": 287.28179551122196,
+    "false_positives": 4,
+    "hits": 6,
+    "misses": 3,
+    "n_files": 7,
+    "n_pred": 10,
+    "n_refs": 9,
+    "sensitivity": 0.6666666666666666
+  },
+  "zuna_vm_end_to_end_hms_run_begin_to_7th_export": "2h 01m 33s",
+  "zuna_vm_end_to_end_s_run_begin_to_7th_export": 7293,
+  "zuna_vm_inference_runtime_hms": "2h 01m 25s",
+  "zuna_vm_inference_runtime_s_sum": 7285
+}

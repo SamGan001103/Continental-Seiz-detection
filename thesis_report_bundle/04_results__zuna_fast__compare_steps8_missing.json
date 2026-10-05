@@ -1,0 +1,2712 @@
+{
+  "aggregate": {
+    "baseline": {
+      "duration_s": 6038.0,
+      "false_alarms_per_24h": 257.56873136800266,
+      "false_positives": 18,
+      "hits": 7,
+      "misses": 17,
+      "n_files": 26,
+      "n_pred": 25,
+      "n_refs": 24,
+      "sensitivity": 0.2916666666666667
+    },
+    "fast_zuna": {
+      "duration_s": 6038.0,
+      "false_alarms_per_24h": 0.0,
+      "false_positives": 0,
+      "hits": 0,
+      "misses": 24,
+      "n_files": 26,
+      "n_pred": 0,
+      "n_refs": 24,
+      "sensitivity": 0.0
+    }
+  },
+  "allow_missing": true,
+  "candidate_manifest": "C:\\Users\\User\\Continental-Seiz-detection\\artifacts\\zuna_fast\\candidate_manifest.csv",
+  "missing": [
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaamc_s013_t001_z001_000000_000042.zuna_19ch.npz",
+      "stem": "aaaaaamc_s013_t001_z001_000000_000042"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaarq_s016_t001_z001_000240_000300.zuna_19ch.npz",
+      "stem": "aaaaaarq_s016_t001_z001_000240_000300"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaarq_s016_t002_z001_000138_000210.zuna_19ch.npz",
+      "stem": "aaaaaarq_s016_t002_z001_000138_000210"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaarq_s016_t003_z001_000096_000258.zuna_19ch.npz",
+      "stem": "aaaaaarq_s016_t003_z001_000096_000258"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaarq_s016_t007_z001_000042_000114.zuna_19ch.npz",
+      "stem": "aaaaaarq_s016_t007_z001_000042_000114"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaarq_s017_t000_z001_000234_000300.zuna_19ch.npz",
+      "stem": "aaaaaarq_s017_t000_z001_000234_000300"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaarq_s018_t000_z001_000000_000180.zuna_19ch.npz",
+      "stem": "aaaaaarq_s018_t000_z001_000000_000180"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaarq_s018_t000_z002_000168_000192.zuna_19ch.npz",
+      "stem": "aaaaaarq_s018_t000_z002_000168_000192"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaarq_s018_t000_z003_000222_000294.zuna_19ch.npz",
+      "stem": "aaaaaarq_s018_t000_z003_000222_000294"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaghb_s010_t000_z001_000060_000132.zuna_19ch.npz",
+      "stem": "aaaaaghb_s010_t000_z001_000060_000132"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaahlk_s007_t000_z001_000162_000234.zuna_19ch.npz",
+      "stem": "aaaaahlk_s007_t000_z001_000162_000234"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaahlk_s008_t007_z001_000252_000300.zuna_19ch.npz",
+      "stem": "aaaaahlk_s008_t007_z001_000252_000300"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaahlk_s009_t000_z001_000108_000180.zuna_19ch.npz",
+      "stem": "aaaaahlk_s009_t000_z001_000108_000180"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaahlk_s009_t003_z001_000006_000078.zuna_19ch.npz",
+      "stem": "aaaaahlk_s009_t003_z001_000006_000078"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaahsi_s014_t000_z001_000066_000174.zuna_19ch.npz",
+      "stem": "aaaaahsi_s014_t000_z001_000066_000174"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaiih_s006_t007_z001_000012_000084.zuna_19ch.npz",
+      "stem": "aaaaaiih_s006_t007_z001_000012_000084"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaajru_s031_t002_z001_000000_000180.zuna_19ch.npz",
+      "stem": "aaaaajru_s031_t002_z001_000000_000180"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaajru_s031_t002_z002_000168_000300.zuna_19ch.npz",
+      "stem": "aaaaajru_s031_t002_z002_000168_000300"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaqek_s008_t005_z001_000036_000108.zuna_19ch.npz",
+      "stem": "aaaaaqek_s008_t005_z001_000036_000108"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaqtw_s002_t001_z001_000000_000108.zuna_19ch.npz",
+      "stem": "aaaaaqtw_s002_t001_z001_000000_000108"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaqtw_s002_t006_z001_000000_000060.zuna_19ch.npz",
+      "stem": "aaaaaqtw_s002_t006_z001_000000_000060"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaqtw_s002_t006_z002_000096_000168.zuna_19ch.npz",
+      "stem": "aaaaaqtw_s002_t006_z002_000096_000168"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaqtw_s002_t006_z003_000234_000276.zuna_19ch.npz",
+      "stem": "aaaaaqtw_s002_t006_z003_000234_000276"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaqtw_s002_t012_z001_000258_000300.zuna_19ch.npz",
+      "stem": "aaaaaqtw_s002_t012_z001_000258_000300"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaraf_s002_t000_z001_000030_000132.zuna_19ch.npz",
+      "stem": "aaaaaraf_s002_t000_z001_000030_000132"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaraf_s003_t007_z001_000000_000054.zuna_19ch.npz",
+      "stem": "aaaaaraf_s003_t007_z001_000000_000054"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaraf_s004_t000_z001_000096_000264.zuna_19ch.npz",
+      "stem": "aaaaaraf_s004_t000_z001_000096_000264"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaaraf_s006_t002_z001_000066_000138.zuna_19ch.npz",
+      "stem": "aaaaaraf_s006_t002_z001_000066_000138"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaardf_s005_t002_z001_000066_000138.zuna_19ch.npz",
+      "stem": "aaaaardf_s005_t002_z001_000066_000138"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaatao_s003_t000_z001_000006_000108.zuna_19ch.npz",
+      "stem": "aaaaatao_s003_t000_z001_000006_000108"
+    },
+    {
+      "path": "artifacts\\zuna_fast\\npz_steps8\\aaaaatao_s003_t001_z001_000000_000057.zuna_19ch.npz",
+      "stem": "aaaaatao_s003_t001_z001_000000_000057"
+    }
+  ],
+  "results": [
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaamc/s013_2015_07_01/01_tcp_ar/aaaaaamc_s013_t001.edf",
+      "rows": [
+        {
+          "duration_s": 107.0,
+          "false_alarms_per_24h": 807.4766355140187,
+          "false_positive_indexes": [
+            0
+          ],
+          "false_positives": 1,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.6186774373054504,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.051943279802799225,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 1,
+          "n_refs": 0,
+          "name": "baseline",
+          "p90_prob": 0.08148893341422081,
+          "pred_events": [
+            {
+              "id": 1,
+              "prob": 0.6186774373054504,
+              "source_start": 0.0,
+              "source_stop": 12.0,
+              "start": 0.0,
+              "status": "proposed",
+              "stop": 12.0
+            }
+          ],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaamc/s013_2015_07_01/01_tcp_ar/aaaaaamc_s013_t001.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 107.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaamc_s013_t001"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaarq/s016_2014_06_28/01_tcp_ar/aaaaaarq_s016_t001.edf",
+      "rows": [
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.02007361315190792,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.001052673440426588,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "baseline",
+          "p90_prob": 0.001808271510526539,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaarq/s016_2014_06_28/01_tcp_ar/aaaaaarq_s016_t001.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaarq_s016_t001"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaarq/s016_2014_06_28/01_tcp_ar/aaaaaarq_s016_t002.edf",
+      "rows": [
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.0345708392560482,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.002738724462687969,
+          "missed_reference_indexes": [
+            0,
+            1,
+            2
+          ],
+          "misses": 3,
+          "n_pred": 0,
+          "n_refs": 3,
+          "name": "baseline",
+          "p90_prob": 0.0035993307828903354,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 131.9976,
+              "stop": 146.5264
+            },
+            {
+              "label": "seiz",
+              "start": 160.0119,
+              "stop": 178.9804
+            },
+            {
+              "label": "seiz",
+              "start": 275.013,
+              "stop": 279.3995
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaarq/s016_2014_06_28/01_tcp_ar/aaaaaarq_s016_t002.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [
+            0,
+            1,
+            2
+          ],
+          "misses": 3,
+          "n_pred": 0,
+          "n_refs": 3,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 131.9976,
+              "stop": 146.5264
+            },
+            {
+              "label": "seiz",
+              "start": 160.0119,
+              "stop": 178.9804
+            },
+            {
+              "label": "seiz",
+              "start": 275.013,
+              "stop": 279.3995
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaarq_s016_t002"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaarq/s016_2014_06_28/01_tcp_ar/aaaaaarq_s016_t003.edf",
+      "rows": [
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 576.0,
+          "false_positive_indexes": [
+            0,
+            1
+          ],
+          "false_positives": 2,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.9571300148963928,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.0787992775440216,
+          "missed_reference_indexes": [
+            0,
+            1,
+            2
+          ],
+          "misses": 3,
+          "n_pred": 2,
+          "n_refs": 3,
+          "name": "baseline",
+          "p90_prob": 0.21429016292095185,
+          "pred_events": [
+            {
+              "id": 1,
+              "prob": 0.9571300148963928,
+              "source_start": 192.0,
+              "source_stop": 210.0,
+              "start": 192.0,
+              "status": "proposed",
+              "stop": 210.0
+            },
+            {
+              "id": 2,
+              "prob": 0.7664676308631897,
+              "source_start": 210.0,
+              "source_stop": 222.0,
+              "start": 210.0,
+              "status": "proposed",
+              "stop": 222.0
+            }
+          ],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 0.0059,
+              "stop": 62.0628
+            },
+            {
+              "label": "seiz",
+              "start": 74.0012,
+              "stop": 87.0184
+            },
+            {
+              "label": "seiz",
+              "start": 296.0326,
+              "stop": 299.8263
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "meta": {
+              "fs": 250,
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": true,
+              "weights": "convlstm_ICA_12_train.h5"
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaarq/s016_2014_06_28/01_tcp_ar/aaaaaarq_s016_t003.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [
+            0,
+            1,
+            2
+          ],
+          "misses": 3,
+          "n_pred": 0,
+          "n_refs": 3,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 0.0059,
+              "stop": 62.0628
+            },
+            {
+              "label": "seiz",
+              "start": 74.0012,
+              "stop": 87.0184
+            },
+            {
+              "label": "seiz",
+              "start": 296.0326,
+              "stop": 299.8263
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaarq_s016_t003"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaarq/s016_2014_06_28/01_tcp_ar/aaaaaarq_s016_t007.edf",
+      "rows": [
+        {
+          "duration_s": 130.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.005817438010126352,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.0006803072174079716,
+          "missed_reference_indexes": [
+            0,
+            1,
+            2
+          ],
+          "misses": 3,
+          "n_pred": 0,
+          "n_refs": 3,
+          "name": "baseline",
+          "p90_prob": 0.001257254707161338,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 19.0356,
+              "stop": 51.0806
+            },
+            {
+              "label": "seiz",
+              "start": 66.0213,
+              "stop": 79.4831
+            },
+            {
+              "label": "seiz",
+              "start": 100.0202,
+              "stop": 110.032
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaarq/s016_2014_06_28/01_tcp_ar/aaaaaarq_s016_t007.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 130.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [
+            0,
+            1,
+            2
+          ],
+          "misses": 3,
+          "n_pred": 0,
+          "n_refs": 3,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 19.0356,
+              "stop": 51.0806
+            },
+            {
+              "label": "seiz",
+              "start": 66.0213,
+              "stop": 79.4831
+            },
+            {
+              "label": "seiz",
+              "start": 100.0202,
+              "stop": 110.032
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaarq_s016_t007"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaarq/s017_2014_06_29/01_tcp_ar/aaaaaarq_s017_t000.edf",
+      "rows": [
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.0594959631562233,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.0033973553217947483,
+          "missed_reference_indexes": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "misses": 4,
+          "n_pred": 0,
+          "n_refs": 4,
+          "name": "baseline",
+          "p90_prob": 0.0037466032430529634,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 81.0237,
+              "stop": 99.0142
+            },
+            {
+              "label": "seiz",
+              "start": 178.0184,
+              "stop": 191.0296
+            },
+            {
+              "label": "seiz",
+              "start": 268.0207,
+              "stop": 287.9852
+            },
+            {
+              "label": "seiz",
+              "start": 292.9917,
+              "stop": 299.8085
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaarq/s017_2014_06_29/01_tcp_ar/aaaaaarq_s017_t000.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "misses": 4,
+          "n_pred": 0,
+          "n_refs": 4,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 81.0237,
+              "stop": 99.0142
+            },
+            {
+              "label": "seiz",
+              "start": 178.0184,
+              "stop": 191.0296
+            },
+            {
+              "label": "seiz",
+              "start": 268.0207,
+              "stop": 287.9852
+            },
+            {
+              "label": "seiz",
+              "start": 292.9917,
+              "stop": 299.8085
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaarq_s017_t000"
+    },
+    {
+      "candidate_count": 3,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaarq/s018_2014_06_30/01_tcp_ar/aaaaaarq_s018_t000.edf",
+      "rows": [
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 1152.0,
+          "false_positive_indexes": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "false_positives": 4,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.9314594268798828,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.11236066371202469,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 4,
+          "n_refs": 0,
+          "name": "baseline",
+          "p90_prob": 0.5357001662254336,
+          "pred_events": [
+            {
+              "id": 1,
+              "prob": 0.5170650482177734,
+              "source_start": 36.0,
+              "source_stop": 48.0,
+              "start": 36.0,
+              "status": "proposed",
+              "stop": 48.0
+            },
+            {
+              "id": 2,
+              "prob": 0.7861648201942444,
+              "source_start": 54.0,
+              "source_stop": 78.0,
+              "start": 54.0,
+              "status": "proposed",
+              "stop": 78.0
+            },
+            {
+              "id": 3,
+              "prob": 0.9314594268798828,
+              "source_start": 150.0,
+              "source_stop": 162.0,
+              "start": 150.0,
+              "status": "proposed",
+              "stop": 162.0
+            },
+            {
+              "id": 4,
+              "prob": 0.610240638256073,
+              "source_start": 252.0,
+              "source_stop": 264.0,
+              "start": 252.0,
+              "status": "proposed",
+              "stop": 264.0
+            }
+          ],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaarq/s018_2014_06_30/01_tcp_ar/aaaaaarq_s018_t000.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "candidate_count": 3,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaarq_s018_t000"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaghb/s010_2014_07_02/01_tcp_ar/aaaaaghb_s010_t000.edf",
+      "rows": [
+        {
+          "duration_s": 203.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.00578346149995923,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.000516117550432682,
+          "missed_reference_indexes": [
+            0
+          ],
+          "misses": 1,
+          "n_pred": 0,
+          "n_refs": 1,
+          "name": "baseline",
+          "p90_prob": 0.0007219961669761696,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 87.4395,
+              "stop": 112.9337
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaghb/s010_2014_07_02/01_tcp_ar/aaaaaghb_s010_t000.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 203.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [
+            0
+          ],
+          "misses": 1,
+          "n_pred": 0,
+          "n_refs": 1,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 87.4395,
+              "stop": 112.9337
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaghb_s010_t000"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaahlk/s007_2014_08_13/01_tcp_ar/aaaaahlk_s007_t000.edf",
+      "rows": [
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.006192473229020834,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.00038144522113725543,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "baseline",
+          "p90_prob": 0.000589475850574674,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaahlk/s007_2014_08_13/01_tcp_ar/aaaaahlk_s007_t000.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaahlk_s007_t000"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaahlk/s008_2014_08_14/01_tcp_ar/aaaaahlk_s008_t007.edf",
+      "rows": [
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.025160454213619232,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.0013723884476348758,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "baseline",
+          "p90_prob": 0.0014283089432865423,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaahlk/s008_2014_08_14/01_tcp_ar/aaaaahlk_s008_t007.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaahlk_s008_t007"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaahlk/s009_2014_08_15/01_tcp_ar/aaaaahlk_s009_t000.edf",
+      "rows": [
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.15962868928909302,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.007573301903903484,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "baseline",
+          "p90_prob": 0.004541398957371713,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaahlk/s009_2014_08_15/01_tcp_ar/aaaaahlk_s009_t000.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaahlk_s009_t000"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaahlk/s009_2014_08_15/01_tcp_ar/aaaaahlk_s009_t003.edf",
+      "rows": [
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.008150667883455753,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.00022331842046696693,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "baseline",
+          "p90_prob": 0.00012660133070312445,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaahlk/s009_2014_08_15/01_tcp_ar/aaaaahlk_s009_t003.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaahlk_s009_t003"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaahsi/s014_2014_08_25/01_tcp_ar/aaaaahsi_s014_t000.edf",
+      "rows": [
+        {
+          "duration_s": 262.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 1,
+          "matches": [
+            {
+              "offset_abs_error_s": 7.5963999999999885,
+              "onset_abs_error_s": 10.995500000000007,
+              "overlap_s": 24.0,
+              "pred_index": 0,
+              "ref_index": 0
+            }
+          ],
+          "max_prob": 0.9438929557800293,
+          "mean_offset_abs_error_s": 7.5963999999999885,
+          "mean_onset_abs_error_s": 10.995500000000007,
+          "mean_prob": 0.0899694487452507,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 1,
+          "n_refs": 1,
+          "name": "baseline",
+          "p90_prob": 0.44912988245487206,
+          "pred_events": [
+            {
+              "id": 1,
+              "prob": 0.9438929557800293,
+              "source_start": 108.0,
+              "source_stop": 132.0,
+              "start": 108.0,
+              "status": "proposed",
+              "stop": 132.0
+            }
+          ],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 97.0045,
+              "stop": 139.5964
+            }
+          ],
+          "sensitivity": 1.0,
+          "source": {
+            "meta": {
+              "fs": 250,
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": true,
+              "weights": "convlstm_ICA_12_train.h5"
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaahsi/s014_2014_08_25/01_tcp_ar/aaaaahsi_s014_t000.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 262.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [
+            0
+          ],
+          "misses": 1,
+          "n_pred": 0,
+          "n_refs": 1,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 97.0045,
+              "stop": 139.5964
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaahsi_s014_t000"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaiih/s006_2015_11_17/01_tcp_ar/aaaaaiih_s006_t007.edf",
+      "rows": [
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.001040173228830099,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 6.524351192638278e-05,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "baseline",
+          "p90_prob": 6.123273196863012e-05,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "meta": {
+              "fs": 250,
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": true,
+              "weights": "convlstm_ICA_12_train.h5"
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaiih/s006_2015_11_17/01_tcp_ar/aaaaaiih_s006_t007.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaiih_s006_t007"
+    },
+    {
+      "candidate_count": 2,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaajru/s031_2014_03_15/01_tcp_ar/aaaaajru_s031_t002.edf",
+      "rows": [
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 864.0,
+          "false_positive_indexes": [
+            0,
+            2,
+            3
+          ],
+          "false_positives": 3,
+          "hits": 2,
+          "matches": [
+            {
+              "offset_abs_error_s": 7.05510000000001,
+              "onset_abs_error_s": 8.017799999999994,
+              "overlap_s": 45.982200000000006,
+              "pred_index": 1,
+              "ref_index": 1
+            },
+            {
+              "offset_abs_error_s": 0.18729999999999336,
+              "onset_abs_error_s": 2.9744999999999777,
+              "overlap_s": 23.812700000000007,
+              "pred_index": 4,
+              "ref_index": 2
+            }
+          ],
+          "max_prob": 0.9986788630485535,
+          "mean_offset_abs_error_s": 3.6212000000000018,
+          "mean_onset_abs_error_s": 5.496149999999986,
+          "mean_prob": 0.37628406286239624,
+          "missed_reference_indexes": [
+            0
+          ],
+          "misses": 1,
+          "n_pred": 5,
+          "n_refs": 3,
+          "name": "baseline",
+          "p90_prob": 0.991705060005188,
+          "pred_events": [
+            {
+              "id": 1,
+              "prob": 0.9577062129974365,
+              "source_start": 78.0,
+              "source_stop": 90.0,
+              "start": 78.0,
+              "status": "proposed",
+              "stop": 90.0
+            },
+            {
+              "id": 2,
+              "prob": 0.992612361907959,
+              "source_start": 102.0,
+              "source_stop": 156.0,
+              "start": 102.0,
+              "status": "proposed",
+              "stop": 156.0
+            },
+            {
+              "id": 3,
+              "prob": 0.8365421295166016,
+              "source_start": 156.0,
+              "source_stop": 168.0,
+              "start": 156.0,
+              "status": "proposed",
+              "stop": 168.0
+            },
+            {
+              "id": 4,
+              "prob": 0.8819652795791626,
+              "source_start": 222.0,
+              "source_stop": 258.0,
+              "start": 222.0,
+              "status": "proposed",
+              "stop": 258.0
+            },
+            {
+              "id": 5,
+              "prob": 0.9986788630485535,
+              "source_start": 276.0,
+              "source_stop": 300.0,
+              "start": 276.0,
+              "status": "proposed",
+              "stop": 300.0
+            }
+          ],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 0.0178,
+              "stop": 13.9953
+            },
+            {
+              "label": "seiz",
+              "start": 110.0178,
+              "stop": 163.0551
+            },
+            {
+              "label": "seiz",
+              "start": 273.0255,
+              "stop": 299.8127
+            }
+          ],
+          "sensitivity": 0.6666666666666666,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaajru/s031_2014_03_15/01_tcp_ar/aaaaajru_s031_t002.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [
+            0,
+            1,
+            2
+          ],
+          "misses": 3,
+          "n_pred": 0,
+          "n_refs": 3,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 0.0178,
+              "stop": 13.9953
+            },
+            {
+              "label": "seiz",
+              "start": 110.0178,
+              "stop": 163.0551
+            },
+            {
+              "label": "seiz",
+              "start": 273.0255,
+              "stop": 299.8127
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "candidate_count": 2,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaajru_s031_t002"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaqek/s008_2015_05_21/01_tcp_ar/aaaaaqek_s008_t005.edf",
+      "rows": [
+        {
+          "duration_s": 150.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.04348047450184822,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.001983573427423835,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "baseline",
+          "p90_prob": 0.0005523426982108502,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "meta": {
+              "fs": 250,
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": true,
+              "weights": "convlstm_ICA_12_train.h5"
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaqek/s008_2015_05_21/01_tcp_ar/aaaaaqek_s008_t005.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 150.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaqek_s008_t005"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaqtw/s002_2014_01_28/01_tcp_ar/aaaaaqtw_s002_t001.edf",
+      "rows": [
+        {
+          "duration_s": 142.0,
+          "false_alarms_per_24h": 608.4507042253521,
+          "false_positive_indexes": [
+            1
+          ],
+          "false_positives": 1,
+          "hits": 1,
+          "matches": [
+            {
+              "offset_abs_error_s": 25.556299999999993,
+              "onset_abs_error_s": 0.0041,
+              "overlap_s": 47.9959,
+              "pred_index": 0,
+              "ref_index": 0
+            }
+          ],
+          "max_prob": 0.9933626651763916,
+          "mean_offset_abs_error_s": 25.556299999999993,
+          "mean_onset_abs_error_s": 0.0041,
+          "mean_prob": 0.3441522419452667,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 2,
+          "n_refs": 1,
+          "name": "baseline",
+          "p90_prob": 0.9829943656921388,
+          "pred_events": [
+            {
+              "id": 1,
+              "prob": 0.9933626651763916,
+              "source_start": 0.0,
+              "source_stop": 48.0,
+              "start": 0.0,
+              "status": "proposed",
+              "stop": 48.0
+            },
+            {
+              "id": 2,
+              "prob": 0.8476462960243225,
+              "source_start": 66.0,
+              "source_stop": 78.0,
+              "start": 66.0,
+              "status": "proposed",
+              "stop": 78.0
+            }
+          ],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 0.0041,
+              "stop": 73.5563
+            }
+          ],
+          "sensitivity": 1.0,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaqtw/s002_2014_01_28/01_tcp_ar/aaaaaqtw_s002_t001.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 142.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [
+            0
+          ],
+          "misses": 1,
+          "n_pred": 0,
+          "n_refs": 1,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 0.0041,
+              "stop": 73.5563
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaqtw_s002_t001"
+    },
+    {
+      "candidate_count": 3,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaqtw/s002_2014_01_28/01_tcp_ar/aaaaaqtw_s002_t006.edf",
+      "rows": [
+        {
+          "duration_s": 276.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.2381008267402649,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.038181815296411514,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "baseline",
+          "p90_prob": 0.1415317744016648,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaqtw/s002_2014_01_28/01_tcp_ar/aaaaaqtw_s002_t006.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 276.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "candidate_count": 3,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaqtw_s002_t006"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaqtw/s002_2014_01_28/01_tcp_ar/aaaaaqtw_s002_t012.edf",
+      "rows": [
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.0,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.0,
+          "missed_reference_indexes": [
+            0
+          ],
+          "misses": 1,
+          "n_pred": 0,
+          "n_refs": 1,
+          "name": "baseline",
+          "p90_prob": 0.0,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 271.8395,
+              "stop": 299.0
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaqtw/s002_2014_01_28/01_tcp_ar/aaaaaqtw_s002_t012.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [
+            0
+          ],
+          "misses": 1,
+          "n_pred": 0,
+          "n_refs": 1,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 271.8395,
+              "stop": 299.0
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaqtw_s002_t012"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaraf/s002_2014_09_23/01_tcp_ar/aaaaaraf_s002_t000.edf",
+      "rows": [
+        {
+          "duration_s": 141.0,
+          "false_alarms_per_24h": 612.7659574468084,
+          "false_positive_indexes": [
+            0
+          ],
+          "false_positives": 1,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.8270273804664612,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.0721750259399414,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 1,
+          "n_refs": 0,
+          "name": "baseline",
+          "p90_prob": 0.14561670050024994,
+          "pred_events": [
+            {
+              "id": 1,
+              "prob": 0.8270273804664612,
+              "source_start": 60.0,
+              "source_stop": 72.0,
+              "start": 60.0,
+              "status": "proposed",
+              "stop": 72.0
+            }
+          ],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaraf/s002_2014_09_23/01_tcp_ar/aaaaaraf_s002_t000.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 141.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaraf_s002_t000"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaraf/s003_2014_09_23/01_tcp_ar/aaaaaraf_s003_t007.edf",
+      "rows": [
+        {
+          "duration_s": 56.0,
+          "false_alarms_per_24h": 1542.857142857143,
+          "false_positive_indexes": [
+            0
+          ],
+          "false_positives": 1,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.6408218741416931,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.08608157187700272,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 1,
+          "n_refs": 0,
+          "name": "baseline",
+          "p90_prob": 0.22363495901226987,
+          "pred_events": [
+            {
+              "id": 1,
+              "prob": 0.6408218741416931,
+              "source_start": 12.0,
+              "source_stop": 24.0,
+              "start": 12.0,
+              "status": "proposed",
+              "stop": 24.0
+            }
+          ],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaraf/s003_2014_09_23/01_tcp_ar/aaaaaraf_s003_t007.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 56.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaraf_s003_t007"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaraf/s004_2014_09_23/01_tcp_ar/aaaaaraf_s004_t000.edf",
+      "rows": [
+        {
+          "duration_s": 298.0,
+          "false_alarms_per_24h": 869.7986577181208,
+          "false_positive_indexes": [
+            1,
+            2,
+            3
+          ],
+          "false_positives": 3,
+          "hits": 1,
+          "matches": [
+            {
+              "offset_abs_error_s": 15.636200000000002,
+              "onset_abs_error_s": 36.0145,
+              "overlap_s": 18.0,
+              "pred_index": 0,
+              "ref_index": 0
+            }
+          ],
+          "max_prob": 0.9247717261314392,
+          "mean_offset_abs_error_s": 15.636200000000002,
+          "mean_onset_abs_error_s": 36.0145,
+          "mean_prob": 0.11244659870862961,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 4,
+          "n_refs": 1,
+          "name": "baseline",
+          "p90_prob": 0.44790612459182877,
+          "pred_events": [
+            {
+              "id": 1,
+              "prob": 0.8555063605308533,
+              "source_start": 132.0,
+              "source_stop": 150.0,
+              "start": 132.0,
+              "status": "proposed",
+              "stop": 150.0
+            },
+            {
+              "id": 2,
+              "prob": 0.9247717261314392,
+              "source_start": 150.0,
+              "source_stop": 162.0,
+              "start": 150.0,
+              "status": "proposed",
+              "stop": 162.0
+            },
+            {
+              "id": 3,
+              "prob": 0.6716702580451965,
+              "source_start": 168.0,
+              "source_stop": 180.0,
+              "start": 168.0,
+              "status": "proposed",
+              "stop": 180.0
+            },
+            {
+              "id": 4,
+              "prob": 0.8322705626487732,
+              "source_start": 222.0,
+              "source_stop": 234.0,
+              "start": 222.0,
+              "status": "proposed",
+              "stop": 234.0
+            }
+          ],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 95.9855,
+              "stop": 165.6362
+            }
+          ],
+          "sensitivity": 1.0,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaraf/s004_2014_09_23/01_tcp_ar/aaaaaraf_s004_t000.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 298.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [
+            0
+          ],
+          "misses": 1,
+          "n_pred": 0,
+          "n_refs": 1,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 95.9855,
+              "stop": 165.6362
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaraf_s004_t000"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaraf/s006_2014_09_25/01_tcp_ar/aaaaaraf_s006_t002.edf",
+      "rows": [
+        {
+          "duration_s": 205.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.35381707549095154,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.018836792558431625,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "baseline",
+          "p90_prob": 0.04459619969129563,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaaraf/s006_2014_09_25/01_tcp_ar/aaaaaraf_s006_t002.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 205.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 0,
+          "n_refs": 0,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [],
+          "sensitivity": null,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaaraf_s006_t002"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaardf/s005_2014_05_21/01_tcp_ar/aaaaardf_s005_t002.edf",
+      "rows": [
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": 0.019916720688343048,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": 0.0010260504204779863,
+          "missed_reference_indexes": [
+            0
+          ],
+          "misses": 1,
+          "n_pred": 0,
+          "n_refs": 1,
+          "name": "baseline",
+          "p90_prob": 0.001377262431196869,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 282.6701,
+              "stop": 288.5538
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaardf/s005_2014_05_21/01_tcp_ar/aaaaardf_s005_t002.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 300.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [
+            0
+          ],
+          "misses": 1,
+          "n_pred": 0,
+          "n_refs": 1,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 282.6701,
+              "stop": 288.5538
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaardf_s005_t002"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaatao/s003_2015_02_13/01_tcp_ar/aaaaatao_s003_t000.edf",
+      "rows": [
+        {
+          "duration_s": 111.0,
+          "false_alarms_per_24h": 778.3783783783783,
+          "false_positive_indexes": [
+            1
+          ],
+          "false_positives": 1,
+          "hits": 1,
+          "matches": [
+            {
+              "offset_abs_error_s": 16.334100000000007,
+              "onset_abs_error_s": 4.0078,
+              "overlap_s": 12.0,
+              "pred_index": 0,
+              "ref_index": 0
+            }
+          ],
+          "max_prob": 0.9779213070869446,
+          "mean_offset_abs_error_s": 16.334100000000007,
+          "mean_onset_abs_error_s": 4.0078,
+          "mean_prob": 0.1504688262939453,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 2,
+          "n_refs": 1,
+          "name": "baseline",
+          "p90_prob": 0.6198415637016297,
+          "pred_events": [
+            {
+              "id": 1,
+              "prob": 0.9779213070869446,
+              "source_start": 36.0,
+              "source_stop": 48.0,
+              "start": 36.0,
+              "status": "proposed",
+              "stop": 48.0
+            },
+            {
+              "id": 2,
+              "prob": 0.6511135101318359,
+              "source_start": 60.0,
+              "source_stop": 78.0,
+              "start": 60.0,
+              "status": "proposed",
+              "stop": 78.0
+            }
+          ],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 31.9922,
+              "stop": 64.3341
+            }
+          ],
+          "sensitivity": 1.0,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaatao/s003_2015_02_13/01_tcp_ar/aaaaatao_s003_t000.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 111.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [
+            0
+          ],
+          "misses": 1,
+          "n_pred": 0,
+          "n_refs": 1,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 31.9922,
+              "stop": 64.3341
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaatao_s003_t000"
+    },
+    {
+      "candidate_count": 1,
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaatao/s003_2015_02_13/01_tcp_ar/aaaaatao_s003_t001.edf",
+      "rows": [
+        {
+          "duration_s": 57.0,
+          "false_alarms_per_24h": 1515.7894736842104,
+          "false_positive_indexes": [
+            1
+          ],
+          "false_positives": 1,
+          "hits": 1,
+          "matches": [
+            {
+              "offset_abs_error_s": 6.711400000000001,
+              "onset_abs_error_s": 2.9645,
+              "overlap_s": 12.0,
+              "pred_index": 0,
+              "ref_index": 0
+            }
+          ],
+          "max_prob": 0.7440235614776611,
+          "mean_offset_abs_error_s": 6.711400000000001,
+          "mean_onset_abs_error_s": 2.9645,
+          "mean_prob": 0.2188844382762909,
+          "missed_reference_indexes": [],
+          "misses": 0,
+          "n_pred": 2,
+          "n_refs": 1,
+          "name": "baseline",
+          "p90_prob": 0.6677709400653838,
+          "pred_events": [
+            {
+              "id": 1,
+              "prob": 0.7440235614776611,
+              "source_start": 6.0,
+              "source_stop": 18.0,
+              "start": 6.0,
+              "status": "proposed",
+              "stop": 18.0
+            },
+            {
+              "id": 2,
+              "prob": 0.635091245174408,
+              "source_start": 24.0,
+              "source_stop": 36.0,
+              "start": 24.0,
+              "status": "proposed",
+              "stop": 36.0
+            }
+          ],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 3.0355,
+              "stop": 24.7114
+            }
+          ],
+          "sensitivity": 1.0,
+          "source": {
+            "meta": {
+              "segment_s": 12,
+              "source": "computed by prepare_zuna_candidates",
+              "step_s": 6
+            },
+            "mode": "full EDF probability cache",
+            "path": "sample_data/v2.0.0/edf/eval/aaaaatao/s003_2015_02_13/01_tcp_ar/aaaaatao_s003_t001.probs.npz"
+          },
+          "threshold": 0.5
+        },
+        {
+          "duration_s": 57.0,
+          "false_alarms_per_24h": 0.0,
+          "false_positive_indexes": [],
+          "false_positives": 0,
+          "hits": 0,
+          "matches": [],
+          "max_prob": null,
+          "mean_offset_abs_error_s": null,
+          "mean_onset_abs_error_s": null,
+          "mean_prob": null,
+          "missed_reference_indexes": [
+            0
+          ],
+          "misses": 1,
+          "n_pred": 0,
+          "n_refs": 1,
+          "name": "fast_zuna",
+          "p90_prob": null,
+          "pred_events": [],
+          "reference_events": [
+            {
+              "label": "seiz",
+              "start": 3.0355,
+              "stop": 24.7114
+            }
+          ],
+          "sensitivity": 0.0,
+          "source": {
+            "candidate_count": 1,
+            "clips": [],
+            "meta": {
+              "segment_s": 12,
+              "step_s": 6,
+              "use_ica": false,
+              "zuna_npz_dir": "artifacts\\zuna_fast\\npz_steps8"
+            },
+            "mode": "selective ZUNA clips",
+            "scored_clip_count": 0
+          },
+          "threshold": 0.5
+        }
+      ],
+      "scored_clip_count": 0,
+      "source_stem": "aaaaatao_s003_t001"
+    }
+  ],
+  "step_s": 6,
+  "threshold": 0.5,
+  "zuna_npz_dir": "C:\\Users\\User\\Continental-Seiz-detection\\artifacts\\zuna_fast\\npz_steps8"
+}

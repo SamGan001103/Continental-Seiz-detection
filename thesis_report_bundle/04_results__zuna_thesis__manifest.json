@@ -1,0 +1,292 @@
+{
+  "selection": "all labelled seizure EDFs <=420s plus duration-matched non-seizure controls",
+  "count": 26,
+  "records": [
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaatao/s003_2015_02_13/01_tcp_ar/aaaaatao_s003_t001.edf",
+      "stem": "aaaaatao_s003_t001",
+      "duration_s": 57.0,
+      "size_mb": 0.7874355316162109,
+      "seiz_count": 1,
+      "seiz_total_s": 21.675900000000002,
+      "cohort": "seizure",
+      "manifest_index": 1,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaatao/s003_2015_02_13/01_tcp_ar/aaaaatao_s003_t000.edf",
+      "stem": "aaaaatao_s003_t000",
+      "duration_s": 111.0,
+      "size_mb": 1.5260257720947266,
+      "seiz_count": 1,
+      "seiz_total_s": 32.34190000000001,
+      "cohort": "seizure",
+      "manifest_index": 2,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaarq/s016_2014_06_28/01_tcp_ar/aaaaaarq_s016_t007.edf",
+      "stem": "aaaaaarq_s016_t007",
+      "duration_s": 130.0,
+      "size_mb": 1.6584587097167969,
+      "seiz_count": 3,
+      "seiz_total_s": 55.51859999999999,
+      "cohort": "seizure",
+      "manifest_index": 3,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaqtw/s002_2014_01_28/01_tcp_ar/aaaaaqtw_s002_t001.edf",
+      "stem": "aaaaaqtw_s002_t001",
+      "duration_s": 142.0,
+      "size_mb": 1.8108711242675781,
+      "seiz_count": 1,
+      "seiz_total_s": 73.5522,
+      "cohort": "seizure",
+      "manifest_index": 4,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaghb/s010_2014_07_02/01_tcp_ar/aaaaaghb_s010_t000.edf",
+      "stem": "aaaaaghb_s010_t000",
+      "duration_s": 203.0,
+      "size_mb": 2.684999465942383,
+      "seiz_count": 1,
+      "seiz_total_s": 25.494200000000006,
+      "cohort": "seizure",
+      "manifest_index": 5,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaahsi/s014_2014_08_25/01_tcp_ar/aaaaahsi_s014_t000.edf",
+      "stem": "aaaaahsi_s014_t000",
+      "duration_s": 262.0,
+      "size_mb": 3.4631690979003906,
+      "seiz_count": 1,
+      "seiz_total_s": 42.591899999999995,
+      "cohort": "seizure",
+      "manifest_index": 6,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaraf/s004_2014_09_23/01_tcp_ar/aaaaaraf_s004_t000.edf",
+      "stem": "aaaaaraf_s004_t000",
+      "duration_s": 298.0,
+      "size_mb": 3.7922325134277344,
+      "seiz_count": 1,
+      "seiz_total_s": 69.6507,
+      "cohort": "seizure",
+      "manifest_index": 7,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaarq/s017_2014_06_29/01_tcp_ar/aaaaaarq_s017_t000.edf",
+      "stem": "aaaaaarq_s017_t000",
+      "duration_s": 300.0,
+      "size_mb": 3.8176345825195312,
+      "seiz_count": 4,
+      "seiz_total_s": 57.783000000000015,
+      "cohort": "seizure",
+      "manifest_index": 8,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaarq/s016_2014_06_28/01_tcp_ar/aaaaaarq_s016_t002.edf",
+      "stem": "aaaaaarq_s016_t002",
+      "duration_s": 300.0,
+      "size_mb": 3.8176345825195312,
+      "seiz_count": 3,
+      "seiz_total_s": 37.88380000000001,
+      "cohort": "seizure",
+      "manifest_index": 9,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaarq/s016_2014_06_28/01_tcp_ar/aaaaaarq_s016_t003.edf",
+      "stem": "aaaaaarq_s016_t003",
+      "duration_s": 300.0,
+      "size_mb": 3.8176345825195312,
+      "seiz_count": 3,
+      "seiz_total_s": 78.86780000000002,
+      "cohort": "seizure",
+      "manifest_index": 10,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaajru/s031_2014_03_15/01_tcp_ar/aaaaajru_s031_t002.edf",
+      "stem": "aaaaajru_s031_t002",
+      "duration_s": 300.0,
+      "size_mb": 3.8176345825195312,
+      "seiz_count": 3,
+      "seiz_total_s": 93.802,
+      "cohort": "seizure",
+      "manifest_index": 11,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaqtw/s002_2014_01_28/01_tcp_ar/aaaaaqtw_s002_t012.edf",
+      "stem": "aaaaaqtw_s002_t012",
+      "duration_s": 300.0,
+      "size_mb": 3.8176345825195312,
+      "seiz_count": 1,
+      "seiz_total_s": 27.160500000000013,
+      "cohort": "seizure",
+      "manifest_index": 12,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaardf/s005_2014_05_21/01_tcp_ar/aaaaardf_s005_t002.edf",
+      "stem": "aaaaardf_s005_t002",
+      "duration_s": 300.0,
+      "size_mb": 4.404548645019531,
+      "seiz_count": 1,
+      "seiz_total_s": 5.883700000000033,
+      "cohort": "seizure",
+      "manifest_index": 13,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaraf/s003_2014_09_23/01_tcp_ar/aaaaaraf_s003_t007.edf",
+      "stem": "aaaaaraf_s003_t007",
+      "duration_s": 56.0,
+      "size_mb": 0.7185821533203125,
+      "seiz_count": 0,
+      "seiz_total_s": 0,
+      "cohort": "nonseizure",
+      "manifest_index": 14,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaamc/s013_2015_07_01/01_tcp_ar/aaaaaamc_s013_t001.edf",
+      "stem": "aaaaaamc_s013_t001",
+      "duration_s": 107.0,
+      "size_mb": 1.4370288848876953,
+      "seiz_count": 0,
+      "seiz_total_s": 0,
+      "cohort": "nonseizure",
+      "manifest_index": 15,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaraf/s002_2014_09_23/01_tcp_ar/aaaaaraf_s002_t000.edf",
+      "stem": "aaaaaraf_s002_t000",
+      "duration_s": 141.0,
+      "size_mb": 1.7981700897216797,
+      "seiz_count": 0,
+      "seiz_total_s": 0,
+      "cohort": "nonseizure",
+      "manifest_index": 16,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaqek/s008_2015_05_21/01_tcp_ar/aaaaaqek_s008_t005.edf",
+      "stem": "aaaaaqek_s008_t005",
+      "duration_s": 150.0,
+      "size_mb": 2.1329383850097656,
+      "seiz_count": 0,
+      "seiz_total_s": 0,
+      "cohort": "nonseizure",
+      "manifest_index": 17,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaraf/s006_2014_09_25/01_tcp_ar/aaaaaraf_s006_t002.edf",
+      "stem": "aaaaaraf_s006_t002",
+      "duration_s": 205.0,
+      "size_mb": 2.6110363006591797,
+      "seiz_count": 0,
+      "seiz_total_s": 0,
+      "cohort": "nonseizure",
+      "manifest_index": 18,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaqtw/s002_2014_01_28/01_tcp_ar/aaaaaqtw_s002_t006.edf",
+      "stem": "aaaaaqtw_s002_t006",
+      "duration_s": 276.0,
+      "size_mb": 3.5128097534179688,
+      "seiz_count": 0,
+      "seiz_total_s": 0,
+      "cohort": "nonseizure",
+      "manifest_index": 19,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaarq/s016_2014_06_28/01_tcp_ar/aaaaaarq_s016_t001.edf",
+      "stem": "aaaaaarq_s016_t001",
+      "duration_s": 300.0,
+      "size_mb": 3.8176345825195312,
+      "seiz_count": 0,
+      "seiz_total_s": 0,
+      "cohort": "nonseizure",
+      "manifest_index": 20,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaarq/s018_2014_06_30/01_tcp_ar/aaaaaarq_s018_t000.edf",
+      "stem": "aaaaaarq_s018_t000",
+      "duration_s": 300.0,
+      "size_mb": 3.8176345825195312,
+      "seiz_count": 0,
+      "seiz_total_s": 0,
+      "cohort": "nonseizure",
+      "manifest_index": 21,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaahlk/s007_2014_08_13/01_tcp_ar/aaaaahlk_s007_t000.edf",
+      "stem": "aaaaahlk_s007_t000",
+      "duration_s": 300.0,
+      "size_mb": 3.9643630981445312,
+      "seiz_count": 0,
+      "seiz_total_s": 0,
+      "cohort": "nonseizure",
+      "manifest_index": 22,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaahlk/s008_2014_08_14/01_tcp_ar/aaaaahlk_s008_t007.edf",
+      "stem": "aaaaahlk_s008_t007",
+      "duration_s": 300.0,
+      "size_mb": 3.9643630981445312,
+      "seiz_count": 0,
+      "seiz_total_s": 0,
+      "cohort": "nonseizure",
+      "manifest_index": 23,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaahlk/s009_2014_08_15/01_tcp_ar/aaaaahlk_s009_t000.edf",
+      "stem": "aaaaahlk_s009_t000",
+      "duration_s": 300.0,
+      "size_mb": 3.9643630981445312,
+      "seiz_count": 0,
+      "seiz_total_s": 0,
+      "cohort": "nonseizure",
+      "manifest_index": 24,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaahlk/s009_2014_08_15/01_tcp_ar/aaaaahlk_s009_t003.edf",
+      "stem": "aaaaahlk_s009_t003",
+      "duration_s": 300.0,
+      "size_mb": 3.9643630981445312,
+      "seiz_count": 0,
+      "seiz_total_s": 0,
+      "cohort": "nonseizure",
+      "manifest_index": 25,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    },
+    {
+      "edf": "sample_data/v2.0.0/edf/eval/aaaaaiih/s006_2015_11_17/01_tcp_ar/aaaaaiih_s006_t007.edf",
+      "stem": "aaaaaiih_s006_t007",
+      "duration_s": 300.0,
+      "size_mb": 4.257820129394531,
+      "seiz_count": 0,
+      "seiz_total_s": 0,
+      "cohort": "nonseizure",
+      "manifest_index": 26,
+      "zuna_quality": "full_default_diffusion_steps_50"
+    }
+  ]
+}

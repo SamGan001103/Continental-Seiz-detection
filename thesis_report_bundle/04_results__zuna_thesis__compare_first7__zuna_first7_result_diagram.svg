@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1050" viewBox="0 0 1400 1050">
+<rect x="0" y="0" width="1400" height="1050" rx="0" fill="#F8FAFC" stroke="none"/>
+<text x="50" y="58" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="700" fill="#0F172A" text-anchor="start">ZUNA vs Baseline: First 7 Completed VM Files</text>
+<text x="50" y="92" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="400" fill="#475569" text-anchor="start">Full 50-step ZUNA on CPU VM. Preliminary seizure-cohort pilot only; no non-seizure controls included yet.</text>
+<rect x="50" y="125" width="250" height="118" rx="8" fill="#FFFFFF" stroke="#E2E8F0"/>
+<text x="68" y="155" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="600" fill="#64748B" text-anchor="start">Files compared</text>
+<text x="68" y="197" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="700" fill="#0F172A" text-anchor="start">7</text>
+<text x="68" y="225" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#64748B" text-anchor="start">completed ZUNA NPZ outputs</text>
+<rect x="320" y="125" width="250" height="118" rx="8" fill="#FFFFFF" stroke="#E2E8F0"/>
+<text x="338" y="155" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="600" fill="#64748B" text-anchor="start">Reference seizures</text>
+<text x="338" y="197" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="700" fill="#0F172A" text-anchor="start">9</text>
+<text x="338" y="225" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#64748B" text-anchor="start">event labels in these EDFs</text>
+<rect x="590" y="125" width="250" height="118" rx="8" fill="#FFFFFF" stroke="#E2E8F0"/>
+<text x="608" y="155" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="600" fill="#64748B" text-anchor="start">VM ZUNA runtime</text>
+<text x="608" y="197" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="700" fill="#0F172A" text-anchor="start">2h 01m 25s</text>
+<text x="608" y="225" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#64748B" text-anchor="start">end-to-end 2h 01m 33s</text>
+<rect x="860" y="125" width="250" height="118" rx="8" fill="#FFFFFF" stroke="#E2E8F0"/>
+<text x="878" y="155" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="600" fill="#64748B" text-anchor="start">EEG duration</text>
+<text x="878" y="197" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="700" fill="#0F172A" text-anchor="start">20m 03s</text>
+<text x="878" y="225" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#64748B" text-anchor="start">6.1x slower than real time</text>
+<rect x="1130" y="125" width="250" height="118" rx="8" fill="#FFFFFF" stroke="#E2E8F0"/>
+<text x="1148" y="155" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="600" fill="#64748B" text-anchor="start">Peak RAM seen</text>
+<text x="1148" y="197" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="700" fill="#0F172A" text-anchor="start">41.3 GiB</text>
+<text x="1148" y="225" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#64748B" text-anchor="start">highest completed file</text>
+<text x="60" y="272" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700" fill="#0F172A" text-anchor="start">Headline Detector Metrics</text>
+<text x="60" y="300" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700" fill="#1E293B" text-anchor="start">Sensitivity</text>
+<text x="60" y="324" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#64748B" text-anchor="start">higher is better</text>
+<rect x="250" y="280" width="420" height="18" rx="4" fill="#E2E8F0" stroke="none"/>
+<rect x="250" y="280" width="233.33333333333334" height="18" rx="4" fill="#64748B" stroke="none"/>
+<rect x="250" y="312" width="420" height="18" rx="4" fill="#E2E8F0" stroke="none"/>
+<rect x="250" y="312" width="280.0" height="18" rx="4" fill="#2563EB" stroke="none"/>
+<text x="685" y="295" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#475569" text-anchor="start">Baseline 55.6%</text>
+<text x="685" y="327" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#1D4ED8" text-anchor="start">ZUNA 66.7%</text>
+<text x="60" y="388" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700" fill="#1E293B" text-anchor="start">Misses</text>
+<text x="60" y="412" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#64748B" text-anchor="start">lower is better</text>
+<rect x="250" y="368" width="420" height="18" rx="4" fill="#E2E8F0" stroke="none"/>
+<rect x="250" y="368" width="420.0" height="18" rx="4" fill="#64748B" stroke="none"/>
+<rect x="250" y="400" width="420" height="18" rx="4" fill="#E2E8F0" stroke="none"/>
+<rect x="250" y="400" width="315.0" height="18" rx="4" fill="#2563EB" stroke="none"/>
+<text x="685" y="383" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#475569" text-anchor="start">Baseline 4</text>
+<text x="685" y="415" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#1D4ED8" text-anchor="start">ZUNA 3</text>
+<text x="60" y="476" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700" fill="#1E293B" text-anchor="start">False positives</text>
+<text x="60" y="500" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#64748B" text-anchor="start">lower is better</text>
+<rect x="250" y="456" width="420" height="18" rx="4" fill="#E2E8F0" stroke="none"/>
+<rect x="250" y="456" width="420.0" height="18" rx="4" fill="#64748B" stroke="none"/>
+<rect x="250" y="488" width="420" height="18" rx="4" fill="#E2E8F0" stroke="none"/>
+<rect x="250" y="488" width="280.0" height="18" rx="4" fill="#2563EB" stroke="none"/>
+<text x="685" y="471" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#475569" text-anchor="start">Baseline 6</text>
+<text x="685" y="503" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#1D4ED8" text-anchor="start">ZUNA 4</text>
+<text x="60" y="564" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700" fill="#1E293B" text-anchor="start">False alarms / 24h</text>
+<text x="60" y="588" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#64748B" text-anchor="start">lower is better</text>
+<rect x="250" y="544" width="420" height="18" rx="4" fill="#E2E8F0" stroke="none"/>
+<rect x="250" y="544" width="420.0" height="18" rx="4" fill="#64748B" stroke="none"/>
+<rect x="250" y="576" width="420" height="18" rx="4" fill="#E2E8F0" stroke="none"/>
+<rect x="250" y="576" width="280.0" height="18" rx="4" fill="#2563EB" stroke="none"/>
+<text x="685" y="559" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#475569" text-anchor="start">Baseline 430.9</text>
+<text x="685" y="591" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#1D4ED8" text-anchor="start">ZUNA 287.3</text>
+<text x="760" y="272" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700" fill="#0F172A" text-anchor="start">Per-File Event Outcome</text>
+<text x="760" y="300" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" fill="#64748B" text-anchor="start">File</text>
+<text x="1010" y="300" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" fill="#64748B" text-anchor="start">Refs</text>
+<text x="1080" y="300" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" fill="#64748B" text-anchor="start">Baseline</text>
+<text x="1210" y="300" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" fill="#64748B" text-anchor="start">ZUNA</text>
+<text x="1330" y="300" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" fill="#64748B" text-anchor="start">Change</text>
+<line x1="760" y1="312" x2="1380" y2="312" stroke="#CBD5E1" stroke-width="1"/>
+<text x="760" y="344" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#0F172A" text-anchor="start">aaaaatao_s003_t001</text>
+<text x="1010" y="344" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#334155" text-anchor="start">1</text>
+<text x="1080" y="344" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#475569" text-anchor="start">1/1, FP 1</text>
+<text x="1210" y="344" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#1D4ED8" text-anchor="start">0/1, FP 0</text>
+<rect x="1325" y="326" width="86" height="26" rx="13" fill="#FEE2E2" stroke="none"/>
+<text x="1368" y="344" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" fill="#991B1B" text-anchor="middle">-1 hit</text>
+<text x="760" y="396" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#0F172A" text-anchor="start">aaaaatao_s003_t000</text>
+<text x="1010" y="396" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#334155" text-anchor="start">1</text>
+<text x="1080" y="396" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#475569" text-anchor="start">1/1, FP 1</text>
+<text x="1210" y="396" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#1D4ED8" text-anchor="start">1/1, FP 0</text>
+<rect x="1325" y="378" width="86" height="26" rx="13" fill="#E0F2FE" stroke="none"/>
+<text x="1368" y="396" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" fill="#075985" text-anchor="middle">-1 FP</text>
+<text x="760" y="448" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#0F172A" text-anchor="start">aaaaaarq_s016_t007</text>
+<text x="1010" y="448" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#334155" text-anchor="start">3</text>
+<text x="1080" y="448" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#475569" text-anchor="start">0/3, FP 0</text>
+<text x="1210" y="448" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#1D4ED8" text-anchor="start">2/3, FP 0</text>
+<rect x="1325" y="430" width="86" height="26" rx="13" fill="#DCFCE7" stroke="none"/>
+<text x="1368" y="448" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">+2 hit</text>
+<text x="760" y="500" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#0F172A" text-anchor="start">aaaaaqtw_s002_t001</text>
+<text x="1010" y="500" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#334155" text-anchor="start">1</text>
+<text x="1080" y="500" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#475569" text-anchor="start">1/1, FP 1</text>
+<text x="1210" y="500" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#1D4ED8" text-anchor="start">1/1, FP 1</text>
+<rect x="1325" y="482" width="86" height="26" rx="13" fill="#F1F5F9" stroke="none"/>
+<text x="1368" y="500" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" fill="#475569" text-anchor="middle">same</text>
+<text x="760" y="552" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#0F172A" text-anchor="start">aaaaaghb_s010_t000</text>
+<text x="1010" y="552" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#334155" text-anchor="start">1</text>
+<text x="1080" y="552" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#475569" text-anchor="start">0/1, FP 0</text>
+<text x="1210" y="552" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#1D4ED8" text-anchor="start">0/1, FP 0</text>
+<rect x="1325" y="534" width="86" height="26" rx="13" fill="#F1F5F9" stroke="none"/>
+<text x="1368" y="552" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" fill="#475569" text-anchor="middle">same</text>
+<text x="760" y="604" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#0F172A" text-anchor="start">aaaaahsi_s014_t000</text>
+<text x="1010" y="604" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#334155" text-anchor="start">1</text>
+<text x="1080" y="604" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#475569" text-anchor="start">1/1, FP 0</text>
+<text x="1210" y="604" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#1D4ED8" text-anchor="start">1/1, FP 0</text>
+<rect x="1325" y="586" width="86" height="26" rx="13" fill="#F1F5F9" stroke="none"/>
+<text x="1368" y="604" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" fill="#475569" text-anchor="middle">same</text>
+<text x="760" y="656" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#0F172A" text-anchor="start">aaaaaraf_s004_t000</text>
+<text x="1010" y="656" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#334155" text-anchor="start">1</text>
+<text x="1080" y="656" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#475569" text-anchor="start">1/1, FP 3</text>
+<text x="1210" y="656" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#1D4ED8" text-anchor="start">1/1, FP 3</text>
+<rect x="1325" y="638" width="86" height="26" rx="13" fill="#F1F5F9" stroke="none"/>
+<text x="1368" y="656" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" fill="#475569" text-anchor="middle">same</text>
+<text x="60" y="692" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700" fill="#0F172A" text-anchor="start">VM ZUNA Runtime Per Completed File</text>
+<text x="60" y="720" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#334155" text-anchor="start">aaaaatao_s003_t001</text>
+<rect x="295" y="706" width="500" height="18" rx="4" fill="#E2E8F0" stroke="none"/>
+<rect x="295" y="706" width="101.34755755193711" height="18" rx="4" fill="#0F766E" stroke="none"/>
+<rect x="295" y="726" width="16.002245929253228" height="7" rx="3" fill="#F97316" stroke="none"/>
+<text x="810" y="720" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#334155" text-anchor="start">6.0 min ZUNA / 0.9 min EEG</text>
+<text x="60" y="758" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#334155" text-anchor="start">aaaaatao_s003_t000</text>
+<rect x="295" y="744" width="500" height="18" rx="4" fill="#E2E8F0" stroke="none"/>
+<rect x="295" y="744" width="190.90398652442448" height="18" rx="4" fill="#0F766E" stroke="none"/>
+<rect x="295" y="764" width="31.162268388545762" height="7" rx="3" fill="#F97316" stroke="none"/>
+<text x="810" y="758" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#334155" text-anchor="start">11.3 min ZUNA / 1.9 min EEG</text>
+<text x="60" y="796" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#334155" text-anchor="start">aaaaaarq_s016_t007</text>
+<rect x="295" y="782" width="500" height="18" rx="4" fill="#E2E8F0" stroke="none"/>
+<rect x="295" y="782" width="224.87366647950589" height="18" rx="4" fill="#0F766E" stroke="none"/>
+<rect x="295" y="802" width="36.4963503649635" height="7" rx="3" fill="#F97316" stroke="none"/>
+<text x="810" y="796" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#334155" text-anchor="start">13.3 min ZUNA / 2.2 min EEG</text>
+<text x="60" y="834" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#334155" text-anchor="start">aaaaaqtw_s002_t001</text>
+<rect x="295" y="820" width="500" height="18" rx="4" fill="#E2E8F0" stroke="none"/>
+<rect x="295" y="820" width="241.43739472206627" height="18" rx="4" fill="#0F766E" stroke="none"/>
+<rect x="295" y="840" width="39.865244244806284" height="7" rx="3" fill="#F97316" stroke="none"/>
+<text x="810" y="834" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#334155" text-anchor="start">14.3 min ZUNA / 2.4 min EEG</text>
+<text x="60" y="872" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#334155" text-anchor="start">aaaaaghb_s010_t000</text>
+<rect x="295" y="858" width="500" height="18" rx="4" fill="#E2E8F0" stroke="none"/>
+<rect x="295" y="858" width="342.7849522740034" height="18" rx="4" fill="#0F766E" stroke="none"/>
+<rect x="295" y="878" width="56.99045480067378" height="7" rx="3" fill="#F97316" stroke="none"/>
+<text x="810" y="872" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#334155" text-anchor="start">20.4 min ZUNA / 3.4 min EEG</text>
+<text x="60" y="910" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#334155" text-anchor="start">aaaaahsi_s014_t000</text>
+<rect x="295" y="896" width="500" height="18" rx="4" fill="#E2E8F0" stroke="none"/>
+<rect x="295" y="896" width="443.8517686692869" height="18" rx="4" fill="#0F766E" stroke="none"/>
+<rect x="295" y="916" width="73.55418304323413" height="7" rx="3" fill="#F97316" stroke="none"/>
+<text x="810" y="910" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#334155" text-anchor="start">26.4 min ZUNA / 4.4 min EEG</text>
+<text x="60" y="948" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#334155" text-anchor="start">aaaaaraf_s004_t000</text>
+<rect x="295" y="934" width="500" height="18" rx="4" fill="#E2E8F0" stroke="none"/>
+<rect x="295" y="934" width="500.0" height="18" rx="4" fill="#0F766E" stroke="none"/>
+<rect x="295" y="954" width="83.6608646827625" height="7" rx="3" fill="#F97316" stroke="none"/>
+<text x="810" y="948" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="400" fill="#334155" text-anchor="start">29.7 min ZUNA / 5.0 min EEG</text>
+<text x="295" y="1016" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="400" fill="#64748B" text-anchor="start">Teal bar = ZUNA inference runtime. Orange tick = original EEG duration.</text>
+<rect x="50" y="990" width="1300" height="38" rx="8" fill="#E0F2FE" stroke="none"/>
+<text x="68" y="1015" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="600" fill="#075985" text-anchor="start">Interpretation: on these 7 seizure recordings, full ZUNA improved sensitivity from 55.6% to 66.7% and reduced false positives from 6 to 4, but this is still preliminary.</text>
+</svg>

@@ -214,3 +214,8 @@ models/spikenet1/
 # bundled DLLs is over GitHub's 100 MB file limit, so a push containing it
 # is rejected outright.
 dist_modern/
+
+# Publisher PDFs of third-party papers. Kept locally for writing up, not
+# redistributed from a public repository; the text extract beside them is
+# ours and stays.
+thesis_report_bundle/*.pdf

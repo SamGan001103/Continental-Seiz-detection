@@ -1,0 +1,787 @@
+                                                     ZUNA: Flexible EEG Superresolution with
+                                                      Position-Aware Diffusion Autoencoders
+                                                         Christopher Warner1,†,* , Jonas Mago1,† , JR Huml1 , Mohamed Osman1 , Beren Millidge1,*
+                                                                                                           1
+                                                                                                       Zyphra
+                                                                                                    †
+                                                                                                 Joint First Authors
+                                                                      *
+                                                                        Corresponding authors: chris@zyphra.com, beren@zyphra.com
+                                                                                                           Abstract
+                                                   We present ZUNA, a 380M-parameter masked diffusion autoencoder trained to perform masked channel infilling and super-
+                                               resolution for arbitrary electrode numbers and positions in EEG signals. The ZUNA architecture tokenizes multichannel EEG into
+                                               short temporal windows and injects spatiotemporal structure via a 4D rotary positional encoding over (x,y,z,t), enabling inference
+                                               on arbitrary channel subsets and positions. We train ZUNA on an aggregated and harmonized corpus spanning 208 public datasets
+arXiv:2602.18478v1 [eess.SP] 9 Feb 2026
+
+
+
+
+                                               containing approximately 2 million channel-hours using a combined reconstruction and heavy channel-dropout objective. We
+                                               show that ZUNA substantially improves over ubiquitous spherical-spline interpolation methods, with the gap widening at higher
+                                               dropout rates. Crucially, compared to other deep learning methods in this space, ZUNA’s performance generalizes across datasets
+                                               and channel positions allowing it to be applied directly to novel datasets and problems. Despite its generative capabilities, ZUNA
+                                               remains computationally practical for deployment. We release Apache-2.0 weights and an MNE-compatible preprocessing/inference
+                                               stack to encourage reproducible comparisons and downstream use in EEG analysis pipelines.
+
+                                                                                                     I. I NTRODUCTION
+                                             Electroencephalography (EEG) is the practice of recording electrical signals from either the scalp or the surface of the
+                                          cortex. Scalp EEG is widely used in clinical and research settings due to its non-invasive nature and relatively low cost.
+                                          Despite representing the averaged spiking rates of many billions of neurons, EEG signals still contain large amounts of useful
+                                          and extractable information about brain function. EEG measurements have been widely applied in clinical settings to diagnose
+                                          and study disorders such as epilepsy (Smith, 2005; Acharya et al., 2013; Noachtar & Rémi, 2009; Tan et al., 2025) and multiple
+                                          sclerosis (Mouazen et al., 2025; Striano et al., 2003). EEG analysis can also be used to determine the stages of sleep (Supratak
+                                          et al., 2017; Zhang et al., 2024b; Li et al., 2022), diagnose sleep disorders (Tiwari et al., 2022), and have been the basis of our
+                                          understanding of various fundamental brain rhythms such as alpha, beta, gamma, and theta waves within the brain (Buzsáki,
+                                          2006). More broadly, EEG signals can be used to detect and classify meditative states (Schoenberg & Vago, 2019; Kora et al.,
+                                          2021; Faber et al., 2017), measure attentional focus (Su et al., 2022; Al-Nafjan & Aldayel, 2022; Kaushik et al., 2022), and
+
+
+
+
+                                          Fig. 1: Examples of dropped-out EEG signals and their reconstruction by ZUNA and MNE spherical-spline
+                                          interpolation. Green: ground-truth signal dropped-out (not presented to the model). Red: ZUNA model reconstruction.
+                                          Magenta: MNE baseline spherical-spline interpolation.
+can even be used to extract some degree of visual, linguistic, or motor information from the cortex (Song et al., 2023; Wilson
+et al., 2024; Tam et al., 2019; Alazrai et al., 2019; Jerbi et al., 2011).
+   Since EEG data can be collected non-invasively using relatively simple, portable and affordable devices including, as of
+recently, consumer-grade headsets and headbands (Garcia-Moreno et al., 2025; Biondi et al., 2022), EEG signals provide
+perhaps the most promising path to widely deployed brain-computer-interface (BCI) technology. If sufficient information exists
+in the EEG signal and can be decoded, then it becomes possible to design headsets and other wearables that enable a higher
+bandwidth interaction with a computer system than voice or text or GUI interactions. (Värbu et al., 2022; Khademi et al.,
+2023; Elashmawi et al., 2024)
+A. Motivation
+   The challenge however is that the information about mental states that is encoded and accessible within scalp EEG signals
+is still uncertain, as is the temporal and spatial resolution needed to decode it. Researchers have successfully decoded global
+brainstates such as focus (Su et al., 2022; Al-Nafjan & Aldayel, 2022; Kaushik et al., 2022), emotions (Liang et al., 2019;
+Duan et al., 2020), meditative states (Schoenberg & Vago, 2019; Kora et al., 2021; Faber et al., 2017), stages of sleep (Supratak
+et al., 2017; Zhang et al., 2024b; Li et al., 2022) and many more from EEG data using relatively simple methods. Moreover,
+researchers have harnessed pretrained neural networks to additionally decode specific stimuli such as images (Song et al., 2023;
+Wilson et al., 2024; Xu et al., 2025), text (Zhang et al., 2018; Murad & Rahimi, 2024; Wang et al., 2024), and motor plans
+(Jerbi et al., 2011; Müller-Putz et al., 2016; Omedes et al., 2018; Wang et al., 2020) from EEG signals. These studies imply
+that substantial specific information theoretically exists and is decodable from the signal which could potentially be utilized
+for communication with a non-invasive BCI.
+   Deep learning techniques are eminently suited to the problem of extracting information from large and heterogeneous datasets.
+Specifically, foundation models (Bommasani, 2021) trained using predictive or reconstructive objectives over extremely wide
+datasets develop powerful and highly general representations (Brown et al., 2020; Team et al., 2023; Rombach et al., 2022).
+These representations can then be utilized for a wide variety of downstream tasks.
+   Our thinking is that if we can train fundamental foundation models to predict EEG signals, then these models will learn
+to extract a large fraction of the usable information within scalp-EEG signals which can then be applied to downstream tasks
+such as text or image prediction from EEG inputs, thus giving a direct route to noninvasive BCIs or, alternatively, ruling out
+this path if sufficient information simply does not exist within the EEG signal.
+B. Related Literature and Challenges
+   A number of EEG foundation models have been proposed in recent years (e.g., Wang et al., 2023; Cui et al., 2024; Zhang
+et al., 2024a; Yang et al., 2023; Wan et al., 2023; Jiang et al., 2024b,a; Shi et al., 2024; Wei, 2024), for a comprehensive
+review see Kuruppu et al. (2025). Today, however, there are a number of challenges that face these EEG foundation models.
+Principally, the amount of publicly available EEG data is limited compared to other modalities such as image, video, or text.
+The scarcity of data renders brittle models, which struggle to generalize across datasets and recording conditions. Further,
+EEG datasets vary widely in the number of channels collected and the precise location of those channels. Many existing EEG
+models are trained on a fixed set of channel inputs and positions (a channel montage) and suffer limited generalizability across
+datasets. A second challenge unique to EEG is that the spatial layout of electrodes on the surface of the scalp, which influences
+correlations in the signals, is not reflected in the data structure, as it is for example in images or video. This renders common
+techniques such as CNNs or Transformers where attention is applied directly on sequence position ineffective.
+C. Contribution
+   In this paper, we introduce ZUNA as a first step towards a general EEG foundation model. ZUNA is a 380M encoder-decoder
+model, able to take in sequences with arbitrary numbers and positions of channels, trained on both a regular and masked
+reconstruction objective. ZUNA can reconstruct existing channels using its encoder latent as a bottleneck, which forces it to
+learn general and powerful representations of EEG signals. If some channels are masked – i.e. filled with zeros – then ZUNA
+is also trained to reconstruct these channels from the information in the surrounding channels. This objective ensures that
+the model learns important cross-channel correlations and that the model is capable of directly predicting EEG signals from
+scratch. This masked channel reconstruction objective gives ZUNA useful capabilities such as denoising existing channels,
+reconstructing missing or noisy channels in realistic datasets, and upsampling the number of channels in a dataset, ‘imagining’
+new channels where none existed previously. ZUNA is trained on approximately two million channel-hours of publicly available
+scalp-EEG datasets.
+   Channel reconstruction and spatial upsampling are particularly valuable for researchers, clinicians, and BCI developers
+working with EEG data. A common problem in EEG data collection is that a channel may become noisy and potentially
+unusable for a time. This could be due to the electrode shifting position or temporary movements of the subject, which can
+suddenly inject noise into an otherwise clean channel. Concretely, given the remaining channels and a target electrode’s 3D
+
+
+
+                                                               2
+      (a) Channel count distributions after spatial filtering.                (b) 3D scalp electrode coordinates used for spatial con-
+                                                                              ditioning.
+Fig. 2: EEG channel configurations and spatial coverage in the training corpus. (a) Distribution of retained EEG channel
+counts across all non-overlapping 5-second epochs after preprocessing, comprising approximately 2 million channel-hours with
+up to 256 channels per sample. The majority of samples have between 16–32 channels, with additional peaks at higher-density
+configurations (64, 128, and 256 channels). The x- and y-axis is shown on a logarithmic scale. (b) Three-dimensional Cartesian
+(x, y, z) scalp coordinates of EEG electrode positions for a representative subset of 64 electrodes from the standard 10–20
+montage, illustrating the spatial geometry used for conditioning the model.
+
+scalp coordinate, the model generates a plausible time series for that location, enabling both infilling of missing or corrupted
+channels and spatial upsampling within a unified framework.
+   Additionally often cheaper or consumer grade EEG headsets do not come with the full complement of channels that
+commercial research headsets possess. This lower resolution makes it challenging to directly apply methods from the literature
+to these headsets without an unavoidable loss of accuracy. ZUNA provides the capability to ‘upsample’ and predict the outputs
+of channels at arbitrary locations on the head given the existing channels. While, clearly, the model is not infallible and relies
+only on the information it has access to, nevertheless, we show that our model substantially outperforms naive upsampling
+methods such as spherical-spline interpolation when the upsampling factor becomes large.
+   Our model makes the following contributions:
+   • We introduce ZUNA, a novel diffusion-based encoder-decoder architecture with a novel and unique position embedding
+     scheme designed to correctly represent the spatial information about channel location within EEG signals. This enables
+     our model to generalize to novel channel positions instead of requiring a fixed channel schema, which enables applicability
+     across many datasets and recording setups.
+   • We construct and harmonize a large-scale, heterogeneous EEG training corpus spanning 208 datasets with reliable 3D
+     electrode metadata, comprising over 24 million 5-second samples and approximately 2 million channel-hours with up to
+     256 channels per sample.
+   • We demonstrate that the model consistently outperforms standard spherical-spline interpolation for channel reconstruction
+     across multiple dropout regimes and evaluation datasets, with particularly strong gains at high upsampling factors.
+   • At only 380M parameters, our model is incredibly lightweight and can run extremely fast on any consumer GPU as well
+     as decently on CPU. We provide the model weights under the highly permissive Apache 2.0 license and the weights
+     are freely available on Huggingface https://huggingface.co/Zyphra/ZUNA, while inference and dataset preprocessing code
+     is available on our GitHub https://github.com/Zyphra/zuna and as a pip package which is built on MNE python https:
+     //pypi.org/project/zuna/. We invite researchers and other EEG practitioners to experiment with the model for your own
+     purposes and to send feedback to the corresponding authors which we can use to improve future iterations of the model.
+                                                                 II. DATA
+A. Data Preprocessing Pipeline
+  To train a generalizable EEG foundation model across highly heterogeneous datasets, we constructed a unified preprocess-
+ing pipeline that standardizes sampling rate, temporal segmentation, normalization, and spatial metadata while deliberately
+preserving channel diversity across recordings. All preprocessing was implemented using MNE-Python and applied uniformly
+across datasets.
+
+
+
+                                                                    3
+   We aggregated data from two major open EEG repositories: (i) the Temple University Hospital (TUH) EEG Corpus (Obeid
+& Picone, 2016), and (ii) a large collection of publicly available datasets hosted on OpenNeuro (Markiewicz et al., 2021).
+Together, these sources span a wide range of experimental paradigms, recording hardware, channel layouts, and data qualities.
+   Because ZUNA explicitly conditions on electrode location, only datasets and channels for which valid 3D scalp coordinates
+could be reconstructed were retained. Channel positions were inferred using a multi-stage strategy combining MNE standard
+montages (e.g., standard 1005, EGI HydroCel layouts), BioSemi cap metadata, and manual dataset-specific mappings. After this
+spatial filtering step, the final corpus comprised 208 unique datasets for which we could derive reliable 3D scalp coordinates.
+Channels without resolvable 3D coordinates were excluded, resulting in the removal of an average of 5.82 channels per
+recording (median = 6). These primarily corresponded to ocular channels (e.g., EOG) and other auxiliary or non-standard
+sensors lacking well-defined scalp locations. No fixed channel subset or canonical montage was imposed, yielding a highly
+heterogeneous distribution of channel configurations across recordings as shown in fig. 2.
+   All recordings were resampled to a common sampling rate of 256 Hz to ensure consistency across datasets. This included
+upsampling recordings originally acquired at lower sampling rates. Continuous recordings were segmented into non-overlapping
+5-second segments (1280 samples per epoch). Recordings shorter than 10 seconds were discarded. To remove slow drifts, signals
+were high-pass filtered at 0.5 Hz and re-referenced to the common average reference. Line noise was detected adaptively on
+a per-recording basis by analyzing the power spectral density (Welch method) between 45 Hz and the Nyquist frequency.
+Narrowband spectral peaks exceeding a data-driven threshold were identified and notch-filtered, typically capturing 50 Hz,
+60 Hz, and their harmonics where present. This adaptive approach avoids hard-coding line-noise frequencies and accommodates
+international datasets with differing power standards, which was necessary given our highly heterogeneous starting set of
+datasets.
+   To mitigate extreme artifacts while preserving maximal coverage, we applied a conservative signal-quality procedure at the
+channel and epoch level, where an epoch here denotes a non-overlapping 5-second segment of continuous EEG. Channels
+exhibiting near-flat signals (abnormally low variance relative to the recording-wide distribution, using a robust median/MAD
+criterion) or evidence of clipping (0.5% of samples within a small tolerance of the channel minimum/maximum) were flagged as
+bad and subsequently zeroed out during epoch extraction. After high-pass filtering, re-referencing, and adaptive notch filtering,
+additional noisy channels (per 5s segment) as well as epochs were identified by excessive standardized variability (SD 3 per
+channel or epoch respectively) and removed. When more than 50% of channels per epoch were marked as bad, the full epoch
+was discarded.
+   After initial filtering, samples were then standardized using z-score normalization based on the global mean and standard
+deviation computed across all EEG channels within each recording, yielding approximately zero-mean, unit-variance signals
+while preserving relative spatial structure. For long recordings, normalization was performed independently on contiguous
+10-minute segments; all subsequent analyses operated on non-overlapping 5-second epochs.
+   After spatial filtering and preprocessing, the final training corpus comprised 24,823,808 non-overlapping 5-second EEG
+epochs from a total of 208 datasets and approximately 2 million channel-hours of EEG recordings. The number of retained
+EEG channels per recording ranged from 2 to 256 (mean = 45.42; median = 22; SD = 41.50). The channel-count distribution
+was strongly multimodal (Figure2, left), with the majority of recordings containing 16-32 channels and additional pronounced
+peaks at 64, 128, and 256 channels, reflecting common EEG acquisition systems.
+   After z-score normalization, signals within each recording were standardized. Each training sample corresponded to one
+5-second segment sampled at 256Hz, yielding 1280 individual time points per channel.
+                                                          III. M ODEL
+A. Diffusion models
+   Diffusion models (Ho et al., 2020; Sohl-Dickstein et al., 2015) are widely used generative models for continuous real-valued
+signals such as images and audio. They work by defining a noising process that gradually steps from clean data to pure noise
+(Karras et al., 2022; Song et al., 2020). The model is then trained to invert this process, taking a step from noise towards data.
+Intuitively, diffusion models allow iterative denoising, giving the model many steps to converge to the correct signal, unlike a
+single step autoregressive model. Where well-behaved noising processes can be defined and inverted, diffusion models perform
+well, reaching state of the art performance in image and video generation (Nichol & Dhariwal, 2021; Dhariwal & Nichol,
+2021; Rombach et al., 2022; Ho et al., 2022) as well as performing strongly in audio modeling (Li et al., 2023; Huang et al.,
+2022). Due to the continuous real-valued nature of EEG signals and the potential of their iterative denoising, for ZUNA we
+settled on a diffusion approach.
+   Mathematically diffusion models define a Gaussian forward process that maps data to noise. Let x0 ∼ pdata (x) denote a data
+point (e.g., an channel of EEG signals Rd ). We define the noising process as a Markov chain which adds a small amount of
+
+
+
+
+                                                                4
+                                                x16                                                                                                                                       x16
+
+
+
+
+                                                                                                         encoder proj
+          token embed
+
+
+
+
+                                                        RMS Norm
+                        RMS Norm
+
+
+                                   Multi-Head
+
+
+
+
+                                                                            output proj
+
+
+
+
+                                                                                                                                           AdaRMS Norm
+                                    Self-Attn
+
+
+
+
+                                                                                                                                                                            AdaRMS Norm
+
+
+
+
+                                                                                                                                                                                                       AdaRMS Norm
+
+
+
+
+                                                                                                                                                                                                                              AdaRMS Norm
+                                                                   FFN
+
+
+
+
+                                                                                                                                                         Multi-Head
+
+
+
+
+                                                                                                                                                                                                                                            output proj
+                                                                                                                                                                                          Multi-Head
+                                                                                                                             AdaRMS Norm
+
+
+
+                                                                                                                                                         Cross-Attn
+
+
+
+
+                                                                                                                                                                                           Self-Attn
+
+
+
+
+                                                                                                                                                                                                                     FFN
+                                                                                                        token embed
+                                                      Clean EEG signal
+                                                                                                                                                                                                       - 4D-RoPE {x,y,z,tc}
+                                                                                                                                                           decoder output
+                                                                          Encoder                                       Decoder                                                                         - skip connection
+
+
+
+                                                      Noisy EEG signal
+
+
+                                                                    Fig. 3: Diffusion Autoencoder EEG Model Architecture
+
+Gaussian noise at each step.
+                                                                                                      T
+                                                                                                      Y
+                                                                          q(x1:T | x0 ) =                             q(xt | xt−1 )                                                                                                                       (1)
+                                                                                                      t=1
+                                                                                                                            p                  
+                                                                          q(xt | xt−1 ) = N xt ;                             1 − βt xt−1 , βt I ,                                                                                                         (2)
+where βt is the noise level of each step. This noise schedule increases from close to 0 to the standard deviation of the data
+during the noising process. Intuitively, early steps perturb fine details while preserving global structure, and late steps wash
+out semantics until xT is nearly isotropic Gaussian noise, making the terminal distribution easy to sample.
+  Conversely, generation is performed by learning an analogous reverse-time Markov chain
+                                                                                                                            T
+                                                                                                                            Y
+                                                                                          pθ (x0:T ) = p(xT )                              pθ (xt−1 | xt )                                                                                                (3)
+                                                                                                                            t=1
+
+with a simple prior p(xT ) = N (0, I). Crucially, due to the Gaussian dynamics, the posterior q(xt−1 | xt , x0 ) can be computed
+analytically. This lets us setup our learning objective as a principled and tractable variational lower bound,
+                                                              h                                  i
+                                  log pθ (x0 ) ≥ Eq(x1:T |x0 ) log pθ (x0:T ) − log q(x1:T | x0 ) ,                          (4)
+
+whose terms decompose across timesteps into KL divergences between Gaussians at each timestep. With an identity covariance
+the KL divergence simplifies to the standard mean-square-error objective. Classical diffusion models predict the injected noise
+ε (or equivalently the score) with a neural network εθ (xt , t), yielding the simple objective,
+                                                                         h                    i
+                                        Ldiff (θ) = Et∼Unif{1,...,T }, x0 ∥ε − εθ (xt , t)∥22                               (5)
+
+The key intuition is that learning to denoise at all noise levels teaches the model a vector field that points back toward
+high-density regions of pdata . In the continuous-time limit this connects to score-based modeling (Hyvärinen & Dayan, 2005;
+Vincent, 2011), where the network approximates ∇xt log q(xt ) and sampling follows a learned reverse diffusion (stochastic)
+or probability flow (deterministic) trajectory. In practice diffusion models are trained by sampling a minibatch of data at
+different levels of the noise schedule, and minimizing Eqn 5 by gradient descent. While here we present the standard diffusion
+formulation for intuition, our implementation uses rectified flow Liu et al. (2022) parameterization for improved stability and
+sampling efficiency.
+   Diffusion autoencoders pair a regular diffusion decoder which maps noise to data, with an additional encoder which stores
+some information about the full signal in a latent bottleneck. This latent bottleneck can then be input into the decoder, typically
+through cross-attention to aid the denoising process.
+B. ZUNA architecture
+   Some prior works have applied deep learning models to the task of interpolating EEG signals or performing EEG ”super
+resolution”. Most similar to ours, Wang et al. (2025) use diffusion in an encoder-decoder model where the encoder is
+
+
+
+                                                                                                                        5
+convolution-based and the decoder is a diffusion transformer. Saba-Sadiya et al. (2020) use a U-Net architecture based on
+CNNs with a fixed set of channels whose identity is determined by their location in the data array. Li et al. (2025) use
+a Masked Autoencoder based on a Transformer architecture with a fixed-masking strategy. Corley & Huang (2018) use an
+adversarial approach where both generator and discriminator networks rely heavily on CNNs.
+   Prior works have typically assumed a fixed channel layout, fixed masking strategy, and even a specific fixed upsampling
+ratio — e.g. from 24 to 48 channels with always the same channels upsampled each time. Instead, we aim to produce a highly
+flexible model which can interpolate any number of dropped-out channels and where these channels can be placed at any point
+on the head. To achieve this, we utilized a novel 4-dimensional positional embedding system where we represented the x,y,z
+and time positions of each channel using a separate positional embedding scheme Heo et al. (2024). This allows our model to
+flexibly generalize across channels at different locations and even interpolate entirely novel channel locations which were not
+recorded for a given signal.
+   ZUNA is a transformer-based encoder–decoder diffusion autoencoder for masked channel reconstruction of EEG signals. The
+model operates on a tokenized representation of multichannel EEG 2D structure (channel × time) while remaining compatible
+with standard 1D transformer processing. To achieve this, ZUNA introduces two architectural innovations:
+  1) Rasterized channel–time token ordering. Each EEG channel is segmented into fixed-length windows (0.125 s, 32
+      samples) and each window is represented as a continuous-valued token. Tokens are computed from the raw time series
+      through a token-encoder MLP. Tokens are then serialized in a raster-scan order: all channels for coarse time step 1, then
+      all channels for coarse time step 2, etc. A 5 s sample with C channels contains 40C tokens.
+  2) 4D rotary positional encoding (4D RoPE). Each token is associated with a 4D coordinate consisting of the channel’s
+      3D scalp location and the token’s coarse-time index. We inject this structure using a multi-dimensional RoPE variant
+      following Heo et al. (2024).
+   Let the continuous EEG be X ∈ RC×T , where C is the number of channels. We segment each channel into non-overlapping
+(or fixed-stride) windows of length τ = 0.125 s, yielding M coarse windows per channel. Each channel–window pair is
+converted into a feature vector
+                                                  sc,m = TokenEncoder(Xc,m )                                                    (6)
+We then serialize the 2D grid (c, m) into a single 1D sequence of length L = C · M using a raster ordering:
+                                                                                                     
+                                       s1,1 , s2,1 , . . . , sC,1 , s1,2 , . . . , sC,2 , . . . , sC,M .                        (7)
+This ordering is chosen so that (i) adjacent tokens share the same coarse-time index but different channels, and (ii) tokens at
+a fixed channel recur periodically every C positions.
+   Each token i corresponds to a channel c(i) and coarse time index m(i). For positional embeddings, we associate a 4D
+discrete coordinate
+                                                                                  
+                                                 pi = xc(i) , yc(i) , zc(i) , m(i) ,                                        (8)
+where (xc , yc , zc ) is the channel position on the head (discretized into forty ‘bins’) and m is the coarse-time (segment) index,
+xc , yc , zc , m ∈ {1, 50}. Note that 50 discretization bins was chosen because it was sufficient that each unique electrode in the
+training dataset had a unique bin once discretized. We then apply multi-dimensional rotary positional embeddings (RoPE) by
+passing the 4D index pi into the rotary embedding module.
+   For the encoder and decoder models we use 16 transformer layers consisting of the standard self-attention plus MLP.
+Attention is bidirectional and we diffuse the entire set of channels at once during generation. To inject the encoder’s latent
+information into the decoder we use adaptive-RMS norm, conditioned on the diffusion time step Crowson et al. (2024).
+   Within the encoder latent, following Darcet et al. (2024); Jebraeeli et al. (2025), we interleaved learnable register tokens
+which were inserted at a fixed stride. For a downsampling factor d, the token sequence is partitioned into groups of length d,
+and a learned register vector r is prepended to each group:
+                                                                                                  
+                                                 r, h1 , . . . , hd , r, hd+1 , . . . , h2d , . . . .                           (9)
+This produces an interleaved sequence of length L′ ≈ L + L/d. Following Jebraeeli et al. (2025) and our prior experience in
+other modalities, we expect that the learned registers improve performance in practice although we did not specifically ablate
+this choice for EEG. In this work, we used a downsampling factor d = 1. We set the sliding-window mask used in Flex
+Attention to 65536 tokens, a value large enough to include all tokens from a 5 second sample with 256 channels even after
+interleaving registers with d = 1.
+
+
+
+
+                                                                6
+C. Model Training
+   To enable the model to infill signals on noisy, corrupted channels or to upsample to unobserved channels, we trained with a
+heavy channel dropout scheme. We set the probability of drop out to be 90%. If dropout was selected, we randomly selected
+between 1 and C/2 channels to be dropped with 80% probability or selected between C/2 and C-1 channels to be dropped with
+20% probability. During training, dropped out channels were replaced with zeros in the encoder input and targets (the noising
+direction) were sent to decoder input. During inference, the encoder receives zero inputs for dropped channels and the decoder
+only receives the random Gaussian initialization for both dropped and non-dropped channels. When we drop a channel we do
+not drop the channel’s {x, y, z, tc } position and present this information to both encoder and decoder via 4D-RoPE.
+   We trained with rectified flow loss Liu et al. (2022) and adaptive loss-weighting Geng et al. (2024) on the decoder outputs
+and regularized the encoder latent with an auxiliary MMD loss Dziugaite et al. (2015). The model was trained for 150000
+steps with a learning rate of 1e-4 annealing down to 1e-6 with a cosine schedule. We used the AdamW optimizer with (β1 ,β2 )
+= (0.9, 0.95). For training stability, we found that the dataset scale was incredibly important, and required us to adjust the
+dataset to have a standard deviation of 0.1 with mean 0, and to adjust the noise variance of the diffusion process appropriately.
+Similarly, we observed that the global batch size also greatly impacted stability of training and required us to train with larger
+batches than expected. We trained with 6 gradient accumulation steps, yielding 90000 tokens per microbatch and 2.16M tokens
+per global batch across 3 nodes with 24 GPUs. Because of the highly variable numbers of channels per sample – see Figure 2a
+– naively padding the samples up to the maximum length would be extremely inefficient. To train efficiently, we implemented
+packing with sample-masking using flex attention to dynamically compute a special attention mask for each packed sample.
+Together, these improvements allowed us to train stably with high utilization at a rate of 50 samples per microbatch and 1150
+samples per global batch. Training of the final model took approximately a week on three H100 nodes. Since the model size
+was so small, only data parallelism was used with large microbatch sizes.
+   The spatiotemporal structure of EEG signals requires some modifications to the standard transformer architecture. Specifically,
+the transformer is only specifically designed to natively handle 1D sequences of elements while the EEG signal has C channels
+in parallel. Our novel rotary embedding module means that the channels do not have to be specified in any specific order and
+enables the model to represent a variable numbers of channels. By training on heterogeneous datasets, the model instead learns
+to rely solely on the position embeddings which can handle arbitrary channels.
+   To validate our design choices, we performed a series of ablations on the model architecture and training scheme. First, we
+replaced the zeros-vector used to represent dropped out channels with a learnable vector that had norm similar to the data and
+input that into the encoder. After making the necessary changes to the inference code, we found that it performs comparably
+and save exploration in that direction for future work. We also performed an ablation on the best way to present the positional
+information to the model. We tried concatenating the x, y, z position to the encoder input along with the fine-time EEG signal
+as part of the token while representing temporal position with standard 1D-RoPE, but this performed poorly. Finally, we
+performed an ablation testing whether sending the noised EEG signal into the decoder input for dropped channel improved
+performance relative to sending noise without the EEG signal. The relative performance in these two cases were similar.
+D. Usage
+   Alongside this paper, we also release the model freely on huggingface with a permissive license which can be found at (https:
+//huggingface.co/Zyphra/ZUNA). We also release inference code which can be found here (https://github.com/Zyphra/zuna/),
+and a pip package.
+                                                         IV. R ESULTS
+   Since our model is primarily concerned with upsampling and interpolating channels, we take reconstruction fidelity as our
+primary evaluation metric. To assess both in-distribution performance and cross-dataset generalization, we validated ZUNA
+on the training corpus, a held-out validation set with a fixed 32-channel montage, and four additional publicly available
+EEG datasets not included in the training sources (OpenNeuro and TUH). These held-out datasets were selected to probe
+generalization across recording paradigms, channel densities, and spatial layouts.
+   First, we used a subset of the ANPHY-Sleep dataset (Wei et al., 2024), an open high-density polysomnography resource
+comprising overnight EEG recordings from healthy adults with 83-channels being recorded. In our experiments we used data
+from the first 10 participants and restricted the analysis to the first 30 minutes of recording during which participants were
+still awake.
+   Second, DatasetV of the Berlin BCI CompetitionIII (Millan, 2004) is a widely used motor-imagery EEG benchmark recorded
+with a moderate-density scalp montage. This dataset represents a classic low-channel-count BCI setting and enables comparison
+with prior EEG channel-reconstruction and superresolution models that report results on this benchmark.
+   Third, we evaluated the model on an EEG dataset recorded using the BCI2000 platform (Schalk et al., 2004), a widely used
+general-purpose system for brain–computer interface research. The dataset used here consists of 109 participants performing a
+
+
+
+
+                                                                7
+Fig. 4: Normalized mean squared error (NMSE) for channel reconstruction as a function of channel dropout rate. Performance is
+shown for ZUNA (green) and spherical-spline interpolation (purple) under increasing levels of channel removal, corresponding to
+progressively more aggressive upsampling regimes. Results are reported for the training corpus (mixed channel configurations),
+a held-out validation set with a fixed 32-channel montage, the ANPHY-Sleep dataset (83 channels), Berlin BCI Competition
+III Dataset V (32 channels), the BCI2000 motor-imagery dataset (64 channels), and the ultra–high-density AAD dataset
+(255 channels). Across all datasets, reconstruction error increases with dropout rate for both methods, but ZUNA consistently
+outperforms spherical-spline interpolation, with the performance gap widening at higher dropout levels. Notably, the difference
+between methods is smallest for high-density recordings (e.g., 255 channels), where spatial interpolation is less challenging,
+whereas for lower-density montages and higher dropout rates, ZUNA maintains relatively stable performance while spherical-
+spline interpolation degrades substantially.
+
+series of motor execution and motor imagery tasks recorded with a 64-channel EEG montage. This dataset represents a typical
+medium-density motor-imagery BCI scenario with a large and diverse subject pool.
+   Finally, we used the Ultra-high density 255-channel EEG auditory attention decoding (AAD) dataset (Mundanad Narayanan
+et al., 2021), a publicly released collection of multi-subject EEG data recorded with an international 10-5 electrode array at 255
+channels while subjects attended to competing auditory streams. From this dataset we included all available EEG recordings
+from the first five participants in our evaluation.
+   We take spherical-spline interpolation (Perrin et al., 1989) between channels as our baseline, which is widely used by
+practitioners and is implemented in common EEG processing packages such as MNE (Gramfort et al., 2013). Spherical-spline
+interpolation is a surprisingly strong baseline for scalp-EEG signals, since volume conduction and skull conductivity induce a
+strong spatial smoothness, such that nearby electrodes share substantial linear signal components.
+   We evaluated reconstruction performance under varying degrees of channel dropout. These rates correspond one-to-one with
+the commonly reported “scale factor” of the superresolution literature. For example, in the ANPHY-Sleep dataset we randomly
+removed 20%, 50%, 75%, and 90% of channels at inference time, corresponding to upsampling factors of 1.25×, 2×, 4×,
+and 10×, respectively. For each condition, the model was tasked with reconstructing the dropped channels from the remaining
+observed channels, and performance was compared against spherical-spline interpolation.
+   Across all evaluation datasets, our model outperformed MNE’s inbuilt and ubiquitous spherical-spline interpolation method
+and clearly pulled ahead at higher dropout rates. The performance gap increased systematically with higher dropout rates, with
+the largest gains observed in the most extreme (90%) dropout condition. This divergence was driven primarily by a sharp
+
+
+
+                                                                8
+degradation in MNE’s interpolation performance as channel density decreased, whereas our model retained substantially higher
+reconstruction fidelity even when only a small subset of channels was available.
+    Notably, this pattern held across both low- to mid-density and ultra-high density recording regimes, indicating that the model
+generalizes across channel layouts and does not rely on assumptions specific to a particular montage. Together, these results
+suggest that learning spatially grounded representations over heterogeneous EEG data enables robust channel reconstruction
+well beyond what is achievable with purely geometric interpolation methods.
+    It should be noted that several evaluation-specific factors likely contributed to dataset-dependent performance differences.
+A practical limitation of our evaluation is that some benchmark datasets (notably BCI2000 and Berlin BCI Competition III
+Dataset V) are distributed primarily as pre-segmented, stimulus-locked epochs rather than continuous raw recordings. Because
+our training pipeline is built around continuous data (to enable robust line-noise detection and stable filtering), we adapted these
+epoch-based datasets by concatenating epochs to estimate line-noise peaks and apply high-pass filtering in a manner consistent
+with training, before re-segmenting and applying notch filtering at the epoch level. This workflow is necessarily suboptimal:
+filtering short epochs can introduce edge transients and boundary artifacts (especially for IIR/FIR operations near the segment
+boundaries), and concatenation/re-segmentation can yield filtering behavior that differs from true continuous preprocessing.
+We suspect this preprocessing mismatch contributes to the comparatively weaker performance observed on these datasets. In
+practice, we recommend applying ZUNA to continuous raw EEG whenever possible (or at least to long continuous segments)
+to avoid short-epoch filtering artifacts and to more closely match the model’s training distribution.
+    While there are other similar models in the literature, we found that very few of them released either the model weights
+or complete inference code, making direct fair quantitative comparisons difficult and reproduction of their results effectively
+impossible. Moreover, reported reconstruction metrics (e.g., MSE or NMSE) are highly sensitive to preprocessing choices,
+channel layouts, and evaluation protocols, and therefore specific values of these metrics cannot be compared across studies. To
+address this limitation, we release the trained model weights alongside a fully documented inference pipeline and a lightweight
+pip-installable package that integrates directly with common EEG processing workflows (e.g., MNE-Python). This allows
+practitioners to reproduce our results, apply the model to their own data, and perform controlled comparisons under matched
+preprocessing and evaluation settings.
+                                                         V. D ISCUSSION
+   In this paper, we have introduced ZUNA, a small but highly capable channel infilling model. We have demonstrated our
+model substantially outperforms ubiquitous methods of infilling that practitioners and researchers use today. Moreover, our
+model performs increasingly better as the difficulty of the task increases as we drop out more and more channels. Crucially,
+unlike other models in the literature, our model generalizes across datasets and across channel number and positions, potentially
+allowing it to be flexibly applied to a wide range of EEG datasets in the wild. One note of caution, however, is that like all
+generative models, our model is trained to generate plausible continuations given its limited observations, which means that
+it can hallucinate incorrect EEG signals. Channels reconstructed by our model should be treated as imputed data and not
+ground-truth measurement particularly in clinical decision-making.
+   The performance of spherical-spline interpolation depends strongly on montage density. For ultra–high-density recordings
+(e.g., the 255-channel AAD dataset), neighboring electrodes are closely spaced and scalp EEG is spatially smooth due to
+volume conduction and skull-related blurring; under these conditions, geometric interpolation is a strong baseline, particularly
+at low-to-moderate dropout where the missing channels remain well constrained by nearby measurements. This explains why
+spline interpolation performs very well in the low-dropout regime on the 255-channel AAD dataset and why the absolute
+gap between methods is smaller there. In contrast, as channel density decreases and/or dropout becomes more aggressive,
+the spatial gaps between observed electrodes grow and spline interpolation degrades sharply because it has no learned prior
+beyond smoothness. ZUNA is most advantageous in precisely these low-density / high-upsampling settings, where it can leverage
+learned multivariate structure across channels and datasets to generate plausible reconstructions that go beyond purely geometric
+smoothing.
+   While our model achieves an impressive level of performance and generality, demonstrating the power of deep learning
+methods as seen across other domains, there are still many potential avenues for improvement.
+   Firstly, our model and data scales are both very small compared to other, more mature, modalities such as audio, vision,
+and text. We see the preliminary signs of classical scaling-law-like trends in EEG as well and this would point to substantial
+further improvements being possible simply by scaling the model and data sizes. In terms of model size, there is clearly ample
+room to scale. Data is the more challenging axis to scale. To train ZUNA, we utilized existing open-source datasets, however
+unlike other modalities, there is nowhere near as much EEG data available on the open web. Scaling up the available and open
+datasets is thus an important and general challenge for the field.
+   Beyond simply scale, there are also various avenues of improvement available. One method, which also somewhat helps
+ameliorate the data scaling challenges, is to also include intracortical EEG. There is some evidence that there is transfer between
+
+
+
+
+                                                                 9
+intracortical and scalp-EEG (Yuan et al., 2024), and the general expectation from applying deep learning in other modalities,
+is that integrating new, but similar, areas of data induces transfer and improves modeling capabilities generally.
+   A second clear avenue for improvement is the context length of the model. For now, our model has been trained to process
+sequences only up to five seconds in length, however full EEG recordings can last many minutes to hours. We aim to apply
+techniques on context length extension and general long-context training from other well-developed areas of deep learning,
+especially learning from text data, to create models which can meaningfully learn from and interact with substantially longer
+EEG time series.
+   Additional avenues are improvements to the core architecture of the model. Our model attempts to do triple duty as a
+compressor to continuous tokens for consumption by downstream models, a model capable of reconstructing dropped out
+channel signals, and a model with powerful and general latent representations of EEG in its encoder bottleneck, which can
+then be built upon by classifiers. Certainly designing specialized architectures and learning objectives for these tasks may help
+improve performance at a given level of model and data scale. Secondarily, our architecture is primarily adapted from those
+used for audio autoencoders and has not particularly been designed with the specific characteristics of EEG signals in mind,
+except for our innovations about representing the positional information and channels. Moreover, our model only takes in the
+time-domain signal. Adjusting the model architecture to better fit the natural characteristics of the EEG signal and performing
+input feature engineering could further improve performance.
+   Beyond the utility of EEG foundation models for practitioners, we believe they also hold deep scientific interest. There are
+fundamental open questions regarding the fraction of useful neural information that can be captured by scalp-EEG. Large-scale
+foundation models excel at extracting and storing the information from a massive and messy corpora of data in their weights.
+   By training foundation models, we obtain artifacts that can be explored and mechanistically understood and which can
+provide evidence about the presence (or absence) of specific information within the EEG signal, about brain states and about
+correlates with behavior. Moreover, determining the extent to which many behaviors or mental states can be inferred from
+purely scalp-EEG signal also provides significant information about the feasibility and utility of non-invasive BCI in general.
+   One final note is that throughout we have striven to make this model accessible and useful to EEG researchers and other
+practitioners in the field. This includes making the model weights fully open source and easily accessible on hugging face, and
+providing straightforward and usable inference code and EEG preprocessing code for the model. We plan to continue improving
+the accessibility and utility of our models in future releases with an eye towards improving integrations with commonly used
+software tooling.
+
+
+
+
+                                                               10
+                                                        R EFERENCES
+U Rajendra Acharya, S Vinitha Sree, G Swapna, Roshan Joy Martis, and Jasjit S Suri. Automated eeg analysis of epilepsy: a
+   review. Knowledge-Based Systems, 45:147–165, 2013.
+Abeer Al-Nafjan and Mashael Aldayel. Predict students’ attention in online learning using eeg data. Sustainability, 14(11):
+   6553, 2022.
+Rami Alazrai, Motaz Abuhijleh, Hisham Alwanni, and Mohammad I Daoud. A deep learning framework for decoding motor
+   imagery tasks of the same hand using eeg signals. IEEE Access, 7:109612–109627, 2019.
+Andrea Biondi, Viviana Santoro, Pedro F Viana, Petroula Laiou, Deb K Pal, Elisa Bruno, and Mark P Richardson. Noninvasive
+   mobile eeg as a tool for seizure monitoring and management: A systematic review. Epilepsia, 63(5):1041–1063, 2022.
+Rishi Bommasani. On the opportunities and risks of foundation models. arXiv preprint arXiv:2108.07258, 2021.
+Tom B. Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav
+   Shyam, Girish Sastry, Amanda Askell, Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger, Tom Henighan, Rewon
+   Child, Aditya Ramesh, Daniel M. Ziegler, Jeffrey Wu, Clemens Winter, Christopher Hesse, Mark Chen, Eric Sigler, Mateusz
+   Litwin, Scott Gray, Benjamin Chess, Jack Clark, Christopher Berner, Sam McCandlish, Alec Radford, Ilya Sutskever, and
+   Dario Amodei. Language models are few-shot learners. CoRR, abs/2005.14165, 2020. URL https://arxiv.org/abs/2005.14165.
+György Buzsáki. Rhythms of the Brain. Oxford university press, 2006.
+Isaac A. Corley and Yufei Huang. Deep eeg super-resolution: Upsampling eeg spatial resolution with generative adversarial
+   networks. In 2018 IEEE EMBS International Conference on Biomedical & Health Informatics (BHI), pp. 100–103, 2018.
+   doi: 10.1109/BHI.2018.8333379.
+Katherine Crowson, Stefan Andreas Baumann, Alex Birch, Tanishq Mathew Abraham, Daniel Z. Kaplan, and Enrico Shippole.
+   Scalable high-resolution pixel-space image synthesis with hourglass diffusion transformers, 2024. URL https://arxiv.org/abs/
+   2401.11605.
+Wenhui Cui, Woojae Jeong, Philipp Thölke, Takfarinas Medani, Karim Jerbi, Anand A Joshi, and Richard M Leahy. Neuro-gpt:
+   Towards a foundation model for eeg. In 2024 IEEE International Symposium on Biomedical Imaging (ISBI), pp. 1–5. IEEE,
+   2024.
+Timothée Darcet, Maxime Oquab, Julien Mairal, and Piotr Bojanowski. Vision transformers need registers, 2024. URL
+   https://arxiv.org/abs/2309.16588.
+Prafulla Dhariwal and Alexander Nichol. Diffusion models beat gans on image synthesis. Advances in neural information
+   processing systems, 34:8780–8794, 2021.
+Lijuan Duan, Huifeng Duan, Yuanhua Qiao, Sha Sha, Shunai Qi, Xiaolong Zhang, Juan Huang, Xiaohan Huang, and Changming
+   Wang. Machine learning approaches for mdd detection and emotion decoding using eeg signals. Frontiers in Human
+   Neuroscience, 14:284, 2020.
+Gintare Karolina Dziugaite, Daniel M. Roy, and Zoubin Ghahramani. Training generative neural networks via maximum mean
+   discrepancy optimization, 2015. URL https://arxiv.org/abs/1505.03906.
+Walaa H Elashmawi, Abdelrahman Ayman, Mina Antoun, Habiba Mohamed, Shehab Eldeen Mohamed, Habiba Amr, Youssef
+   Talaat, and Ahmed Ali. A comprehensive review on brain–computer interface (bci)-based machine and deep learning
+   algorithms for stroke rehabilitation. Applied Sciences, 14(14):6347, 2024.
+Pascal L Faber, Frederick Travis, Patricia Milz, and Niyazi Parim. Eeg microstates during different phases of transcendental
+   meditation practice. Cognitive processing, 18(3):307–314, 2017.
+Francisco M Garcia-Moreno, Marta Badenes-Sastre, Francisca Expósito, Maria Jose Rodriguez-Fortiz, and Maria Bermudez-
+   Edo. Eeg headbands vs caps: How many electrodes do i need to detect emotions? the case of the muse headband. Computers
+   in Biology and Medicine, 184:109463, 2025.
+Zhengyang Geng, Ashwini Pokle, William Luo, Justin Lin, and J. Zico Kolter. Consistency models made easy, 2024. URL
+   https://arxiv.org/abs/2406.14548.
+Alexandre Gramfort, Martin Luessi, Eric Larson, Denis A Engemann, Daniel Strohmeier, Christian Brodbeck, Roman Goj,
+   Mainak Jas, Teon Brooks, Lauri Parkkonen, et al. Meg and eeg data analysis with mne-python. Frontiers in Neuroinformatics,
+   7:267, 2013.
+Byeongho Heo, Song Park, Dongyoon Han, and Sangdoo Yun. Rotary position embedding for vision transformer, 2024. URL
+   https://arxiv.org/abs/2403.13298.
+Jonathan Ho, Ajay Jain, and Pieter Abbeel. Denoising diffusion probabilistic models. Advances in neural information processing
+   systems, 33:6840–6851, 2020.
+Jonathan Ho, Tim Salimans, Alexey Gritsenko, William Chan, Mohammad Norouzi, and David J Fleet. Video diffusion models.
+   Advances in neural information processing systems, 35:8633–8646, 2022.
+Rongjie Huang, Max WY Lam, Jun Wang, Dan Su, Dong Yu, Yi Ren, and Zhou Zhao. Fastdiff: A fast conditional diffusion
+   model for high-quality speech synthesis. arXiv preprint arXiv:2204.09934, 2022.
+
+
+
+                                                              11
+Aapo Hyvärinen and Peter Dayan. Estimation of non-normalized statistical models by score matching. Journal of Machine
+  Learning Research, 6(4), 2005.
+Vahid Jebraeeli, Hamid Krim, and Derya Cansever. Vitcae: Vit-based class-conditioned autoencoder, 2025. URL https://arxiv.
+  org/abs/2509.16554.
+K Jerbi, JR Vidal, J Mattout, E Maby, F Lecaignard, T Ossandon, CM Hamamé, SS Dalal, R Bouet, J-P Lachaux, et al. Inferring
+  hand movement kinematics from meg, eeg and intracranial eeg: From brain-machine interfaces to motor rehabilitation. Irbm,
+  32(1):8–18, 2011.
+Wei-Bang Jiang, Yansen Wang, Bao-Liang Lu, and Dongsheng Li. Neurolm: A universal multi-task foundation model for
+  bridging the gap between language and eeg signals. arXiv preprint arXiv:2409.00101, 2024a.
+Wei-Bang Jiang, Li-Ming Zhao, and Bao-Liang Lu. Large brain model for learning generic representations with tremendous
+  eeg data in bci. arXiv preprint arXiv:2405.18765, 2024b.
+Tero Karras, Miika Aittala, Timo Aila, and Samuli Laine. Elucidating the design space of diffusion-based generative models.
+  Advances in neural information processing systems, 35:26565–26577, 2022.
+Pallavi Kaushik, Amir Moye, Marieke van Vugt, and Partha Pratim Roy. Decoding the cognitive states of attention and
+  distraction in a real-life setting using eeg. Scientific Reports, 12(1):20649, 2022.
+Zahra Khademi, Farideh Ebrahimi, and Hussain Montazery Kordy. A review of critical challenges in mi-bci: From conventional
+  to deep learning methods. Journal of Neuroscience Methods, 383:109736, 2023.
+Padmavathi Kora, K Meenakshi, K Swaraja, A Rajani, and Mantena Satyanarayana Raju. Eeg based interpretation of human
+  brain activity during yoga and meditation using machine learning: A systematic review. Complementary therapies in clinical
+  practice, 43:101329, 2021.
+Gayal Kuruppu, Neeraj Wagh, Vaclav Kremen, Sandipan Pati, Gregory Worrell, and Yogatheesan Varatharajah. Eeg foundation
+  models: A critical review of current progress and future directions. arXiv preprint arXiv:2507.11783, 2025.
+Chengfan Li, Yueyu Qi, Xuehai Ding, Junjuan Zhao, Tian Sang, and Matthew Lee. A deep learning method approach for sleep
+  stage classification with eeg spectrogram. International journal of environmental research and public health, 19(10):6322,
+  2022.
+Dongdong Li, Zhongliang Zeng, Zhe Wang, and Hai Yang. Estformer: Transformer utilising spatiotemporal dependencies
+  for electroencephalogram super-resolution. Knowledge-Based Systems, 317:113345, May 2025. ISSN 0950-7051. doi:
+  10.1016/j.knosys.2025.113345. URL http://dx.doi.org/10.1016/j.knosys.2025.113345.
+Raymond Li, Loubna Ben Allal, Yangtian Zi, Niklas Muennighoff, Denis Kocetkov, Chenghao Mou, Marc Marone, Christopher
+  Akiki, Jia Li, Jenny Chim, Qian Liu, Evgenii Zheltonozhskii, Terry Yue Zhuo, Thomas Wang, Olivier Dehaene, Mishig
+  Davaadorj, Joel Lamy-Poirier, João Monteiro, Oleh Shliazhko, Nicolas Gontier, Nicholas Meade, Armel Zebaze, Ming-Ho
+  Yee, Logesh Kumar Umapathi, Jian Zhu, Benjamin Lipkin, Muhtasham Oblokulov, Zhiruo Wang, Rudra Murthy, Jason
+  Stillerman, Siva Sankalp Patel, Dmitry Abulkhanov, Marco Zocca, Manan Dey, Zhihan Zhang, Nour Fahmy, Urvashi
+  Bhattacharyya, Wenhao Yu, Swayam Singh, Sasha Luccioni, Paulo Villegas, Maxim Kunakov, Fedor Zhdanov, Manuel
+  Romero, Tony Lee, Nadav Timor, Jennifer Ding, Claire Schlesinger, Hailey Schoelkopf, Jan Ebert, Tri Dao, Mayank Mishra,
+  Alex Gu, Jennifer Robinson, Carolyn Jane Anderson, Brendan Dolan-Gavitt, Danish Contractor, Siva Reddy, Daniel Fried,
+  Dzmitry Bahdanau, Yacine Jernite, Carlos Muñoz Ferrandis, Sean Hughes, Thomas Wolf, Arjun Guha, Leandro von Werra,
+  and Harm de Vries. Starcoder: may the source be with you!, 2023. URL https://arxiv.org/abs/2305.06161.
+Zhen Liang, Shigeyuki Oba, and Shin Ishii. An unsupervised eeg decoding system for human emotion recognition. Neural
+  Networks, 116:257–268, 2019.
+Xingchao Liu, Chengyue Gong, and Qiang Liu. Flow straight and fast: Learning to generate and transfer data with rectified
+  flow, 2022. URL https://arxiv.org/abs/2209.03003.
+Christopher J Markiewicz, Krzysztof J Gorgolewski, Franklin Feingold, Ross Blair, Yaroslav O Halchenko, Eric Miller, Nell
+  Hardcastle, Joe Wexler, Oscar Esteban, Mathias Goncavles, et al. The openneuro resource for sharing of neuroscience data.
+  Elife, 10:e71774, 2021.
+Jdel R Millan. On the need for on-line learning in brain-computer interfaces. In 2004 IEEE international joint conference on
+  neural networks (IEEE Cat. No. 04CH37541), volume 4, pp. 2877–2882. IEEE, 2004.
+Badr Mouazen, Ahmed Bendaouia, Giovanni De Marco, et al. Machine learning and clinical eeg data for multiple sclerosis:
+  A systematic review. Artificial Intelligence in Medicine, pp. 103116, 2025.
+Gernot R Müller-Putz, Andreas Schwarz, Joana Pereira, and Patrick Ofner. From classic motor imagery to complex movement
+  intention decoding: the noninvasive graz-bci approach. Progress in brain research, 228:39–70, 2016.
+Abhijith Mundanad Narayanan, Rob Zink, and Alexander Bertrand. Eeg miniaturization limits for stimulus decoding with eeg
+  sensor networks. Journal of Neural Engineering, 18(5):056042, 2021.
+Saydul Akbar Murad and Nick Rahimi. Unveiling thoughts: A review of advancements in eeg brain signal decoding into text.
+  IEEE Transactions on Cognitive and Developmental Systems, 2024.
+Alexander Quinn Nichol and Prafulla Dhariwal. Improved denoising diffusion probabilistic models. In International conference
+
+
+
+                                                            12
+   on machine learning, pp. 8162–8171. PMLR, 2021.
+Soheyl Noachtar and Jan Rémi. The role of eeg in epilepsy: a critical review. Epilepsy & Behavior, 15(1):22–33, 2009.
+Iyad Obeid and Joseph Picone. The temple university hospital eeg data corpus. Frontiers in neuroscience, 10:196, 2016.
+Jason Omedes, Andreas Schwarz, Gernot R Müller-Putz, and Luis Montesano. Factors that affect error potentials during a
+   grasping task: toward a hybrid natural movement decoding bci. Journal of neural engineering, 15(4):046023, 2018.
+F. Perrin, J. Pernier, O. Bertrand, and J.F. Echallier. Spherical splines for scalp potential and current density mapping.
+   Electroencephalography and Clinical Neurophysiology, 72(2):184–187, 1989. ISSN 0013-4694. doi: https://doi.org/10.1016/
+   0013-4694(89)90180-6. URL https://www.sciencedirect.com/science/article/pii/0013469489901806.
+Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Björn Ommer. High-resolution image synthesis
+   with latent diffusion models. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, pp.
+   10684–10695, 2022.
+Sari Saba-Sadiya, Tuka Alhanai, Taosheng Liu, and Mohammad M. Ghassemi. Eeg channel interpolation using deep encoder-
+   decoder netwoks, 2020. URL https://arxiv.org/abs/2009.12244.
+Gerwin Schalk, Dennis J. McFarland, Thilo Hinterberger, Niels Birbaumer, and Jonathan R. Wolpaw. Bci2000: A general-
+   purpose brain-computer interface (bci) system. IEEE Transactions on Biomedical Engineering, 51(6):1034–1043, 2004. doi:
+   10.1109/TBME.2004.827072.
+Poppy LA Schoenberg and David R Vago. Mapping meditative states and stages with electrophysiology: concepts,
+   classifications, and methods. Current Opinion in Psychology, 28:211–217, 2019.
+Enze Shi, Kui Zhao, Qilong Yuan, Jiaqi Wang, Huawen Hu, Sigang Yu, and Shu Zhang. Fome: A foundation model for eeg
+   using adaptive temporal-lateral attention scaling. arXiv preprint arXiv:2409.12454, 2024.
+Shelagh JM Smith. Eeg in the diagnosis, classification, and management of patients with epilepsy. Journal of Neurology,
+   Neurosurgery & Psychiatry, 76(suppl 2):ii2–ii7, 2005.
+Jascha Sohl-Dickstein, Eric Weiss, Niru Maheswaranathan, and Surya Ganguli. Deep unsupervised learning using nonequilib-
+   rium thermodynamics. In International conference on machine learning, pp. 2256–2265. pmlr, 2015.
+Yang Song, Jascha Sohl-Dickstein, Diederik P Kingma, Abhishek Kumar, Stefano Ermon, and Ben Poole. Score-based
+   generative modeling through stochastic differential equations. arXiv preprint arXiv:2011.13456, 2020.
+Yonghao Song, Bingchuan Liu, Xiang Li, Nanlin Shi, Yijun Wang, and Xiaorong Gao. Decoding natural images from eeg for
+   object recognition. arXiv preprint arXiv:2308.13234, 2023.
+Pasquale Striano, Giuseppe Orefice, Vincenzo Brescia Morra, P Boccella, C Sarappa, Roberta Lanzillo, G Vacca, and Salvatore
+   Striano. Epileptic seizures in multiple sclerosis: clinical and eeg correlations. Neurological Sciences, 24(5):322–328, 2003.
+Enze Su, Siqi Cai, Longhan Xie, Haizhou Li, and Tanja Schultz. Stanet: A spatiotemporal attention network for decoding
+   auditory spatial attention from eeg. IEEE Transactions on Biomedical Engineering, 69(7):2233–2242, 2022.
+Akara Supratak, Hao Dong, Chao Wu, and Yike Guo. Deepsleepnet: A model for automatic sleep stage scoring based on raw
+   single-channel eeg. IEEE transactions on neural systems and rehabilitation engineering, 25(11):1998–2008, 2017.
+Wing-kin Tam, Tong Wu, Qi Zhao, Edward Keefer, and Zhi Yang. Human motor decoding from neural signals: a review. BMC
+   Biomedical Engineering, 1(1):22, 2019.
+Shixiao Tan, Zhen Tang, Qiang He, Ying Li, Yuliang Cai, Jiawei Zhang, Di Fan, and Zhenkai Guo. Automatic detection and
+   prediction of epileptic eeg signals based on nonlinear dynamics and deep learning: A review. Frontiers in Neuroscience, 19:
+   1630664, 2025.
+Gemini Team, Rohan Anil, Sebastian Borgeaud, Yonghui Wu, Jean-Baptiste Alayrac, Jiahui Yu, Radu Soricut, Johan Schalkwyk,
+   Andrew M Dai, Anja Hauth, et al. Gemini: a family of highly capable multimodal models. arXiv preprint arXiv:2312.11805,
+   2023.
+Shivam Tiwari, Deepak Arora, and Vishal Nagar. Supervised approach based sleep disorder detection using non-linear dynamic
+   features (nldf) of eeg. Measurement: Sensors, 24:100469, 2022.
+Kaido Värbu, Naveed Muhammad, and Yar Muhammad. Past, present, and future of eeg-based bci applications. Sensors, 22
+   (9):3331, 2022.
+Pascal Vincent. A connection between score matching and denoising autoencoders. Neural computation, 23(7):1661–1674,
+   2011.
+Zhijiang Wan, Manyu Li, Shichang Liu, Jiajin Huang, Hai Tan, and Wenfeng Duan. Eegformer: A transformer–based brain
+   activity classification method using eeg signal. Frontiers in neuroscience, 17:1148855, 2023.
+Christopher Wang, Vighnesh Subramaniam, Adam Uri Yaari, Gabriel Kreiman, Boris Katz, Ignacio Cases, and Andrei Barbu.
+   Brainbert: Self-supervised representation learning for intracranial recordings. arXiv preprint arXiv:2302.14367, 2023.
+Jiaqi Wang, Zhenxi Song, Zhengyu Ma, Xipeng Qiu, Min Zhang, and Zhiguo Zhang. Enhancing eeg-to-text decoding through
+   transferable representations from pre-trained contrastive eeg-text masked autoencoder. arXiv preprint arXiv:2402.17433,
+   2024.
+Kun Wang, Minpeng Xu, Yijun Wang, Shanshan Zhang, Long Chen, and Dong Ming. Enhance decoding of pre-movement
+
+
+
+                                                              13
+  eeg patterns for brain–computer interfaces. Journal of neural engineering, 17(1):016033, 2020.
+Shuqiang Wang, Tong Zhou, Yanyan Shen, Ye Li, Guoheng Huang, and Yong Hu. Generative ai enables eeg super-resolution
+  via spatio-temporal adaptive diffusion learning, 2025. URL https://arxiv.org/abs/2407.03089.
+Xiaoxi Wei. Transfer learning for non-invasive bci eeg brainwave decoding. Transfer Learning-Leveraging the Capability of
+  Pre-trained Models Across Different Domains, 2024.
+Xiaoyan Wei, Tamir Avigdor, Alyssa Ho, Erica Minato, Alfonso Garcia-Asensi, Jessica Royer, Yingqi Laetitia Wang, Vojtech
+  Travnicek, Katharina Schiller, Boris C Bernhardt, et al. Anphy-sleep: an open sleep database from healthy adults using
+  high-density scalp electroencephalogram. Scientific Data, 11(1):896, 2024.
+Holly Wilson, Xi Chen, Mohammad Golbabaee, Michael J Proulx, and Eamonn O’Neill. Feasibility of decoding visual
+  information from eeg. Brain-computer interfaces, 11(1-2):33–60, 2024.
+Jonathan Xu, Ugo Bruzadin Nunes, Wangshu Jiang, Samuel Ryther, Jordan Pringle, Paul Steven Scotti, Arnaud Delorme, and
+  Reese Kneeland. Alljoined-1.6 m: A million-trial eeg-image dataset for evaluating affordable brain-computer interfaces.
+  2025.
+Chaoqi Yang, M Westover, and Jimeng Sun. Biot: Biosignal transformer for cross-data learning in the wild. Advances in
+  Neural Information Processing Systems, 36:78240–78260, 2023.
+Zhizhang Yuan, Fanqi Shen, Meng Li, Yuguo Yu, Chenhao Tan, and Yang Yang. Brainwave: A brain signal foundation model
+  for clinical applications. arXiv preprint arXiv:2402.10251, 2024.
+Daoze Zhang, Zhizhang Yuan, Junru Chen, Kerui Chen, and Yang Yang. Brant-x: A unified physiological signal alignment
+  framework. In Proceedings of the 30th ACM SIGKDD Conference on Knowledge Discovery and Data Mining, pp. 4155–4166,
+  2024a.
+Xiang Zhang, Lina Yao, Quan Z Sheng, Salil S Kanhere, Tao Gu, and Dalin Zhang. Converting your thoughts to texts: Enabling
+  brain typing via deep feature learning of eeg signals. In 2018 IEEE international conference on pervasive computing and
+  communications (PerCom), pp. 1–10. IEEE, 2018.
+Xiaoli Zhang, Xizhen Zhang, Qiong Huang, Yang Lv, and Fuming Chen. A review of automated sleep stage based on eeg
+  signals. Biocybernetics and Biomedical Engineering, 44(3):651–673, 2024b.
+
+
+
+
+                                                           14
+                           VI. A PPENDIX
+
+
+
+
+Fig. 5: Full sample reconstruction of a 22-channel sample from Figure 1
+
+
+
+
+                                  15
+
