@@ -237,19 +237,38 @@ class StrategyByFileSize(unittest.TestCase):
             'a recording that can be neither held nor streamed must be '
             'refused with an explanation, not attempted')
 
-    def test_an_unscored_large_file_opens_and_says_what_to_run(self):
-        """No cache and too large to score here — open anyway, with advice."""
+    def test_an_unprepared_recording_opens_and_says_what_to_run(self):
+        """No study bundle — open anyway, and name the server command.
+
+        The application no longer scores anything itself, at any size: every
+        model runs where the study was prepared. So the one thing it owes a
+        reviewer who opens an unprepared recording is the command that
+        prepares it. Saying only "no proposals" would leave them stuck.
+        """
         self._none()
         p = _write_edf(os.path.join(self.tmp, 'unscored.edf'), seconds=60,
                        fs=256)
         self.w.load_edf(p)
         self.assertIsNotNone(
             self.w._raw_data,
-            'a large unscored recording must still open for review; the '
+            'an unprepared recording must still open for review; the '
             'reviewer may be looking for what the detector missed')
         msg = self.w.statusBar().currentMessage()
-        self.assertIn('precompute_probs', msg,
+        self.assertIn('prepare_study.py', msg,
                       'the reviewer was not told how to get proposals')
+
+    def test_the_review_client_never_runs_the_model_itself(self):
+        """The two-part split has to be enforced, not merely intended.
+
+        While the application could fall back to scoring, "heavy computation
+        happens on the server" was a convention a missing cache could break —
+        on a clinical workstation with no GPU and often no TensorFlow.
+        """
+        import gui.app as app_module
+        self.assertFalse(
+            hasattr(app_module.MainWindow, '_ensure_probs_with_progress'),
+            'the in-app inference fallback is back; the review client must '
+            'not be able to run the detector')
 
 
 if __name__ == '__main__':

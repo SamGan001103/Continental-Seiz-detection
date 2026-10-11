@@ -1047,32 +1047,26 @@ class MainWindow(QtWidgets.QMainWindow):
             except AttributeError:                           # noqa: PERF203
                 pass
 
-        # probability cache — run inference on-demand if missing
+        # The study bundle, prepared on the server. NOT scored here, whatever
+        # the recording's size: this application is the client half of a
+        # two-part system, every model runs where the study was prepared, and
+        # this end only reads what that produced. Scoring on a clinical
+        # workstation was always the wrong offer — no GPU, frequently no
+        # TensorFlow, and a job measured in hours begun while a reviewer waits
+        # for a file to open. Naming the command takes thirty seconds; the
+        # fallback it replaces wasted an afternoon and said only "loading".
         cached = load_probs(path)
-        # A recording too large to hold in memory cannot be scored here:
-        # compute_probs_from_data starts with np.asarray(), which would
-        # materialise the very array we declined to load. Scoring a day of EEG
-        # is a batch job anyway — roughly an hour even across 20 cores — and
-        # not something to run while a clinician waits. So it opens for review
-        # with no proposals rather than not opening at all.
-        too_large_to_score = cached is None and lazy_source is not None
-        if cached is None and not too_large_to_score:
-            cached = self._ensure_probs_with_progress(path)
         if cached is None:
             self._probs = None
             self.prob_strip.set_probs([], [])
             self.overview_strip.clear()
-            if too_large_to_score:
-                # Not "cancelled": nothing was attempted, and telling a
-                # reviewer their inference was cancelled when it was never
-                # started sends them looking for a failure that did not happen.
-                msg = ('{} — opened for review, but too large to score here. '
-                       'Run  precompute_probs.py "{}" --workers 8  to get '
-                       'detector proposals, then reopen.'.format(
-                           os.path.basename(path), os.path.basename(path)))
-            else:
-                msg = '{} — inference cancelled, no probabilities loaded.'.format(
-                    os.path.basename(path))
+            # Opened anyway, with no proposals, rather than refused: a
+            # reviewer may legitimately want to read an unprepared recording,
+            # and the trace is the thing they came for.
+            msg = ('{} — opened for review, but no study bundle was found. '
+                   'Prepare it on the server with  python prepare_study.py '
+                   '"{}"  and reopen.'.format(
+                       os.path.basename(path), os.path.basename(path)))
         else:
             self._set_source_cache('baseline', cached)
             self._activate_prob_source('baseline', preserve_view=True)
@@ -1102,81 +1096,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # Must run AFTER _rebuild_events_from_probs, which replaces self._events
         # wholesale with freshly proposed candidates.
         self._offer_autosave_restore()
-
-    def _ensure_probs_with_progress(self, edf_path):
-        """Run inference on an EDF that has no cached probs, with a
-        cancellable progress dialog. Caches the result next to the EDF.
-        Returns a dict matching load_probs()'s shape, or None if the user
-        cancelled or inference failed."""
-        from gui.io.infer import compute_probs
-        from gui.io.cache import save_probs
-
-        dlg = QtWidgets.QProgressDialog(
-            'Loading the detector…\n\n'
-            'First open of a recording only. This takes about a minute in the\n'
-            'packaged application; scoring starts as soon as it finishes.',
-            'Cancel', 0, 0, self)
-        dlg.setWindowTitle('Detecting seizures')
-        dlg.setWindowModality(QtCore.Qt.WindowModal)
-        dlg.setMinimumDuration(0)
-        dlg.setAutoClose(False)
-        dlg.setAutoReset(False)
-        # Range 0-0 is Qt's busy indicator: an animated bar with no percentage.
-        #
-        # This was a 0-100 bar sitting at 0 for the entire model load, which is
-        # about 5 s from source but a full minute in the frozen build --
-        # PyInstaller unpacking TensorFlow, and the virus scanner reading a
-        # 1.4 GB directory it has not seen before. A bar that never moves is
-        # indistinguishable from a hung application, and the first person to
-        # meet it reported the app as stuck.
-        #
-        # Nothing here can report true progress: the model load is one opaque
-        # call inside TensorFlow. So the honest signal is "working, duration
-        # unknown" -- which is what the busy indicator means -- plus a sentence
-        # saying how long to expect. progress_cb switches to a real 0-n bar the
-        # moment the first window is scored.
-        dlg.show()
-        QtWidgets.QApplication.processEvents()
-
-        class _Cancelled(Exception):
-            pass
-
-        def progress_cb(i, n):
-            if dlg.maximum() != n:
-                # Leaves the busy indicator and becomes a real bar. setRange,
-                # not setMaximum: the dialog starts at 0-0, so the minimum has
-                # to be restored as well or the bar stays animated forever.
-                dlg.setRange(0, n)
-            dlg.setValue(i)
-            dlg.setLabelText('Scoring window {}/{}…'.format(i, n))
-            QtWidgets.QApplication.processEvents()
-            if dlg.wasCanceled():
-                raise _Cancelled()
-
-        try:
-            starts, probs, skip_code = compute_probs(
-                edf_path, progress_cb=progress_cb,
-                data=self._original_data, fs=self._fs)
-        except _Cancelled:
-            return None
-        except Exception as ex:
-            QtWidgets.QMessageBox.critical(
-                self, 'Inference failed',
-                'Could not run seizure detection on this file:\n\n{}'.format(ex))
-            return None
-        finally:
-            dlg.close()
-
-        meta = {'step_s': 6, 'segment_s': 12, 'use_ica': True,
-                'fs': 250, 'weights': 'convlstm_ICA_12_train.h5'}
-        try:
-            save_probs(edf_path, starts, probs, meta=meta,
-                       skip_code=skip_code)
-        except Exception as ex:
-            self.statusBar().showMessage(
-                'Inference done but failed to write cache: {}'.format(ex), 5000)
-        return {'window_starts': starts, 'probs': probs, 'meta': meta,
-                'skip_code': skip_code, 'skip_code_is_exact': True}
 
     def _reset_source_combo(self):
         self.cb_source.blockSignals(True)
