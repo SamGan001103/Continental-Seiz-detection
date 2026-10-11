@@ -104,10 +104,22 @@ def decimate_for_display(data, fs, target_px=8000):
     """Uniform-stride decimation to ~target_px points along time axis.
 
     Adaptive re-decimation in SignalView keeps the point count roughly
-    proportional to viewport pixel width at every zoom level. Stride
-    decimation is used instead of min/max envelope because an envelope
-    produces solid vertical bars when the signal has sustained peaks at
-    or above the clip level (looks like black boxes).
+    proportional to viewport pixel width at every zoom level.
+
+    Stride is correct HERE and only here. This helper serves the full-rate
+    regime (views up to FULLRATE_MAX_SPAN_S), where a column spans a handful
+    of samples and dropping the ones between them costs nothing visible.
+
+    It used to serve the overview regime too, and there it was wrong: a column
+    covering several seconds was represented by one sample, so a spike between
+    the chosen samples was never drawn. gui/display_pipeline.py now renders
+    those views as the min and max of the filtered signal per column.
+
+    The objection that kept stride - that an envelope draws solid bars when
+    sustained peaks reach the clip level - was real, and is answered by
+    drawing the envelope with a lighter, thinner pen. That also stops a range
+    band being mistaken for a waveform, which is the more important of the two
+    problems.
 
     Returns (data_ds [K, M], time_ds [M])."""
     n = data.shape[1]

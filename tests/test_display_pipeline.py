@@ -168,7 +168,14 @@ class FullRateMatchesWholeFileFiltering(unittest.TestCase):
 
 
 class OverviewRegimeStaysSafe(unittest.TestCase):
-    """Wide views filter after decimation; they must not raise or alias."""
+    """Wide views draw the min/max of the FILTERED signal, per column.
+
+    Until 2026-09-01 they decimated first and filtered the decimated series,
+    which lost two things at once. A spike between the selected samples was
+    never drawn - at a 1818 s view, one sample in 187 - and every cutoff above
+    the decimated Nyquist was dropped, so a view the toolbar labelled
+    HP 1.0 / LP 70 / Notch 60 was in fact unfiltered and aliased.
+    """
 
     def setUp(self):
         self.data = _eeg(seconds=1200)
@@ -184,12 +191,61 @@ class OverviewRegimeStaysSafe(unittest.TestCase):
         self.assertLessEqual(got.shape[1], 2000)
         self.assertGreater(t[-1], 1000.0)
 
-    def test_cutoffs_above_the_decimated_nyquist_are_dropped(self):
-        """A 60 Hz notch at an effective 3 Hz sample rate must not be designed."""
-        p = DisplayPipeline(self.data, FS, hp=1.0, lp=70.0, notch=60.0,
+    def test_a_spike_narrower_than_a_column_is_still_drawn(self):
+        """The property the whole change exists for.
+
+        A 40 ms, 400 uV transient at 600 s, on a 1200 s view where one column
+        spans several seconds. Stride decimation sampled every 187th sample
+        and missed it completely; the envelope cannot, because the column
+        carries the extremes of every sample inside it.
+        """
+        data = _eeg(seconds=1200)
+        at = 600 * FS
+        data[:, at:at + 10] += 400.0
+        p = DisplayPipeline(data, FS, hp=1.0, lp=70.0, notch=60.0,
                             montage='Referential (raw)')
-        got, _t = p.render(0, int(1200 * FS), target_px=1600)   # ~2.7 Hz
-        self.assertTrue(np.all(np.isfinite(got)))
+        got, _t = p.render(0, int(1200 * FS), target_px=1600)
+        self.assertGreater(
+            float(np.abs(got).max()), 200.0,
+            'a 400 uV spike vanished from the overview - a reviewer scrolling '
+            'the recording would never see it')
+
+    def test_the_filters_the_toolbar_names_are_actually_applied(self):
+        """Overview used to drop every cutoff above the decimated Nyquist."""
+        n = 1200 * FS
+        t = np.arange(n) / float(FS)
+        data = (_eeg(seconds=1200)
+                + 60.0 * np.sin(2 * np.pi * 60.0 * t)[None, :])
+        common = dict(hp=1.0, lp=70.0, montage='Referential (raw)')
+        notched, _ = DisplayPipeline(data, FS, notch=60.0, **common).render(
+            0, n, target_px=1600)
+        plain, _ = DisplayPipeline(data, FS, notch=None, **common).render(
+            0, n, target_px=1600)
+        self.assertLess(
+            float(np.abs(notched).max()), float(np.abs(plain).max()),
+            'the 60 Hz notch made no difference to the overview, so the '
+            'filters named in the toolbar are not being applied')
+
+    def test_aggregating_the_stored_envelope_matches_filtering_directly(self):
+        """Composition must be exact, or the cache is a second answer.
+
+        min/max composes: the minimum of a set of column minima is the
+        minimum of their union. So aggregating the stored base envelope has to
+        give the same extremes as filtering the span and reducing it in one
+        go, otherwise which one you see depends on cache state.
+        """
+        data = _eeg(seconds=900)
+        p = DisplayPipeline(data, FS, hp=1.0, lp=70.0, notch=60.0,
+                            montage='Referential (raw)')
+        s0, s1, bins = 100 * FS, 800 * FS, 300
+        cached, _ = p.render(s0, s1, target_px=2 * bins)
+        direct, _ = p._render_envelope_direct(s0, s1, bins)
+        span = min(cached.shape[1], direct.shape[1])
+        err = np.abs(cached[:, :span].max(axis=1)
+                     - direct[:, :span].max(axis=1)).max()
+        self.assertLess(err, 1.0,
+                        'aggregated envelope disagrees with a direct one by '
+                        '{:.3f} uV'.format(err))
 
     def test_the_regime_boundary_is_continuous_enough_to_navigate(self):
         """Crossing the threshold must not change what the trace looks like."""

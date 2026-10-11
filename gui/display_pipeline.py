@@ -47,8 +47,6 @@ and never duplicated; tests/test_display_model_isolation.py holds that line.
 Framework-free: numpy and gui.processing only, so it is testable without Qt
 and — like gui.processing — must never be imported by the model path.
 """
-from collections import OrderedDict
-
 import numpy as np
 
 from gui.processing import (CH_NAMES_19, apply_filters, apply_montage,
@@ -67,30 +65,35 @@ FULLRATE_MAX_SPAN_S = 300.0
 # second. 10 s is comfortably past all of them, and the test measures it.
 FILTER_PAD_S = 10.0
 
+# --- overview envelope -------------------------------------------------
+# Above FULLRATE_MAX_SPAN_S a pixel covers many samples. Stride decimation
+# drew ONE of them, so a spike between the chosen samples was not drawn at
+# all, and the filters were run on the decimated series at a rate that could
+# not represent them and were silently dropped - at a 1818 s view, an
+# effective 0.61 Hz, every one of HP 1.0 / LP 70 / Notch 60 was discarded
+# while the toolbar still named them. A reviewer scrolled out past 300 s was
+# shown raw, aliased signal labelled as filtered.
+#
+# The overview is now the minimum and maximum of the FULL-RATE FILTERED signal
+# in each column, so a peak cannot be missed and the filters are the ones the
+# toolbar names. Two points per column instead of one, and half as many
+# columns, so the point count and on-screen density are unchanged.
+#
+# min/max composes - the minimum of a set of column minima is the minimum of
+# their union - so the expensive part, filtering the recording once, is done
+# at a fixed base resolution and every wider zoom aggregates from it exactly.
+# Measured: filtering costs ~1.1 us per sample-channel (452 ms for a 30-minute
+# 19-channel recording), the reduction itself ~2 ms.
+ENVELOPE_MAX_COLS = 250000
+ENVELOPE_MIN_BASE_S = 0.1
+
 # How much signal is filtered and kept at once, so that panning is a slice
 # rather than a re-filter. Several screens wide, floored so that a tight
 # clinical page does not produce a block barely larger than itself. At 250 Hz
 # a 120 s block is 19 ch x 30 000 samples x 4 bytes = 2.3 MB, which is nothing
 # against the ~20 ms per redraw it saves while scrolling.
-#
-# 600 s rather than 120 after measuring a reviewer scrolling a day-long
-# recording a page at a time. The cost of a MISS is what hurts, not the cost of
-# a hit: hits were 34 ms, misses 110-190 ms, and at a 10 s page a 120 s block
-# missed every twelfth step — frequent enough to read as constant lag. Five
-# times the block makes the stall five times rarer, and the memory is still
-# trivial: 600 s is 19 ch x 150 000 samples x 4 bytes = 11 MB. The lazy
-# day-long path pays an extra disk read per refill, measured at 2 ms.
-#
-# The number is deliberately not larger. A miss costs a filter over the whole
-# block, so a very large block trades frequent small stalls for rare long ones,
-# and a rare 1 s freeze is worse to review through than a regular 150 ms one.
 BLOCK_SPAN_FACTOR = 6
-BLOCK_MIN_S = 600.0
-
-# How many wide (decimated) views to remember. A reviewer cycles between
-# a handful of them — the whole recording, the current hour, the current
-# ten minutes — and each entry is only about 122 kB.
-OVERVIEW_CACHE_ENTRIES = 8
+BLOCK_MIN_S = 120.0
 
 
 class SplicedSource(object):
@@ -169,7 +172,10 @@ class DisplayPipeline(object):
         self.n_samples = int(source.shape[1])
         # (key, block_start, block_stop, rows) for the last full-rate block.
         self._block = None
-        self._overview_cache = OrderedDict()
+        # (key, base_samples, lo, hi) - the whole-recording min/max
+        # envelope of the filtered signal, built lazily on the first
+        # overview render and reused by every wider zoom.
+        self._env = None
         if montage is None:
             self.labels = list(row_labels if row_labels is not None
                                else CH_NAMES_19[:source.shape[0]])
@@ -255,60 +261,109 @@ class DisplayPipeline(object):
         self._block = (key, b0, b1, rows)
         return rows, b0
 
-    def _render_overview(self, s0, s1, target_px):
-        # Cached, because this is the expensive regime and a reviewer returns
-        # to the same wide view constantly: zoom out to find the next event,
-        # zoom in to read it, zoom out again. Measured on a 24-hour recording
-        # before caching, every one of those cost 400-490 ms, identically,
-        # because the strided read walks the whole 1.2 GB file each time.
-        #
-        # Keyed on the request AND the display settings, so changing a filter
-        # or the montage cannot serve a stale picture — the same rule the
-        # full-rate block cache follows. Entries are ~122 kB (19 rows x 1600
-        # points x 4 bytes), so a handful costs about a megabyte.
-        ck = (s0, s1, int(target_px), self.hp, self.lp, self.notch,
-              self.montage, self.fs)
-        hit = self._overview_cache.get(ck)
-        if hit is not None:
-            return hit
+    # -- overview envelope ----------------------------------------------
+    def _envelope_base_samples(self):
+        """Samples per base column: fine enough to compose from, bounded.
 
-        stride = max(1, (s1 - s0) // max(1, int(target_px)))
-        # Served from the in-RAM decimated level when there is one. This read
-        # was measured at 96-103% of the whole wide render -- 1.7 s at a two
-        # hour view -- because it walks the span off disk to draw 1600 points.
-        # The level holds every 64th sample of the recording (26 MB for a day)
-        # and makes the same picture a slice of an array.
-        #
-        # It is read off the SOURCE, not held here: this pipeline is rebuilt
-        # whenever a filter, the montage or the sensitivity changes, and a
-        # level rebuilt that often would cost far more than it saves.
-        level = getattr(self.source, 'level', None)
-        if level is not None and level.covers(stride):
-            raw_ds, first, stride = level.slice(s0, s1, stride)
-        else:
-            raw_ds = self.source[:, s0:s1:stride]
-            first = s0
-        fs_ds = self.fs / float(stride)
-        nyq = 0.5 * fs_ds
-        # Cutoffs the decimated rate cannot represent are dropped rather than
-        # passed to a filter design that would raise or alias into nonsense.
-        lp = self.lp if (self.lp and self.lp < nyq) else None
-        notch = self.notch if (self.notch and self.notch < nyq) else None
-        hp = self.hp if (self.hp and self.hp < nyq) else None
-        filt = apply_filters(raw_ds, fs_ds, hp=hp, lp=lp, notch=notch)
-        rows = self._montage(filt)
-        # From the index of the first sample actually taken, not from s0: the
-        # level starts on its own stride grid, so assuming s0 would slide the
-        # whole trace sideways by up to one level step.
-        t = (first + np.arange(rows.shape[1]) * stride) / float(self.fs)
-        out = (rows, t.astype(np.float32))
-        # Bounded by insertion order: the oldest wide view is the one the
-        # reviewer is least likely to return to, and an unbounded cache on a
-        # widget that lives as long as the window is a slow leak.
-        if len(self._overview_cache) >= OVERVIEW_CACHE_ENTRIES:
-            self._overview_cache.pop(next(iter(self._overview_cache)))
-        self._overview_cache[ck] = out
-        return out
+        ENVELOPE_MAX_COLS caps the stored envelope regardless of recording
+        length - at 19 rows it is 38 MB of float32 for min and max together.
+        A 30-minute recording gets the 0.1 s floor; a 24-hour one gets 0.35 s,
+        still far finer than the 78 s a pixel covers at that zoom.
+        """
+        base = max(ENVELOPE_MIN_BASE_S,
+                   self.duration_s / float(ENVELOPE_MAX_COLS))
+        return max(1, int(round(base * self.fs)))
+
+    def _ensure_envelope(self):
+        """Build (or reuse) the whole-recording envelope for these filters."""
+        key = (self.hp, self.lp, self.notch, self.montage, self.fs)
+        if self._env is not None and self._env[0] == key:
+            return self._env
+        step = self._envelope_base_samples()
+        ncols = int(self.n_samples // step)
+        if ncols < 1:
+            empty = np.zeros((self.n_rows, 0), dtype=np.float32)
+            self._env = (key, step, empty, empty)
+            return self._env
+        lo = np.empty((self.n_rows, ncols), dtype=np.float32)
+        hi = np.empty((self.n_rows, ncols), dtype=np.float32)
+        # Built in blocks so peak memory is one block, not the recording, and
+        # each block is filtered through the same padded path the full-rate
+        # regime uses - so the envelope is of exactly the signal the reviewing
+        # zoom draws, to the microvolt the tests pin.
+        cols_per_block = max(1, int(FULLRATE_MAX_SPAN_S * self.fs) // step)
+        pad = int(FILTER_PAD_S * self.fs)
+        c = 0
+        while c < ncols:
+            c1 = min(ncols, c + cols_per_block)
+            b0, b1 = c * step, c1 * step
+            p0, p1 = max(0, b0 - pad), min(self.n_samples, b1 + pad)
+            raw = self.source[:, p0:p1]
+            filt = apply_filters(raw, self.fs, hp=self.hp, lp=self.lp,
+                                 notch=self.notch)
+            rows = self._montage(filt[:, b0 - p0:b1 - p0])
+            v = rows[:, :(c1 - c) * step].reshape(self.n_rows, c1 - c, step)
+            lo[:, c:c1] = v.min(axis=2)
+            hi[:, c:c1] = v.max(axis=2)
+            c = c1
+        self._env = (key, step, lo, hi)
+        return self._env
+
+    @staticmethod
+    def _interleave(lo, hi, t_left):
+        """Alternate min and max so one polyline draws a range per column."""
+        k, m = lo.shape
+        out = np.empty((k, 2 * m), dtype=np.float32)
+        out[:, 0::2] = lo
+        out[:, 1::2] = hi
+        t = np.empty(2 * m, dtype=np.float32)
+        t[0::2] = t_left
+        t[1::2] = t_left
+        return out, t
+
+    def _render_overview(self, s0, s1, target_px):
+        """Min/max of the filtered signal per column. Never drops a peak."""
+        # Two points per column, so half the columns keeps the same number of
+        # points on screen as stride decimation put there.
+        bins = max(1, int(target_px) // 2)
+        key, step, lo_all, hi_all = self._ensure_envelope()
+        px_samples = (s1 - s0) / float(bins)
+        if lo_all.shape[1] == 0 or step > px_samples:
+            # Columns finer than the stored base: filter this span directly.
+            # Bounded, because a column narrower than the base only happens on
+            # spans close to FULLRATE_MAX_SPAN_S.
+            return self._render_envelope_direct(s0, s1, bins)
+
+        c0 = int(s0 // step)
+        c1 = min(lo_all.shape[1], int(np.ceil(s1 / float(step))))
+        if c1 <= c0:
+            c1 = min(lo_all.shape[1], c0 + 1)
+        n = c1 - c0
+        group = max(1, n // bins)
+        m = n // group
+        if m < 1:
+            return self._render_envelope_direct(s0, s1, bins)
+        lo = lo_all[:, c0:c0 + m * group].reshape(self.n_rows, m, group)
+        hi = hi_all[:, c0:c0 + m * group].reshape(self.n_rows, m, group)
+        t_left = ((c0 + np.arange(m) * group) * step
+                  / float(self.fs)).astype(np.float32)
+        return self._interleave(lo.min(axis=2), hi.max(axis=2), t_left)
+
+    def _render_envelope_direct(self, s0, s1, bins):
+        """Envelope of this span, filtered at full rate. No cache involved."""
+        pad = int(FILTER_PAD_S * self.fs)
+        p0, p1 = max(0, s0 - pad), min(self.n_samples, s1 + pad)
+        raw = self.source[:, p0:p1]
+        filt = apply_filters(raw, self.fs, hp=self.hp, lp=self.lp,
+                             notch=self.notch)
+        rows = self._montage(filt[:, s0 - p0:s1 - p0])
+        n = rows.shape[1]
+        group = max(1, n // bins)
+        m = max(1, n // group)
+        v = rows[:, :m * group].reshape(self.n_rows, m, group)
+        t_left = ((s0 + np.arange(m) * group)
+                  / float(self.fs)).astype(np.float32)
+        return self._interleave(v.min(axis=2), v.max(axis=2), t_left)
 
     def channel(self, row, s0, s1):
         """One montage row at full rate over [s0, s1), for the inspector.

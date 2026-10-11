@@ -519,6 +519,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cb_tb.addItems([str(v) for v in TIMEBASES])
         self.cb_tb.setCurrentText(str(self._timebase_s))
         self.cb_tb.currentTextChanged.connect(self._on_timebase_change)
+        self._tb_custom = False
         tb.addWidget(self.cb_tb)
         tb.addSeparator()
 
@@ -962,18 +963,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 data = lazy_source
                 fs = lazy_source.fs
                 dur = lazy_source.shape[1] / float(fs)
-                # If a decimated level was precomputed beside the recording,
-                # attach it: zooming out then slices a 26 MB array instead of
-                # walking the span off disk, which was measured as 96-103% of
-                # the whole wide render. Absent, nothing changes and nothing is
-                # built here — a build is about a minute, and a reviewer
-                # waiting on a file to open must not pay it.
-                try:
-                    from gui.io.decimated_level import attach
-                    if attach(lazy_source, path, fs) is not None:
-                        self._has_level = True
-                except Exception:                            # noqa: BLE001
-                    pass       # display speed is never worth failing an open
             else:
                 data, fs, dur = load_edf_19ch(path)
         except Exception as ex:
@@ -2643,8 +2632,52 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         self.signal_view.center_on(float(centre_s))
 
+    def _sync_timebase_combo(self, span):
+        """Make the sweep control state the span actually on screen.
+
+        The control was write-only: it set the span and was never told when
+        anything else changed it. Zooming therefore left it reading `10` over
+        a view of 1818 s — the one number in the toolbar a reviewer would use
+        to judge what they are looking at, and it was wrong by two orders of
+        magnitude. A control that can disagree with the display is worse than
+        no control.
+
+        A preset is shown when the span is one, within 2 % so that a zoom
+        landing near 30 s does not read as a false exact. Otherwise the real
+        span is shown as a transient entry, marked so it cannot be mistaken
+        for a preset and so `_on_timebase_change` rejects it if it is ever
+        re-selected — its int() raises and the handler returns.
+        """
+        match = None
+        for v in TIMEBASES:
+            if abs(span - v) <= max(0.5, 0.02 * v):
+                match = v
+                break
+        self.cb_tb.blockSignals(True)
+        try:
+            if match is not None:
+                if self._tb_custom:
+                    self.cb_tb.removeItem(self.cb_tb.count() - 1)
+                    self._tb_custom = False
+                self.cb_tb.setCurrentText(str(match))
+                self._timebase_s = match
+            else:
+                label = '{:g} s (view)'.format(round(span, 1))
+                if self._tb_custom:
+                    self.cb_tb.setItemText(self.cb_tb.count() - 1, label)
+                else:
+                    self.cb_tb.addItem(label)
+                    self._tb_custom = True
+                self.cb_tb.setCurrentIndex(self.cb_tb.count() - 1)
+                # Paging keys step by the span on screen, not by a preset the
+                # view is not showing.
+                self._timebase_s = float(span)
+        finally:
+            self.cb_tb.blockSignals(False)
+
     def _on_view_range(self, x0, x1):
         span = x1 - x0
+        self._sync_timebase_combo(span)
         if self._duration_s > 0:
             pages = max(1, int(round(self._duration_s / max(span, 1e-6))))
             page = min(pages, int(x0 / max(span, 1e-6)) + 1)

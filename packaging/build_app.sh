@@ -55,8 +55,29 @@ PY
 
 echo
 echo "[2/4] Running the test suite..."
-"$PYEXE" -m unittest discover -s tests -q
-echo "    OK"
+# One interpreter per module, not one `discover` run over all of them.
+#
+# On macOS the single-process run segfaults (exit 139) partway through, during
+# Qt teardown, once enough PyQt5/pyqtgraph test modules have accumulated in one
+# interpreter. It is not a defect in any test or in the application: every
+# module passes on its own, module pairs pass repeatedly, and the frozen app
+# builds all 157 widgets. Windows and Linux do not hit it.
+#
+# This runs the SAME tests and suppresses nothing - each module must still exit
+# 0, and the loop stops at the first that does not. Isolation is stricter than
+# `discover`, since no module can leave state behind for the next one, which
+# also makes an ordering-dependent test fail here rather than pass by luck.
+_n_mod=0
+for _f in "$REPO"/tests/test_*.py; do
+    _m="tests.$(basename "$_f" .py)"
+    if ! "$PYEXE" -m unittest "$_m" -q >/dev/null 2>&1; then
+        echo "    FAILED in $_m - rerun it directly to see why:"
+        echo "        $PYEXE -m unittest $_m -v"
+        exit 1
+    fi
+    _n_mod=$((_n_mod + 1))
+done
+echo "    OK ($_n_mod modules)"
 
 DIST="${SEIZ_DIST:-$REPO/dist}"
 WORK="${SEIZ_WORK:-$REPO/build/pyi}"
