@@ -219,3 +219,11 @@ dist_modern/
 # redistributed from a public repository; the text extract beside them is
 # ours and stays.
 thesis_report_bundle/*.pdf
+
+# macOS directory metadata
+.DS_Store
+
+# Publisher PDFs of the upstream papers. Cited in the README, not
+# redistributed from a public repository.
+*.pdf
+!docs/**/*.pdf
