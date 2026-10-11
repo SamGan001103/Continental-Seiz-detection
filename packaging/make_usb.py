@@ -39,7 +39,7 @@ PLATFORM_DIRS = ('windows', 'macos', 'linux')
 # missing platform without the network.
 SOURCE_ITEMS = [
     'gui', 'models', 'utils', 'experiments', 'tests', 'packaging',
-    'eval_config.py', 'precompute_probs.py', 'run_inference.py',
+    'server', 'eval_config.py', 'run_inference.py',
     'convlstm_ICA_12_train.h5',
     'requirements-modern.txt', 'requirements-seiz36.txt',
     'artifacts/zuna_thesis/manifest.csv', 'artifacts/zuna_thesis/manifest_full.csv',

@@ -142,7 +142,7 @@ the Mac as a development and demonstration machine.
 Regenerate the caches there rather than copying them:
 
 ```bash
-python precompute_probs.py "sample_data/**/*.edf" --overwrite --shard 0/8   # ×8, in parallel
+python server/precompute_probs.py "sample_data/**/*.edf" --overwrite --shard 0/8   # ×8, in parallel
 python experiments/replicate_paper_auc.py --manifest artifacts/zuna_thesis/manifest_full.csv
 ```
 

@@ -1064,7 +1064,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # reviewer may legitimately want to read an unprepared recording,
             # and the trace is the thing they came for.
             msg = ('{} — opened for review, but no study bundle was found. '
-                   'Prepare it on the server with  python prepare_study.py '
+                   'Prepare it on the server with  python server/prepare_study.py '
                    '"{}"  and reopen.'.format(
                        os.path.basename(path), os.path.basename(path)))
         else:

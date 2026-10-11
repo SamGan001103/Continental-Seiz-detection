@@ -161,7 +161,7 @@ python experiments/diag_tf_version.py  --make-inputs --n 20 --out tfx.npz
 python experiments/diag_tf2_port.py    --inputs tfx.npz --out tf2.npz --lib-path /path/to/tf26
 
 # regeneration and re-evaluation
-python precompute_probs.py "sample_data/**/*.edf" --overwrite --shard i/8
+python server/precompute_probs.py "sample_data/**/*.edf" --overwrite --shard i/8
 python experiments/replicate_paper_auc.py --manifest artifacts/zuna_thesis/manifest_full.csv
 python experiments/evaluate_baseline.py   --manifest artifacts/zuna_thesis/manifest_full.csv
 python experiments/ablate_postprocessing.py --manifest artifacts/zuna_thesis/manifest_full.csv

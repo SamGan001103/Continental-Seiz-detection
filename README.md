@@ -25,7 +25,7 @@ Prof. Omid Kavehei), extending the lab's published detector — see
    │           ├── ConvLSTM  ────────► seizure probabilities     │
    │           └── SpikeNet1 ────────► interictal discharges     │
    │                                                             │
-   │                prepare_study.py  ─────►  STUDY BUNDLE       │
+   │          server/prepare_study.py  ─────►  STUDY BUNDLE      │
    └─────────────────────────────────────────────┬───────────────┘
                                                  │  copied
           ┌──────────────────────────────────────┴───────────┐
@@ -62,7 +62,7 @@ cannot be read against an EEG it was not built from.
 ### Part 1 — prepare a study (server)
 
 ```
-python prepare_study.py "D:/studies/*.edf"
+python server/prepare_study.py "D:/studies/*.edf"
 ```
 
 Drives both detectors and writes the bundle beside each recording. Copy each
@@ -115,8 +115,9 @@ a clone is runnable without any extra download. Their sha256 is pinned in
 
 | path | what it is |
 |---|---|
-| `prepare_study.py` | **Part 1 entry point** — prepares a study bundle |
-| `precompute_probs.py`, `precompute_ieds.py` | the individual detector passes `prepare_study.py` drives |
+| `server/` | **Part 1** — everything that runs on the compute machine |
+| `server/prepare_study.py` | the Part 1 entry point — prepares a study bundle |
+| `server/precompute_probs.py`, `server/precompute_ieds.py` | the individual detector passes it drives |
 | `gui/` | **Part 2** — the review application |
 | `gui/io/` | readers and writers: EDF, caches, annotations, detectors |
 | `eval_config.py` | the canonical operating point (threshold, stride, ICA, weights) — every script reads it |

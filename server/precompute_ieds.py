@@ -1,7 +1,7 @@
 """Find interictal discharge candidates in a recording, ahead of review.
 
-    python precompute_ieds.py "D:/path/*.edf"
-    python precompute_ieds.py recording.edf --threshold 0.9
+    python server/precompute_ieds.py "D:/path/*.edf"
+    python server/precompute_ieds.py recording.edf --threshold 0.9
 
 Writes `<stem>.ied.csv` beside each recording, in the format
 `gui.io.ied_marks` already uses for a reviewer's own marks, with every row

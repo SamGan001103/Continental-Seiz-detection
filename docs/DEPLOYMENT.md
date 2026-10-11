@@ -199,7 +199,7 @@ Each holds `logs/seizure_review.log` and, when the recording's own folder is not
 - The first open of a recording scores it, which takes minutes; every open after that is instant,
   because the result is cached beside the recording.
 - To make a demo instant, pre-score in advance and copy the `.probs.npz` sidecars alongside the
-  EDFs: `python precompute_probs.py <folder>`.
+  EDFs: `python server/precompute_probs.py <folder>`.
 - **Numbers differ slightly between platforms.** The ICA does not converge, so a 10^-15 difference
   in linear algebra changes the decomposition — see `docs/portability.md`. No detection decision
   changed across the 74 windows tested, but do not mix figures from two platforms in one table.
@@ -268,7 +268,7 @@ Re-opening the same recording is instant — the cache is reused. For a review
 session with known recordings, pre-scoring them in advance is still worth it:
 
 ```bat
-precompute_probs.py <folder-of-edfs>
+server/precompute_probs.py <folder-of-edfs>
 ```
 
 The resulting `.probs.npz` files can be copied alongside the EDFs, and the
@@ -293,7 +293,7 @@ loader recognises. The detector requires all 19; see
 `utils/params_common_electrodes.txt` for the accepted names.
 
 **It is very slow.**
-Expected — see the table above. Pre-score with `precompute_probs.py`.
+Expected — see the table above. Pre-score with `server/prepare_study.py`.
 
 ---
 

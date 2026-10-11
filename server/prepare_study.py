@@ -1,6 +1,6 @@
 """Part one of the system: prepare a recording for review, on the server.
 
-    python prepare_study.py "D:/studies/*.edf"
+    python server/prepare_study.py "D:/studies/*.edf"
 
 This is the only command that runs on the hospital's compute machine, and it is
 the only place in the system where a model runs at all. For each recording it
@@ -44,7 +44,8 @@ import subprocess
 import sys
 import time
 
-REPO = os.path.dirname(os.path.abspath(__file__))
+HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.dirname(HERE)
 if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
@@ -92,7 +93,7 @@ def _sha256(path, limit=None):
 
 def _run(script, paths, extra=None):
     """Run one precompute step in this interpreter, returning (ok, seconds)."""
-    cmd = [sys.executable, os.path.join(REPO, script)] + list(paths)
+    cmd = [sys.executable, os.path.join(HERE, script)] + list(paths)
     if extra:
         cmd += list(extra)
     env = dict(os.environ)

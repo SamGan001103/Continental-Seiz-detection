@@ -40,13 +40,13 @@ class TheDefaultIsTheBitIdenticalPath(unittest.TestCase):
             'loop, and every cache in the project was built without it')
 
     def test_the_command_line_defaults_to_one(self):
-        import precompute_probs
+        from server import precompute_probs
         src = inspect.getsource(precompute_probs.main)
         self.assertIn("'--batch'", src)
         self.assertIn('default=1', src)
 
     def test_run_defaults_to_one(self):
-        import precompute_probs
+        from server import precompute_probs
         sig = inspect.signature(precompute_probs.run)
         self.assertEqual(sig.parameters['batch_size'].default, 1)
 
@@ -56,12 +56,12 @@ class ACacheSaysHowItWasScored(unittest.TestCase):
     nothing else in the file records which it is."""
 
     def test_the_batch_size_is_written_into_the_cache_metadata(self):
-        import precompute_probs
+        from server import precompute_probs
         src = inspect.getsource(precompute_probs.run)
         self.assertIn('predict_batch_size', src)
 
     def test_it_sits_alongside_the_other_settings_that_change_the_answer(self):
-        import precompute_probs
+        from server import precompute_probs
         src = inspect.getsource(precompute_probs.run)
         for key in ('step_s', 'use_ica', 'weights', 'predict_batch_size'):
             self.assertIn(key, src)
@@ -72,7 +72,7 @@ class TheFlagExplainsWhatItCosts(unittest.TestCase):
     project keeps running into. The help text has to say so."""
 
     def test_the_help_text_names_the_measured_deviation(self):
-        import precompute_probs
+        from server import precompute_probs
         parser = None
         src = inspect.getsource(precompute_probs.main)
         self.assertIn('1.3e-09', src,
