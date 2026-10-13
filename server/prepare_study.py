@@ -27,6 +27,7 @@ What a bundle contains
 ----------------------
     <stem>.probs.npz      per-window seizure probability, from the ConvLSTM
     <stem>.ied.csv        interictal discharge candidates, from SpikeNet1
+    <stem>.envelope.*.npz the zoomed-out picture, one file per display preset
     <stem>.study.json     the manifest: what is here, what produced it, and
                           which display settings the artefacts are valid for
 
@@ -48,6 +49,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 if REPO not in sys.path:
     sys.path.insert(0, REPO)
+
+from gui.io.envelope_cache import path_for            # noqa: E402
 
 MANIFEST_VERSION = 1
 MANIFEST_SUFFIX = '.study.json'
@@ -112,9 +115,14 @@ def artefacts_for(recording):
         'seizure_probabilities': stem + '.probs.npz',
         'interictal_candidates': stem + '.ied.csv',
         # Not a detector output: the picture the review client draws when
-        # zoomed out. Cached because building it costs ~48 s and blocked the
+        # zoomed out. Cached because building it costs ~40 s and blocked the
         # interface every time a reviewer zoomed out or changed a filter.
-        'overview_envelope': stem + '.envelope.npz',
+        # Named for the DEFAULT preset, the one the application opens in.
+        # precompute_envelope.py prepares several more beside it; those are
+        # responsiveness for a reviewer who re-montages, not bundle contents
+        # the client is entitled to assume, so the manifest does not claim
+        # them.
+        'overview_envelope': path_for(recording, DEFAULT_DISPLAY),
     }
 
 

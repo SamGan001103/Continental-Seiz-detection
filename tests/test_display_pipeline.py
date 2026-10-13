@@ -331,5 +331,89 @@ class SplicedSourceOverlaysWithoutCopying(unittest.TestCase):
         self.assertEqual(got.shape[0], 18)
 
 
+class AskingWhetherADrawWillBeExpensive(unittest.TestCase):
+    """The redraw path calls render() on the GUI thread. In the overview
+    regime, with no prepared envelope, that call filters the whole recording
+    and does not return for ~40 s on a recording-day -- the window goes white
+    and Windows marks it Not Responding. So the view asks first, and the
+    question itself has to be cheap: no 36 MB read to answer it.
+    """
+
+    class Source(object):
+        """An array with a path, which is what a real EdfSource is here."""
+
+        def __init__(self, data, path):
+            self._d = data
+            self.path = path
+            self.shape = data.shape
+            self.fs = FS
+
+        def __getitem__(self, k):
+            return self._d[k]
+
+    def setUp(self):
+        import shutil
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.rec = os.path.join(self.tmp, 'rec.edf')
+        with open(self.rec, 'wb') as fh:
+            fh.write(b'x' * 4096)
+        self.data = _eeg(seconds=int(FULLRATE_MAX_SPAN_S * 4))
+        self.args = dict(hp=1.0, lp=70.0, notch=60.0,
+                         montage='Longitudinal Bipolar')
+
+    def _pipe(self, with_path=True):
+        src = self.Source(self.data, self.rec) if with_path else self.data
+        return DisplayPipeline(src, FS, **self.args)
+
+    def _wide(self, p):
+        return 0, min(p.n_samples, int(FULLRATE_MAX_SPAN_S * 3 * FS))
+
+    def test_a_reading_page_is_never_expensive(self):
+        p = self._pipe()
+        self.assertFalse(p.needs_envelope_build(0, int(10 * FS)))
+        self.assertFalse(
+            p.needs_envelope_build(0, int(FULLRATE_MAX_SPAN_S * FS)))
+
+    def test_an_unprepared_overview_is_expensive(self):
+        p = self._pipe()
+        self.assertTrue(p.needs_envelope_build(*self._wide(p)))
+
+    def test_it_is_not_expensive_twice(self):
+        p = self._pipe()
+        a, b = self._wide(p)
+        p.render(a, b, 1600)
+        self.assertFalse(p.needs_envelope_build(a, b))
+
+    def test_a_prepared_envelope_makes_it_cheap_from_the_first_draw(self):
+        from gui.io.envelope_cache import save, settings_key
+        built = self._pipe()
+        key, step, lo, hi = built.build_envelope_for_cache()
+        save(self.rec, settings_key(*key), step, lo, hi)
+        fresh = self._pipe()
+        self.assertFalse(fresh.needs_envelope_build(*self._wide(fresh)))
+
+    def test_an_envelope_for_other_settings_does_not_count(self):
+        from gui.io.envelope_cache import save, settings_key
+        built = DisplayPipeline(self.Source(self.data, self.rec), FS,
+                                hp=0.5, lp=35.0, notch=60.0,
+                                montage='Transverse Bipolar')
+        key, step, lo, hi = built.build_envelope_for_cache()
+        save(self.rec, settings_key(*key), step, lo, hi)
+        fresh = self._pipe()
+        self.assertTrue(fresh.needs_envelope_build(*self._wide(fresh)))
+
+    def test_a_source_with_no_path_is_assumed_expensive(self):
+        """Nowhere to have cached it, so the honest answer is yes."""
+        p = self._pipe(with_path=False)
+        self.assertTrue(p.needs_envelope_build(*self._wide(p)))
+
+    def test_an_empty_span_is_not_expensive(self):
+        p = self._pipe()
+        self.assertFalse(p.needs_envelope_build(500, 500))
+        self.assertFalse(p.needs_envelope_build(800, 300))
+
+
 if __name__ == '__main__':
     unittest.main()

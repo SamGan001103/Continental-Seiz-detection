@@ -214,6 +214,31 @@ class DisplayPipeline(object):
             return self._render_fullrate(s0, s1, target_px)
         return self._render_overview(s0, s1, target_px)
 
+    def needs_envelope_build(self, s0, s1):
+        """Whether rendering this span would build a whole-recording envelope.
+
+        Cheap on purpose. The caller is the redraw path, which has to decide
+        whether to put up a busy cursor BEFORE a call that may not return for
+        forty seconds, and it cannot afford to read the 36 MB artefact to find
+        out. So this asks the same questions render() will -- is this the
+        overview regime, is the envelope already in hand, is one on disk --
+        and the last of those reads only the stored settings.
+        """
+        s0, s1 = max(0, int(s0)), min(self.n_samples, int(s1))
+        if s1 <= s0 or (s1 - s0) / float(self.fs) <= FULLRATE_MAX_SPAN_S:
+            return False
+        key = (self.hp, self.lp, self.notch, self.montage, self.fs)
+        if self._env is not None and self._env[0] == key:
+            return False
+        path = getattr(self.source, 'path', None)
+        if not path:
+            return True
+        try:
+            from gui.io.envelope_cache import has, settings_key
+            return not has(path, settings_key(*key))
+        except Exception:                                     # noqa: BLE001
+            return True
+
     def _render_fullrate(self, s0, s1, target_px):
         rows, base = self._fullrate_block(s0, s1)
         rows = rows[:, s0 - base:s1 - base]

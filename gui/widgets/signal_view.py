@@ -270,6 +270,8 @@ class SignalView(QtWidgets.QWidget):
     viewRangeChanged = QtCore.pyqtSignal(float, float)
     channelDoubleClicked = QtCore.pyqtSignal(int)       # channel index
     sensitivityChanged = QtCore.pyqtSignal(float, bool) # (new_µV/div, finished)
+    longBuildStarted = QtCore.pyqtSignal()   # an uncached overview is building
+    longBuildFinished = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -334,6 +336,7 @@ class SignalView(QtWidgets.QWidget):
         self._fs = 250
         self._full_unclipped = None    # retired: nothing full-length is held here
         self._provider = None          # DisplayPipeline; renders spans on demand
+        self._building = False         # inside a long, uncached overview build
         self._full_offsets = None
         self._ref_intervals = []       # cached (start, stop) tuples for refresh
         self._annot_items = []         # EDF+ technician markers (read-only)
@@ -520,8 +523,35 @@ class SignalView(QtWidgets.QWidget):
         pi.setYRange(-(n_ch - 0.5) * self._spacing,
                      head * self._spacing, padding=0)
 
+    def _begin_long_build(self):
+        """Say, before a forty-second call, that the application is alive.
+
+        The cursor and the signal go up first and one repaint is pumped, so
+        the reviewer sees the busy state rather than a white rectangle. The
+        pumped events are why _building exists: a range change arriving here
+        mid-build would start a second one.
+        """
+        self._building = True
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        self.longBuildStarted.emit()
+        QtWidgets.QApplication.processEvents()
+
+    def _end_long_build(self):
+        QtWidgets.QApplication.restoreOverrideCursor()
+        self._building = False
+        self.longBuildFinished.emit()
+
     def _redecimate_visible(self):
         if self._provider is None or not self._curves:
+            return
+        if self._building:
+            # A long build pumps the event loop so the window keeps painting,
+            # which can deliver another range change straight back here. One
+            # build at a time -- but the range that arrived is the one the
+            # reviewer is now looking at, so ask again shortly rather than
+            # dropping it. Dropped, the axis would read the new span while
+            # the traces still showed the old one.
+            self._redec_timer.start()
             return
         pi = self._pw.getPlotItem()
         x0, x1 = pi.viewRange()[0]
@@ -536,8 +566,21 @@ class SignalView(QtWidgets.QWidget):
         target = int(px_w * (s1 - s0) / (span * self._fs)) if span > 0 else px_w
         target = max(512, min(target, 20000))
         # The provider filters, montages and decimates just this span. Work
-        # per redraw is therefore bounded by the viewport, never by the file.
-        data_ds, t_ds = self._provider.render(s0, s1, target)
+        # per redraw is therefore bounded by the viewport, never by the file --
+        # EXCEPT on the first zoom out into a filter and montage combination
+        # the study bundle does not carry, where the whole recording has to be
+        # filtered into an envelope first. That is ~40 s on a recording-day,
+        # it happens on this thread, and with no cursor change the window
+        # simply goes white and Windows marks it Not Responding. A busy cursor
+        # and one pumped repaint turn a dead application into a working one.
+        heavy = self._provider.needs_envelope_build(s0, s1)
+        if heavy:
+            self._begin_long_build()
+        try:
+            data_ds, t_ds = self._provider.render(s0, s1, target)
+        finally:
+            if heavy:
+                self._end_long_build()
         # Clip to the current sensitivity so a spike that exceeds the row is
         # drawn flat at the lane edge rather than across the neighbour. Stride
         # decimation selects samples, so clipping after it is pointwise

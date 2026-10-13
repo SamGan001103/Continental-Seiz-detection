@@ -444,6 +444,24 @@ class MainWindow(QtWidgets.QMainWindow):
         self.signal_view.channelDoubleClicked.connect(self._open_channel_inspector)
         self.signal_view.viewRangeChanged.connect(self._sync_inspector_ranges)
         self.signal_view.sensitivityChanged.connect(self._on_axis_drag_sens)
+        self.signal_view.longBuildStarted.connect(self._on_long_build_started)
+        self.signal_view.longBuildFinished.connect(self._on_long_build_done)
+
+    def _on_long_build_started(self):
+        """Name what the application is doing, and why it is doing it here.
+
+        This only fires for a filter and montage combination the study bundle
+        does not carry. Saying so is not an apology: it tells the reviewer
+        that the wait is the exception rather than the application, and it
+        names the command that removes it.
+        """
+        self.statusBar().showMessage(
+            'Building the overview for these settings — not in the study '
+            'bundle, so it is being computed here. Prepare it on the server '
+            'with precompute_envelope.py to make this instant.')
+
+    def _on_long_build_done(self):
+        self.statusBar().clearMessage()
 
     def _build_toolbar(self):
         tb = self.addToolBar('main')

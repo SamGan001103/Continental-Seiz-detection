@@ -50,6 +50,7 @@ A **study bundle** is a recording plus:
 |---|---|
 | `<stem>.probs.npz` | per-window seizure probability, from the ConvLSTM |
 | `<stem>.ied.csv` | interictal discharge candidates, from SpikeNet1 |
+| `<stem>.envelope.<preset>.npz` | the zoomed-out picture, one file per display preset |
 | `<stem>.study.json` | the manifest — what is here, what built it, and which display settings it is valid for |
 
 The manifest records the recording's size, mtime and digest, so a bundle
@@ -118,11 +119,12 @@ a clone is runnable without any extra download. Their sha256 is pinned in
 | `server/` | **Part 1** — everything that runs on the compute machine |
 | `server/prepare_study.py` | the Part 1 entry point — prepares a study bundle |
 | `server/precompute_probs.py`, `server/precompute_ieds.py` | the individual detector passes it drives |
+| `server/precompute_envelope.py` | the zoomed-out picture, per display preset — not a detector, but the last thing the client was still computing |
 | `gui/` | **Part 2** — the review application |
 | `gui/io/` | readers and writers: EDF, caches, annotations, detectors |
 | `eval_config.py` | the canonical operating point (threshold, stride, ICA, weights) — every script reads it |
 | `experiments/` | evaluation and comparison scripts; not part of the shipped system |
-| `tests/` | 727 tests; `python -m unittest discover -s tests` |
+| `tests/` | 781 tests; `python -m unittest discover -s tests` |
 | `docs/` | results, deployment, intended use, progress logs |
 | `packaging/` | frozen-build scripts |
 | `utils/`, `models/`, `main.py`, `post_process_code/`, `txt_file/` | **upstream** — the original project's training and preprocessing code, unmodified |

@@ -53,8 +53,13 @@ class TheManifestDescribesTheBundle(unittest.TestCase):
         self.assertTrue(a['seizure_probabilities'].endswith('.probs.npz'))
         self.assertTrue(a['interictal_candidates'].endswith('.ied.csv'))
         # Not a detector output, but prepared here for the same reason:
-        # building it on the workstation blocked the interface for ~48 s.
-        self.assertTrue(a['overview_envelope'].endswith('.envelope.npz'))
+        # building it on the workstation blocked the interface for ~40 s.
+        # It is named for the display preset it was built with, so the
+        # manifest cannot promise one set of filters and ship another.
+        self.assertTrue(a['overview_envelope'].endswith(
+            '.envelope.hp1-lp70-n60-longitudinal-bipolar.npz'))
+        for field in ('hp', 'lp', 'notch', 'montage'):
+            self.assertIn(field, PS.DEFAULT_DISPLAY)
 
     def test_writing_it_records_what_is_present(self):
         self._artefacts()
