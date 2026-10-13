@@ -32,7 +32,8 @@ import warnings
 os.environ.setdefault('TF_USE_LEGACY_KERAS', '1')
 os.environ.setdefault('TF_CPP_MIN_LOG_LEVEL', '3')
 
-REPO = os.path.dirname(os.path.abspath(__file__))
+# This file lives in server/, so the repository root is one level up.
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO not in sys.path:
     sys.path.insert(0, REPO)
 

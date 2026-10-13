@@ -163,7 +163,8 @@ def channel_index(names):
     return [lookup[e] for e in MONOPOLAR]
 
 
-def preprocess(data_uv, fs, notch_hz=DEFAULT_NOTCH_HZ):
+def preprocess(data_uv, fs, notch_hz=DEFAULT_NOTCH_HZ,
+               return_monopolar=False):
     """19 channels of microvolts at `fs` -> 37 channels at 128 Hz.
 
     `data_uv` must already be in SpikeNet's channel order and in MICROVOLTS.
@@ -210,7 +211,13 @@ def preprocess(data_uv, fs, notch_hz=DEFAULT_NOTCH_HZ):
                        MONOPOLAR.index(p.split('-')[1])] for p in BIPOLAR])
     average = x - x.mean(axis=0)
     bipolar = x[pairs[:, 0]] - x[pairs[:, 1]]
-    return np.concatenate([average, bipolar], axis=0).astype('float32')
+    out = np.concatenate([average, bipolar], axis=0).astype('float32')
+    # The monopolar signal is returned alongside because the artefact check
+    # has to run on it. Common-average referencing SUBTRACTS THE MEAN, so an
+    # artefact present on every channel cancels and passes a check made on
+    # the montaged array -- candidates whose raw signal peaked at 4,700 uV
+    # scored as clean until this was measured.
+    return (out, x.astype('float32')) if return_monopolar else out
 
 
 def score_windows(model, eeg37, step=DEFAULT_STEP, batch_size=256,
@@ -238,11 +245,54 @@ def score_windows(model, eeg37, step=DEFAULT_STEP, batch_size=256,
     return scores, starts / float(FS)
 
 
+# Scalp EEG lives around 10-200 uV. A channel running at thousands is a bad
+# electrode, a disconnection or an amplifier fault, not brain activity. The
+# ceiling is set well above any real discharge -- a large spike is a few
+# hundred microvolts -- so nothing physiological is discarded by it.
+ARTEFACT_CEILING_UV = 1000.0
+
+
 def is_flat(eeg37, floor_uv=1.0):
     """Gaps in a converted recording are zero-filled, and a detector run over
     one would report whatever it makes of silence. Treated as not assessed,
     the same way the seizure path treats a near-DC window."""
     return float(np.abs(eeg37).max()) < floor_uv
+
+
+def window_peaks(signal, step=DEFAULT_STEP):
+    """Peak absolute amplitude of each window the scorer will produce.
+
+    Pass the MONOPOLAR signal, not the montaged one -- see `preprocess`.
+
+    Per window, not per chunk: a single bad second must not discard the two
+    good minutes around it, which is what a whole-segment check would do.
+    """
+    n = signal.shape[1]
+    step = int(step)
+    if n < WINDOW:
+        return np.zeros(0, 'float32')
+    starts = np.arange(0, n - WINDOW + 1, step)
+    mag = np.abs(signal).max(axis=0)
+    return np.array([mag[s:s + WINDOW].max() for s in starts], 'float32')
+
+
+def is_artefact(eeg37, ceiling_uv=ARTEFACT_CEILING_UV):
+    """Non-physiological amplitude, so the window is not assessed.
+
+    This was missing, and it mattered more than the floor did. SpikeNet's
+    output is amplitude-sensitive -- scaling a segment by ten moves its median
+    score by an order of magnitude -- so a bad electrode does not merely add
+    noise, it manufactures detections. Measured on pat_102_part02: 7% of the
+    day had a channel above this ceiling, and that 7% produced 652 of the 991
+    candidates. Two thirds of the output was an artefact being counted as
+    interictal activity.
+
+    Checked per channel rather than over the whole array, so one failed
+    electrode does not silently discard eighteen good ones' worth of signal
+    along with its own -- the window is simply not assessed, which is what the
+    seizure path does with its own unusable windows.
+    """
+    return float(np.abs(eeg37).max()) > float(ceiling_uv)
 
 
 def merge(scores, offsets, threshold=DEFAULT_THRESHOLD,
@@ -352,13 +402,20 @@ def detect_in_chunks(read, n_samples, fs, names=None, chunk_s=300.0,
         data = read(a, b)
         if names is not None:
             data = data[channel_index(names), :]
-        eeg = preprocess(data, fs, notch_hz=notch_hz)
+        eeg, mono = preprocess(data, fs, notch_hz=notch_hz,
+                               return_monopolar=True)
         if not is_flat(eeg):
             # Where this chunk begins on the recording-wide 128 Hz grid, so
             # every chunk scores the same windows the whole file would.
             a128 = int(round(a * FS / fs))
             scores, offsets = score_windows(model, eeg, step=step,
                                             grid_offset=-a128)
+            # Windows containing non-physiological amplitude are not
+            # assessed. Suppressing the score rather than skipping the chunk
+            # keeps every clean second around a bad one.
+            peaks = window_peaks(mono, step=step)
+            if len(peaks) == len(scores):
+                scores = np.where(peaks > ARTEFACT_CEILING_UV, 0.0, scores)
             found = merge(scores, offsets, threshold=threshold, t0=a / fs)
             # Keep only what belongs to this chunk's body. The leading context
             # was already covered by the previous chunk; the trailing context
@@ -388,10 +445,14 @@ def detect(data_uv, fs, names=None, threshold=DEFAULT_THRESHOLD,
     x = np.asarray(data_uv)
     if names is not None:
         x = x[channel_index(names), :]
-    eeg = preprocess(x, fs, notch_hz=notch_hz)
+    eeg, mono = preprocess(x, fs, notch_hz=notch_hz,
+                           return_monopolar=True)
     if is_flat(eeg):
         return []
     if model is None:
         model = load_model(model_dir)
     scores, offsets = score_windows(model, eeg, step=step)
+    peaks = window_peaks(mono, step=step)
+    if len(peaks) == len(scores):
+        scores = np.where(peaks > ARTEFACT_CEILING_UV, 0.0, scores)
     return merge(scores, offsets, threshold=threshold, t0=t0)
