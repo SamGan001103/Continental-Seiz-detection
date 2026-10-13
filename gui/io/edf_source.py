@@ -69,6 +69,11 @@ class EdfSource(object):
                  reader=None):
         import pyedflib
         self._path = os.path.abspath(path)
+        # Public, because artefacts prepared beside the recording -- the
+        # overview envelope, the detector caches -- are keyed on where it is,
+        # and the objects that want them are rebuilt too often to hold a path
+        # of their own.
+        self.path = self._path
         self._map = list(channel_map)          # our row i -> file channel index
         self.shape = (len(self._map), int(n_samples))
         self.dtype = np.dtype(np.float32)

@@ -41,7 +41,8 @@ class TheManifestDescribesTheBundle(unittest.TestCase):
             f.write(b'0' * 8192)
 
     def _artefacts(self, which=('seizure_probabilities',
-                                'interictal_candidates')):
+                                'interictal_candidates',
+                                'overview_envelope')):
         paths = PS.artefacts_for(self.rec)
         for name in which:
             with open(paths[name], 'wb') as f:
@@ -51,12 +52,16 @@ class TheManifestDescribesTheBundle(unittest.TestCase):
         a = PS.artefacts_for(self.rec)
         self.assertTrue(a['seizure_probabilities'].endswith('.probs.npz'))
         self.assertTrue(a['interictal_candidates'].endswith('.ied.csv'))
+        # Not a detector output, but prepared here for the same reason:
+        # building it on the workstation blocked the interface for ~48 s.
+        self.assertTrue(a['overview_envelope'].endswith('.envelope.npz'))
 
     def test_writing_it_records_what_is_present(self):
         self._artefacts()
         out, blob = PS.write_manifest(self.rec)
         self.assertTrue(os.path.exists(out))
-        for name in ('seizure_probabilities', 'interictal_candidates'):
+        for name in ('seizure_probabilities', 'interictal_candidates',
+                     'overview_envelope'):
             self.assertTrue(blob['artefacts'][name]['present'])
             self.assertGreater(blob['artefacts'][name]['bytes'], 0)
 
@@ -67,8 +72,8 @@ class TheManifestDescribesTheBundle(unittest.TestCase):
         _, blob = PS.write_manifest(self.rec)
         self.assertTrue(blob['artefacts']['seizure_probabilities']['present'])
         self.assertFalse(blob['artefacts']['interictal_candidates']['present'])
-        self.assertEqual(PS.missing_from(self.rec),
-                         ['interictal_candidates'])
+        self.assertEqual(sorted(PS.missing_from(self.rec)),
+                         ['interictal_candidates', 'overview_envelope'])
 
     def test_it_records_the_display_settings_the_artefacts_assume(self):
         """The client cannot recompute, so the bundle has to say what it was

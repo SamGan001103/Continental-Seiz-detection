@@ -275,10 +275,23 @@ class DisplayPipeline(object):
         return max(1, int(round(base * self.fs)))
 
     def _ensure_envelope(self):
-        """Build (or reuse) the whole-recording envelope for these filters."""
+        """Build, reuse, or LOAD the whole-recording envelope for these filters.
+
+        Building it costs about 48 s on a 24-hour recording, and a filter
+        change pays it again -- which was the whole of the lag a reviewer met
+        on this application. So the server prepares it with the rest of the
+        study and this looks there first; a combination the bundle does not
+        carry still builds locally, slower but never wrong.
+        """
         key = (self.hp, self.lp, self.notch, self.montage, self.fs)
         if self._env is not None and self._env[0] == key:
             return self._env
+
+        cached = self._load_cached_envelope(key)
+        if cached is not None:
+            self._env = (key,) + cached
+            return self._env
+
         step = self._envelope_base_samples()
         ncols = int(self.n_samples // step)
         if ncols < 1:
@@ -308,6 +321,37 @@ class DisplayPipeline(object):
             c = c1
         self._env = (key, step, lo, hi)
         return self._env
+
+    def _load_cached_envelope(self, key):
+        """(step, lo, hi) prepared beside the recording, or None.
+
+        Keyed on the SOURCE's path rather than anything held here, because a
+        pipeline is rebuilt on every filter and montage change and must not be
+        where a 38 MB artefact lives.
+        """
+        path = getattr(self.source, 'path', None)
+        if not path:
+            return None
+        try:
+            from gui.io.envelope_cache import load, settings_key
+            got = load(path, settings_key(*key))
+        except Exception:                                     # noqa: BLE001
+            return None
+        if got is None:
+            return None
+        step, lo, hi = got
+        if lo.shape[0] != self.n_rows:
+            return None       # built for a different montage row count
+        return step, lo, hi
+
+    def build_envelope_for_cache(self):
+        """Build the envelope and hand back what the cache needs to store it.
+
+        Used by the server-side preparation step; the application itself only
+        ever reads.
+        """
+        key, step, lo, hi = self._ensure_envelope()
+        return key, step, lo, hi
 
     @staticmethod
     def _interleave(lo, hi, t_left):

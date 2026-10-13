@@ -111,6 +111,10 @@ def artefacts_for(recording):
     return {
         'seizure_probabilities': stem + '.probs.npz',
         'interictal_candidates': stem + '.ied.csv',
+        # Not a detector output: the picture the review client draws when
+        # zoomed out. Cached because building it costs ~48 s and blocked the
+        # interface every time a reviewer zoomed out or changed a filter.
+        'overview_envelope': stem + '.envelope.npz',
     }
 
 
@@ -209,6 +213,13 @@ def prepare(recording, args):
             print('    seizure detection FAILED; bundle not written')
             return None
 
+    if not args.skip_envelope:
+        extra = ['--force'] if args.force else []
+        ok, secs = _run('precompute_envelope.py', [recording], extra)
+        timings['overview_envelope'] = round(secs, 1)
+        if not ok:
+            print('    envelope build failed; the client will build its own')
+
     if not args.skip_interictal:
         extra = ['--force'] if args.force else []
         ok, secs = _run('precompute_ieds.py', [recording], extra)
@@ -234,6 +245,7 @@ def main(argv=None):
                    help='parallel workers for seizure scoring')
     p.add_argument('--skip-seizure', action='store_true')
     p.add_argument('--skip-interictal', action='store_true')
+    p.add_argument('--skip-envelope', action='store_true')
     p.add_argument('--manifest-only', action='store_true',
                    help='write the manifest for artefacts already present')
     args = p.parse_args(argv)
