@@ -11,6 +11,33 @@ import pyqtgraph as pg
 import numpy as np
 
 
+# How much of the strip, below zero, the interictal rate gets. Small on
+# purpose: it is context for the score curve, not a competing headline.
+IED_BAND = 0.34
+# Rate is computed over this many bins across the visible recording. Enough
+# that a cluster is a shape rather than a spike, few enough that an hour of
+# quiet reads as quiet.
+IED_BINS = 240
+
+
+def ied_rate(times, duration_s, bins=IED_BINS):
+    """Discharges per minute, binned across the recording.
+
+    A rate, not a count, because the bins change width with the recording
+    length and a count would make a long study look busier than a short one.
+    """
+    bins = max(1, int(bins))
+    duration_s = float(duration_s or 0.0)
+    if duration_s <= 0:
+        return np.zeros(0), np.zeros(0)
+    edges = np.linspace(0.0, duration_s, bins + 1)
+    t = np.asarray([x for x in (times or []) if 0 <= x <= duration_s],
+                   dtype=float)
+    counts = np.histogram(t, bins=edges)[0] if t.size else np.zeros(bins)
+    width_min = (duration_s / bins) / 60.0
+    return edges, counts / max(width_min, 1e-9)
+
+
 def _as_steps(seconds, values):
     """Render a per-second series as a stepped polyline: (t, v), (t+1, v)."""
     seconds = np.asarray(seconds, dtype=np.float32)
@@ -119,7 +146,12 @@ class ProbStrip(QtWidgets.QWidget):
             'All values are raw, UNCALIBRATED network outputs, not calibrated '
             'probabilities of seizure.')
         pi.getAxis('left').setWidth(64)
-        pi.setYRange(0, 1)
+        # Room BELOW the score axis for the interictal rate. The two are
+        # different quantities -- one is an uncalibrated network output per
+        # second, the other is events per minute -- so they get their own
+        # bands rather than sharing a scale. Sharing one would invite reading
+        # a spike rate off the threshold line.
+        pi.setYRange(-IED_BAND, 1)
         pi.setMouseEnabled(x=True, y=False)
         pi.showGrid(x=True, y=True, alpha=0.2)
         self._pw.setMaximumHeight(140)
@@ -146,6 +178,21 @@ class ProbStrip(QtWidgets.QWidget):
             pos=0.5, angle=0,
             pen=pg.mkPen((30, 120, 30), width=1, style=QtCore.Qt.DashLine))
         pi.addItem(self._thr_line)
+        # The interictal rate, drawn in the band below zero. Amber, matching
+        # the marks on the trace and in the overview, so the same colour means
+        # the same thing everywhere in the application.
+        self._ied_curve = pi.plot(
+            [], [], pen=pg.mkPen((178, 106, 0), width=1.0),
+            fillLevel=-IED_BAND, brush=pg.mkBrush(178, 106, 0, 70))
+        self._ied_curve.setZValue(-2)
+        self._ied_zero = pg.InfiniteLine(
+            pos=0.0, angle=0, pen=pg.mkPen((205, 210, 216), width=1))
+        self._ied_zero.setZValue(-3)
+        pi.addItem(self._ied_zero)
+        self._ied_label = pg.TextItem('', color=(140, 95, 20), anchor=(0, 1))
+        self._ied_label.setZValue(5)
+        pi.addItem(self._ied_label)
+        self._ied_label.hide()
         self._ref_items = []
         self._refs_visible = True
         self._unscored_items = []
@@ -193,6 +240,37 @@ class ProbStrip(QtWidgets.QWidget):
 
         self._set_unscored(
             _unscored_spans(window_starts, skip_code, segment_s))
+
+    def set_ied_density(self, times, duration_s):
+        """Interictal discharge rate, under the score curve, same time axis.
+
+        This is the comparison the clinician actually wants to make: does the
+        model's score peak where the patient is spiking, or somewhere else? It
+        only works if both are on one axis at one scale, which is why it lives
+        here rather than in a strip of its own.
+
+        Drawn as a RATE CURVE, not as ticks. At a whole-recording width a
+        tenth-of-a-second discharge is far below one pixel, so ticks would
+        show density while implying morphology; the trace itself shows the
+        individual marks, at a zoom where they can be judged.
+        """
+        edges, rate = ied_rate(times, duration_s)
+        if not len(rate) or not rate.max():
+            self._ied_curve.setData([], [])
+            self._ied_label.hide()
+            return 0.0
+        peak = float(rate.max())
+        # Scaled to its own peak: the absolute rate differs by an order of
+        # magnitude between patients, and a fixed scale would flatten a quiet
+        # one into nothing.
+        y = -IED_BAND + (rate / peak) * IED_BAND * 0.92
+        xs = np.repeat(edges, 2)[1:-1]
+        ys = np.repeat(y, 2)
+        self._ied_curve.setData(xs, ys)
+        self._ied_label.setText('interictal  peak {:.0f}/min'.format(peak))
+        self._ied_label.setPos(0.0, -IED_BAND * 0.04)
+        self._ied_label.show()
+        return peak
 
     def set_discarded_runs(self, spans):
         """Mark threshold crossings that event shaping rejected as too short.

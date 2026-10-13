@@ -1755,6 +1755,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # all disappear while the count in the provenance still said twenty.
         drawn = self.signal_view.set_ied_marks(self._ied_marks)
         self.overview_strip.set_ied_marks(self._ied_marks)
+        self._refresh_ied_density()
         hidden = len(self._ied_marks) - (drawn or 0)
         if hidden > 0:
             # Say it rather than let the reviewer conclude their work is gone.
@@ -1995,6 +1996,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self.signal_view.add_ied_mark(mark):
             self.signal_view.set_ied_marks(self._ied_marks)
         self.overview_strip.set_ied_marks(self._ied_marks)
+        self._refresh_ied_density()
         self._update_ied_summary()
         self._mark_dirty()
         self.statusBar().showMessage(
@@ -2038,6 +2040,22 @@ class MainWindow(QtWidgets.QMainWindow):
         self._ied_marks = sorted(marks, key=lambda m: float(m['time']))
         self._update_ied_summary()
         return len(marks)
+
+    def _refresh_ied_density(self):
+        """Keep the rate curve under the score strip in step with the marks.
+
+        Both reviewer marks and detector proposals are included. The question
+        the band answers -- is the patient spiking where the model scored
+        highly? -- does not care who noticed the spike, only that it is there.
+        """
+        strip = getattr(self, 'prob_strip', None)
+        if strip is None or not hasattr(strip, 'set_ied_density'):
+            return
+        try:
+            times = [float(m['time']) for m in (self._ied_marks or [])]
+            strip.set_ied_density(times, float(self._duration_s or 0.0))
+        except Exception:                                     # noqa: BLE001
+            pass          # a drawing aid must never take the window down
 
     def _update_ied_summary(self):
         """Keep the persistent interictal readout current.
@@ -2122,6 +2140,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.signal_view.set_events(self._events)
         self.signal_view.set_ied_marks(self._ied_marks)
         self.overview_strip.set_ied_marks(self._ied_marks)
+        self._refresh_ied_density()
         self._update_ied_summary()
         self.event_list.set_events(self._events)
         self._mark_discarded_runs()

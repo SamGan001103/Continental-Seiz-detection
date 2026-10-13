@@ -11,6 +11,11 @@ import numpy as np
 from gui.processing import decimate_for_display
 from gui.widgets.time_axis import axis_label, format_cursor, make_time_axis
 
+# Widest view at which an individual interictal mark still means something.
+# At 1600 px a 180 s span puts about nine pixels on a tenth-of-a-second
+# discharge's neighbourhood; much beyond that and marks merge into a band.
+MARKS_LEGIBLE_MAX_SPAN_S = 180.0
+
 pg.setConfigOptions(antialias=False, useOpenGL=False, background='w',
                     foreground='k')
 
@@ -348,6 +353,9 @@ class SignalView(QtWidgets.QWidget):
         self._redec_timer.setInterval(12)
         self._redec_timer.timeout.connect(self._redecimate_visible)
         pi.sigRangeChanged.connect(lambda *_: self._redec_timer.start())
+        # Marks appear and disappear with the zoom, so a range change has to
+        # re-run them as well as the traces.
+        pi.sigRangeChanged.connect(self._on_range_marks)
 
     # ------------------------------------------------------------------
     def _emit_range(self, *_):
@@ -663,6 +671,7 @@ class SignalView(QtWidgets.QWidget):
         channel: an interictal discharge is a per-channel observation, unlike
         a seizure, which is why it also exports to a different file.
         """
+        self._ied_all_marks = marks
         pi = self._pw.getPlotItem()
         for it in getattr(self, '_ied_items', []):
             pi.removeItem(it)
@@ -678,6 +687,13 @@ class SignalView(QtWidgets.QWidget):
         # item on every frame whether or not it is on screen, so the old shape
         # taxed every zoom and pan by the size of the whole recording's mark
         # set. Measured at 29 ms per zoom with 400 marks.
+        if not self._marks_are_legible():
+            # Too wide to draw them honestly. Reported as hidden, not as
+            # absent, so the status tally still tells the reviewer they exist.
+            self._ied_hidden = len(marks or [])
+            self._ied_row_items = {}
+            return 0
+
         per_row = {}
         proposed = []
         hidden = 0
@@ -758,6 +774,32 @@ class SignalView(QtWidgets.QWidget):
             np.concatenate([ys, [y - half, y + half, np.nan]]),
             connect='finite')
         return True
+
+    def _on_range_marks(self, *_):
+        """Redraw the marks when the view crosses the legibility threshold."""
+        legible = self._marks_are_legible()
+        if legible == getattr(self, '_marks_were_legible', None):
+            return
+        self._marks_were_legible = legible
+        if getattr(self, '_ied_all_marks', None) is not None:
+            self.set_ied_marks(self._ied_all_marks)
+
+    def _marks_are_legible(self):
+        """Whether the current view is narrow enough to draw marks at all.
+
+        An interictal discharge lasts about a tenth of a second. Across a
+        whole-day view one pixel spans the better part of a minute, so a tick
+        is not a discharge, it is a smear of several hundred of them -- it
+        shows density while implying morphology, which is the one thing the
+        reader must not take from it. Above this span the rate curve under the
+        score strip carries the same information honestly, so the marks step
+        aside rather than mislead.
+        """
+        try:
+            x0, x1 = self._pw.getPlotItem().viewRange()[0]
+        except Exception:                                     # noqa: BLE001
+            return True
+        return (x1 - x0) <= MARKS_LEGIBLE_MAX_SPAN_S
 
     def _add_tick_item(self, pi, times, y0, y1, colour, width):
         """One PlotDataItem carrying every tick in a row, NaN-separated."""
