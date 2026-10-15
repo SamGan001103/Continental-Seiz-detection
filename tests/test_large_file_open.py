@@ -7,16 +7,23 @@ freezes — it is useless, which is a different way of not working.
 
 So the guard now chooses a strategy instead of a verdict:
 
-* **Fits in memory** → the ordinary loader, unchanged. Resampled to 250 Hz, the
-  same bytes as before this existed. Small files must not change behaviour at
-  all, and the first test here holds that.
+* **Short** → the ordinary loader, unchanged. Resampled to 250 Hz, the same
+  bytes as before this existed. Small files must not change behaviour at all,
+  and the first test here holds that.
 
-* **Does not fit** → `EdfSource`, read span-by-span off disk at the file's own
-  rate. A 24-hour recording costs ~0.13 GB open instead of the 6.5 GB that got
-  it refused.
+* **Longer than EAGER_MAX_DURATION_S, or too large to hold** → `EdfSource`,
+  read span-by-span off disk at the file's own rate. A 24-hour recording costs
+  ~0.15 GB and 1 ms to open, against ~2 minutes and a 5 GB peak held.
 
-* **Does not fit and cannot be read lazily** → refused, because now there
-  genuinely is no way to show it without taking the machine down.
+* **Cannot be held AND cannot be read lazily** → refused, because now there
+  genuinely is no way to show it without taking the machine down. A recording
+  that merely prefers streaming and cannot get it is still loaded whole.
+
+Length rather than free memory, because the original test -- does it FIT --
+got the answer wrong in the direction of the better machine. The same day-long
+recording streamed instantly on 16 GB, where 21 GB of estimate did not fit,
+and took two minutes once 64 GB made it fit. Holding it buys only the 250 Hz
+resample the ICA view needs, which that view already declines without.
 
 The interesting property is the second one. The detector needs 250 Hz; the
 DISPLAY does not, and nothing on that side assumes it — every widget takes fs
@@ -122,6 +129,8 @@ class StrategyByFileSize(unittest.TestCase):
     def tearDown(self):
         import gui.memory as gm
         gm.available_bytes = self._saved_avail
+        if getattr(self, '_saved_estimate', None) is not None:
+            gm.edf_open_estimate = self._saved_estimate
         QtWidgets.QMessageBox.warning = self._saved_warn
         self.w.close()
         shutil.rmtree(self.tmp, ignore_errors=True)
@@ -133,6 +142,25 @@ class StrategyByFileSize(unittest.TestCase):
     def _none(self):
         import gui.memory as gm
         gm.available_bytes = lambda: 1
+
+    def _claim_duration(self, hours, fits=True):
+        """Report a short real file as a long one.
+
+        The policy reads the header estimate, so this is the one honest way to
+        test a day-long recording without writing a day of samples: the file
+        on disk stays small and readable, and only the estimate the decision
+        is made on is substituted.
+        """
+        import gui.memory as gm
+        self._saved_estimate = gm.edf_open_estimate
+        real = gm.edf_open_estimate
+
+        def claimed(path, available=None):
+            est = dict(real(path, available=available))
+            est['duration_s'] = hours * 3600.0
+            est['fits'] = fits
+            return est
+        gm.edf_open_estimate = claimed
 
     def test_a_file_that_fits_takes_the_ordinary_path_unchanged(self):
         """Small recordings must behave exactly as before any of this existed."""
@@ -147,6 +175,64 @@ class StrategyByFileSize(unittest.TestCase):
         self.assertIsInstance(self.w._raw_data, np.ndarray,
                               'a file that fits must be loaded, not streamed')
         self.assertEqual(self.warnings, [])
+
+    def test_a_long_recording_is_streamed_even_with_memory_to_spare(self):
+        """The regression: a 64 GB workstation was punished for its memory.
+
+        The same 24-hour file opened in 1 ms on a 16 GB machine, where the
+        estimate did not fit, and took two minutes once 64 GB made it fit --
+        reading the whole recording to produce something only the ICA view
+        wants. Length decides this now, not the machine.
+        """
+        self._plenty()
+        self._claim_duration(24, fits=True)
+        p = _write_edf(os.path.join(self.tmp, 'daylong.edf'), seconds=60,
+                       fs=256)
+        _write_cache(p, 60)
+        self.w.load_edf(p)
+        self.assertIsNotNone(self.w._raw_data)
+        self.assertNotIsInstance(
+            self.w._raw_data, np.ndarray,
+            'a day-long recording was loaded whole because it happened to '
+            'fit, which is the two-minute open this policy exists to avoid')
+        self.assertEqual(int(round(self.w._fs)), 256,
+                         'the streamed path must serve the native rate')
+        self.assertEqual(self.warnings, [])
+
+    def test_an_hour_long_recording_is_still_loaded_whole(self):
+        """The threshold is a threshold, not a ban on holding anything."""
+        self._plenty()
+        self._claim_duration(1, fits=True)
+        p = _write_edf(os.path.join(self.tmp, 'hour.edf'), seconds=60, fs=256)
+        _write_cache(p, 60)
+        self.w.load_edf(p)
+        self.assertIsInstance(
+            self.w._raw_data, np.ndarray,
+            'a recording at the threshold was streamed, so short files lose '
+            'the detector-input view for no gain')
+        self.assertEqual(int(round(self.w._fs)), 250)
+
+    def test_a_long_recording_that_will_not_stream_is_loaded_not_refused(self):
+        """Preferring the stream must not become a new way to refuse a file.
+
+        It fits, so there is a working answer; slow and correct beats a
+        dialog.
+        """
+        self._plenty()
+        self._claim_duration(24, fits=True)
+        p = _write_edf(os.path.join(self.tmp, 'nostream.edf'), seconds=60,
+                       fs=256)
+        _write_cache(p, 60)
+        import gui.io.edf_source as es
+        saved = es.open_source
+        es.open_source = lambda *a, **k: None
+        try:
+            self.w.load_edf(p)
+        finally:
+            es.open_source = saved
+        self.assertIsInstance(self.w._raw_data, np.ndarray)
+        self.assertEqual(self.warnings, [],
+                         'a recording the machine can hold was refused')
 
     def test_a_file_too_large_opens_lazily_at_its_own_rate(self):
         self._none()

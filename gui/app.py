@@ -77,6 +77,13 @@ from gui.widgets.channel_inspector import ChannelInspector
 SENSITIVITIES = [3, 5, 7, 10, 15, 20, 30, 50, 70, 100]   # µV / mm
 TIMEBASES = [5, 10, 15, 20, 30, 60, 120, 300]            # seconds per page
 
+# Above this duration a recording is read span-by-span off disk rather than
+# held in memory. Measured on a 24-hour EPILEPSIAE file: holding it costs a
+# ~2 minute blocking read and a 5 GB peak, against 1 ms and 0.15 GB streamed.
+# The cost is linear in duration -- roughly 5 s per recording-hour -- so an
+# hour is about where an open stops being instant.
+EAGER_MAX_DURATION_S = 3600.0
+
 APP_NAME = 'Seizure Review'
 # Shown permanently in the title bar and the status bar, and written into every
 # export. The detector runs at roughly 48% event sensitivity, so anyone sitting
@@ -952,11 +959,31 @@ class MainWindow(QtWidgets.QMainWindow):
             est = edf_open_estimate(path)
         except Exception:                                   # noqa: BLE001
             est = None                     # header unreadable; let the loader say so
-        if est is not None and not est['fits']:
+        # Stream it unless it is short enough that holding it is free.
+        #
+        # This asked "does it FIT in memory", which is the wrong question, and
+        # the answer got worse as the machine got better: the same 24-hour
+        # recording opened in 1 ms on a 16 GB workstation, where 21 GB of
+        # estimate did not fit, and took two minutes once 64 GB made it fit.
+        # A reviewer was being punished for having memory.
+        #
+        # Holding a recording buys exactly one thing: the whole of it
+        # resampled to 250 Hz, which only the ICA detector-input view needs,
+        # and which that view already declines without when a recording is
+        # served at its native rate. It costs a blocking read of the entire
+        # file. The display pipeline never wanted it -- it serves every span
+        # off disk at the file's own rate, and `_raw_data` holds either kind
+        # with no branch anywhere after this point.
+        #
+        # So the test is the recording's length, and memory is only the floor:
+        # something that cannot be held is still streamed however short it is.
+        too_long = (est is not None
+                    and est['duration_s'] > EAGER_MAX_DURATION_S)
+        if est is not None and (too_long or not est['fits']):
             from gui.io.edf_source import open_source
             from gui.paths import params_path
             lazy_source = open_source(path, params_path())
-            if lazy_source is None:
+            if lazy_source is None and not est['fits']:
                 # Too big to hold AND not readable span-by-span — a corrupt
                 # header, or an EDF whose 19 channels cannot be resolved. Now
                 # refusing is the honest answer, because there is no way to
@@ -969,6 +996,9 @@ class MainWindow(QtWidgets.QMainWindow):
                     'Not enough memory to open {}.'.format(
                         os.path.basename(path)), 8000)
                 return
+            # A long recording that will not stream but does fit is loaded
+            # whole: slow, but it opens, and slow-and-correct beats refusing
+            # something the machine can hold.
 
         self.statusBar().showMessage('Loading {}…'.format(os.path.basename(path)))
         QtWidgets.QApplication.processEvents()
