@@ -337,6 +337,8 @@ class SignalView(QtWidgets.QWidget):
         self._full_unclipped = None    # retired: nothing full-length is held here
         self._provider = None          # DisplayPipeline; renders spans on demand
         self._building = False         # inside a long, uncached overview build
+        self._start_dt = None          # recording start, for the axis caption
+        self._axis_caption = None      # last caption set, to avoid re-setting
         self._full_offsets = None
         self._ref_intervals = []       # cached (start, stop) tuples for refresh
         self._annot_items = []         # EDF+ technician markers (read-only)
@@ -523,6 +525,20 @@ class SignalView(QtWidgets.QWidget):
         pi.setYRange(-(n_ch - 0.5) * self._spacing,
                      head * self._spacing, padding=0)
 
+    def _sync_axis_caption(self, x0, x1):
+        """Name the date that is on screen, not the one the file began on.
+
+        A day-long recording crosses midnight, so this changes as the reviewer
+        moves. Guarded on the text rather than the range: a caption is set at
+        most once per date change, not once per redraw.
+        """
+        if self._start_dt is None:
+            return
+        want = axis_label(self._start_dt, (x0, x1))
+        if want != self._axis_caption:
+            self._axis_caption = want
+            self._pw.getPlotItem().setLabel('bottom', want)
+
     def _begin_long_build(self):
         """Say, before a forty-second call, that the application is alive.
 
@@ -565,6 +581,7 @@ class SignalView(QtWidgets.QWidget):
             return
         target = int(px_w * (s1 - s0) / (span * self._fs)) if span > 0 else px_w
         target = max(512, min(target, 20000))
+        self._sync_axis_caption(x0, x1)
         # The provider filters, montages and decimates just this span. Work
         # per redraw is therefore bounded by the viewport, never by the file --
         # EXCEPT on the first zoom out into a filter and montage combination
@@ -864,7 +881,9 @@ class SignalView(QtWidgets.QWidget):
         seconds.
         """
         self._t_axis.set_start(start)
-        self._pw.getPlotItem().setLabel('bottom', axis_label(start))
+        self._start_dt = start
+        self._axis_caption = axis_label(start)
+        self._pw.getPlotItem().setLabel('bottom', self._axis_caption)
 
     def set_source_annotations(self, items):
         """Markers the technician wrote during the study (EDF+ annotations).

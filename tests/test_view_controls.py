@@ -136,5 +136,77 @@ class TheSweepControlStatesWhatIsOnScreen(unittest.TestCase):
         self.assertAlmostEqual(float(self.w._timebase_s), 450.0, places=3)
 
 
+@unittest.skipUnless(HAVE_QT, 'PyQt5 not available')
+class TheAxisCaptionFollowsTheView(unittest.TestCase):
+    """The date on the axis must be the date on screen.
+
+    Pinned at this level, not just on axis_label, because the bug was never in
+    the formatting -- it was that the caption was set once, when the recording
+    opened, and never again. A day-long study crosses midnight and the axis
+    kept insisting on the start date for the whole of the next day.
+    """
+
+    FS = 100
+    N_ROWS = 4
+    START = __import__('datetime').datetime(2004, 1, 10, 18, 4, 44)
+
+    class Provider(object):
+        def __init__(self, seconds, fs, n_rows):
+            import numpy as np
+            self._np = np
+            self.n_rows = n_rows
+            self.fs = fs
+            self.n_samples = int(seconds * fs)
+            self.duration_s = float(seconds)
+
+        def needs_envelope_build(self, s0, s1):
+            return False
+
+        def render(self, s0, s1, target_px):
+            np = self._np
+            m = max(2, min(64, int(target_px)))
+            return (np.zeros((self.n_rows, m), dtype=np.float32),
+                    np.linspace(s0 / self.fs, s1 / self.fs, m,
+                                dtype=np.float32))
+
+    def setUp(self):
+        from gui.widgets.signal_view import SignalView
+        self.view = SignalView()
+        self.addCleanup(self.view.deleteLater)
+        self.view.set_provider(
+            self.Provider(86400.0, self.FS, self.N_ROWS), self.FS,
+            ['r{}'.format(i) for i in range(self.N_ROWS)])
+        self.view.set_start_time(self.START)
+
+    def _caption(self):
+        return self.view._pw.getPlotItem().getAxis('bottom').labelText
+
+    def _look_at(self, t0, t1):
+        self.view._pw.getPlotItem().setXRange(t0, t1, padding=0)
+        self.view._redecimate_visible()
+
+    def test_it_starts_on_the_recording_date(self):
+        self.assertIn('10 Jan 2004', self._caption())
+
+    def test_moving_past_midnight_changes_the_date(self):
+        self._look_at(53888.7, 54157.6)
+        self.assertIn('11 Jan 2004', self._caption())
+        self.assertNotIn('10 Jan', self._caption())
+
+    def test_moving_back_changes_it_back(self):
+        self._look_at(53888.7, 54157.6)
+        self._look_at(0.0, 600.0)
+        self.assertIn('10 Jan 2004', self._caption())
+
+    def test_a_view_over_midnight_names_both_days(self):
+        self._look_at(0.0, 86400.0)
+        self.assertIn('10–11 Jan 2004', self._caption())
+
+    def test_a_recording_with_no_start_still_says_elapsed(self):
+        self.view.set_start_time(None)
+        self._look_at(53888.7, 54157.6)
+        self.assertIn('from start', self._caption())
+
+
 if __name__ == '__main__':
     unittest.main()

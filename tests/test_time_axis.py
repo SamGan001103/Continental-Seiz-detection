@@ -49,6 +49,67 @@ class ClockTimeWhenTheFileSaysWhenItStarted(unittest.TestCase):
         self.assertEqual(axis_label(START), 'clock time — 30 Sep 2002')
 
 
+class TheLabelNamesTheDateOnScreen(unittest.TestCase):
+    """A day-long study runs through the night, and the caption used to be
+    fixed to the date the file began on.
+
+    pat_21902_part02 starts at 18:04 on 10 Jan 2004. Three quarters of it is
+    the 11th, and over every one of those hours the axis read "10 Jan 2004"
+    while the cursor readout beside it said the 11th. That is the date a
+    reviewer copies down for an event they have just marked, so it is the one
+    thing on the axis that must not be wrong.
+    """
+
+    # The real start of the converted EPILEPSIAE day.
+    NIGHT = dt.datetime(2004, 1, 10, 18, 4, 44)
+
+    def test_a_view_before_midnight_names_that_day(self):
+        self.assertEqual(axis_label(self.NIGHT, (0.0, 600.0)),
+                         'clock time — 10 Jan 2004')
+
+    def test_a_view_after_midnight_names_the_next_day(self):
+        """53888-54158 s: the span in the screenshot that prompted this."""
+        self.assertEqual(axis_label(self.NIGHT, (53888.7, 54157.6)),
+                         'clock time — 11 Jan 2004')
+
+    def test_a_view_spanning_midnight_names_both(self):
+        # 20:00 on the 10th to 04:00 on the 11th.
+        t0 = 2 * 3600 - 4 * 60 - 44
+        self.assertEqual(axis_label(self.NIGHT, (t0, t0 + 8 * 3600)),
+                         'clock time — 10–11 Jan 2004')
+
+    def test_the_whole_recording_names_both(self):
+        self.assertEqual(axis_label(self.NIGHT, (0.0, 86400.0)),
+                         'clock time — 10–11 Jan 2004')
+
+    def test_a_span_across_a_month_end_spells_both_out(self):
+        end = dt.datetime(2004, 1, 31, 23, 0, 0)
+        self.assertEqual(axis_label(end, (0.0, 7200.0)),
+                         'clock time — 31 Jan – 01 Feb 2004')
+
+    def test_a_span_across_a_year_end_carries_both_years(self):
+        end = dt.datetime(2004, 12, 31, 23, 0, 0)
+        self.assertEqual(axis_label(end, (0.0, 7200.0)),
+                         'clock time — 31 Dec 2004 – 01 Jan 2005')
+
+    def test_a_backwards_span_is_read_the_right_way_round(self):
+        self.assertEqual(axis_label(self.NIGHT, (54157.6, 53888.7)),
+                         'clock time — 11 Jan 2004')
+
+    def test_no_span_still_names_the_start(self):
+        """Callers that have no range yet keep the old behaviour."""
+        self.assertEqual(axis_label(self.NIGHT),
+                         'clock time — 10 Jan 2004')
+
+    def test_a_nonsense_span_falls_back_rather_than_raising(self):
+        for bad in ((float('nan'), 1.0), ('a', 'b'), (None, None), ()):
+            self.assertEqual(axis_label(self.NIGHT, bad),
+                             'clock time — 10 Jan 2004')
+
+    def test_an_unknown_start_is_still_elapsed_time(self):
+        self.assertIn('from start', axis_label(None, (0.0, 600.0)))
+
+
 class ElapsedTimeWhenItDoesNot(unittest.TestCase):
     """Some EDFs carry no usable start. The axis must still be readable, and
     '5025' is not."""

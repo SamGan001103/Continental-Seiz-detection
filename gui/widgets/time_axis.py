@@ -136,11 +136,47 @@ def _cursor_elapsed(seconds):
     return '{}{:d}:{:02d}:{:06.3f}'.format(sign, h, m, s)
 
 
-def axis_label(start=None):
-    """What to call the axis, given whether a start time is known."""
+def axis_label(start=None, span=None):
+    """What to call the axis, given whether a start time is known.
+
+    `span` is the visible range in seconds from the start of the file. Given
+    one, the caption names the date ON SCREEN rather than the date the
+    recording began.
+
+    That distinction is the whole reason this takes a span. An ambulatory
+    study runs through the night: pat_21902_part02 starts at 18:04 on 10 Jan
+    and three quarters of it is the 11th. A caption fixed to the start date
+    read "10 Jan 2004" over traces from the 11th, and it is wrong in the worst
+    direction -- it is the date a reviewer copies down for an event they have
+    just marked, while the cursor readout beside it says the 11th. One of the
+    two had to go, and the axis is the one that can be made to follow the view.
+    """
     if start is None:
         return 'time from start of recording (h:mm:ss)'
-    return 'clock time — {}'.format(start.strftime('%d %b %Y'))
+    if span is None:
+        return 'clock time — {}'.format(start.strftime('%d %b %Y'))
+    try:
+        t0, t1 = float(span[0]), float(span[1])
+    except (TypeError, ValueError, IndexError):
+        return 'clock time — {}'.format(start.strftime('%d %b %Y'))
+    if t1 < t0:
+        t0, t1 = t1, t0
+    if t0 != t0 or t1 != t1:                         # NaN
+        return 'clock time — {}'.format(start.strftime('%d %b %Y'))
+    d0 = (start + _dt.timedelta(seconds=t0)).date()
+    d1 = (start + _dt.timedelta(seconds=t1)).date()
+    if d0 == d1:
+        return 'clock time — {}'.format(d0.strftime('%d %b %Y'))
+    # Crossing midnight is the normal case on a day-long recording, so it gets
+    # a compact form rather than two full dates: the month and year repeat.
+    if (d0.year, d0.month) == (d1.year, d1.month):
+        return 'clock time — {}–{}'.format(d0.strftime('%d'),
+                                             d1.strftime('%d %b %Y'))
+    if d0.year == d1.year:
+        return 'clock time — {} – {}'.format(d0.strftime('%d %b'),
+                                               d1.strftime('%d %b %Y'))
+    return 'clock time — {} – {}'.format(d0.strftime('%d %b %Y'),
+                                           d1.strftime('%d %b %Y'))
 
 
 def make_time_axis(orientation='bottom'):
