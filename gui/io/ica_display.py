@@ -359,11 +359,20 @@ def _cache_put(key, value):
 # ------------------------------------------------------------------- cleaning
 
 def _validate(data19, fs):
-    data19 = np.asarray(data19)
-    if data19.ndim != 2 or data19.shape[0] != len(CHANNELS_19):
+    # Deliberately NOT np.asarray(). A streamed EdfSource is array-like and
+    # slicing it reads only the window asked for, while CONVERTING it reads
+    # the entire recording -- 1.7 GB and a minute of disk on a day-long study,
+    # on the GUI thread, to show twelve seconds. Shape and a slice are all
+    # this path needs, so anything that already has a two-dimensional shape is
+    # left as it is and only a genuine non-array -- a nested list -- converts.
+    shape = getattr(data19, 'shape', None)
+    if shape is None or len(shape) != 2:
+        data19 = np.asarray(data19)
+        shape = data19.shape
+    if len(shape) != 2 or shape[0] != len(CHANNELS_19):
         raise RuntimeError(
             'Display ICA requires shape (19, samples) in the canonical '
-            'montage order, got {}'.format(data19.shape))
+            'montage order, got {}'.format(shape))
     fs = int(round(float(fs)))
     if fs <= 0:
         raise RuntimeError('Display ICA requires a positive sampling rate, '

@@ -107,7 +107,12 @@ class SplicedSource(object):
     """
 
     def __init__(self, raw, i0, block):
-        raw = np.asarray(raw)
+        # Not np.asarray(raw): the raw side may be a streamed reader, whose
+        # __array__ reads the whole recording. This class exists to avoid
+        # exactly that kind of full-length allocation, so converting its own
+        # input would be self-defeating -- it needs shape, dtype and a slice.
+        if getattr(raw, 'ndim', None) != 2:
+            raw = np.asarray(raw)
         block = np.asarray(block, dtype=raw.dtype)
         if block.ndim != 2 or block.shape[0] != raw.shape[0]:
             raise ValueError('block must be [channels, samples] matching raw')
