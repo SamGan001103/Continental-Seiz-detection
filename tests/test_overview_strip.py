@@ -226,6 +226,70 @@ class TheWidgetBehaves(unittest.TestCase):
 
 
 @unittest.skipUnless(HAVE_QT, 'PyQt5 not available')
+class TheCaptionNamesTheDaysItCovers(unittest.TestCase):
+    """This widget is always the WHOLE recording, so its caption is the whole
+    recording's dates.
+
+    Naming only the start date put "whole recording - 10 Jan 2004" under a map
+    whose right-hand half was the 11th, directly below an axis that had the
+    same bug. They now share one formatter so they cannot drift apart.
+    """
+
+    # The real start of the converted EPILEPSIAE day.
+    START = __import__('datetime').datetime(2004, 1, 10, 18, 4, 44)
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = (QtWidgets.QApplication.instance()
+                   or QtWidgets.QApplication(['-platform', 'offscreen']))
+
+    def _strip(self, duration_s):
+        from gui.widgets.overview_strip import OverviewStrip
+        w = OverviewStrip()
+        starts = np.arange(0, int(duration_s) - 12 + 1, 6, dtype=np.int32)
+        probs = np.full(starts.size, 0.02, dtype=np.float32)
+        w.set_probs(starts, probs, segment_s=12, duration_s=duration_s)
+        return w
+
+    def _caption(self, w):
+        return w.plot_item().getAxis('bottom').labelText
+
+    def test_a_recording_inside_one_day_names_that_day(self):
+        w = self._strip(3600.0)
+        w.set_start_time(self.START)
+        self.assertIn('10 Jan 2004', self._caption(w))
+
+    def test_a_day_long_recording_names_both_days(self):
+        w = self._strip(86400.0)
+        w.set_start_time(self.START)
+        self.assertIn('10–11 Jan 2004', self._caption(w))
+
+    def test_the_duration_arriving_later_still_updates_it(self):
+        """load_edf sets the start time before any probabilities exist."""
+        from gui.widgets.overview_strip import OverviewStrip
+        w = OverviewStrip()
+        w.set_start_time(self.START)
+        self.assertIn('10 Jan 2004', self._caption(w))
+        starts = np.arange(0, 86400 - 12 + 1, 6, dtype=np.int32)
+        w.set_probs(starts, np.full(starts.size, 0.02, dtype=np.float32),
+                    segment_s=12, duration_s=86400.0)
+        self.assertIn('10–11 Jan 2004', self._caption(w))
+
+    def test_no_start_time_says_only_what_it_is(self):
+        w = self._strip(86400.0)
+        w.set_start_time(None)
+        self.assertEqual(self._caption(w), 'whole recording')
+
+    def test_it_agrees_with_the_axis_above_it(self):
+        """Two captions, one formatter: the map and the trace must not
+        disagree about which day the reviewer is looking at."""
+        from gui.widgets.time_axis import axis_label
+        w = self._strip(86400.0)
+        w.set_start_time(self.START)
+        above = axis_label(self.START, (0.0, 86400.0))
+        self.assertIn(above.split('—')[1].strip(), self._caption(w))
+
+
 class TheMainWindowWiresIt(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

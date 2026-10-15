@@ -45,7 +45,7 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt5 import QtCore, QtWidgets
 
-from gui.widgets.time_axis import make_time_axis
+from gui.widgets.time_axis import date_span_text, make_time_axis
 
 
 class OverviewStrip(QtWidgets.QWidget):
@@ -121,6 +121,7 @@ class OverviewStrip(QtWidgets.QWidget):
         self._unscored_items = []
         self._refs_visible = True
         self._duration_s = 0.0
+        self._start_dt = None          # recording start, for the caption
         self._suppress = False
         self._pw.scene().sigMouseClicked.connect(self._on_click)
 
@@ -175,9 +176,29 @@ class OverviewStrip(QtWidgets.QWidget):
         """Clock time on the map too, so the reviewer can see that the
         detector fired at four in the morning rather than at second 48,213."""
         self._t_axis.set_start(start)
-        self._pw.getPlotItem().setLabel(
-            'bottom', 'whole recording' if start is None
-            else 'whole recording — {}'.format(start.strftime('%d %b %Y')))
+        self._start_dt = start
+        self._sync_caption()
+
+    def _sync_caption(self):
+        """Name the days this map covers.
+
+        This widget is always the WHOLE recording, so its caption is the whole
+        recording's dates -- and a day-long ambulatory study is two of them.
+        Naming only the start date here said "10 Jan 2004" under a map whose
+        right-hand half was the 11th.
+
+        Called again when the duration arrives, because the start time is set
+        before any probabilities are, and until then there is no span to name.
+        """
+        start = self._start_dt
+        if start is None:
+            text = 'whole recording'
+        elif self._duration_s > 0:
+            text = 'whole recording — {}'.format(
+                date_span_text(start, (0.0, self._duration_s)))
+        else:
+            text = 'whole recording — {}'.format(date_span_text(start))
+        self._pw.getPlotItem().setLabel('bottom', text)
 
     # -- data ------------------------------------------------------------
     def plot_item(self):
@@ -202,6 +223,7 @@ class OverviewStrip(QtWidgets.QWidget):
         dur = float(duration_s if duration_s is not None
                     else starts.max() + segment_s)
         self._duration_s = dur
+        self._sync_caption()
         try:
             t_s, y_s = decision_curve(starts, pr, segment_s,
                                       duration_s=dur, average=average)
