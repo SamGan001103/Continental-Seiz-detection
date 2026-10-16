@@ -272,6 +272,10 @@ class SignalView(QtWidgets.QWidget):
     sensitivityChanged = QtCore.pyqtSignal(float, bool) # (new_µV/div, finished)
     longBuildStarted = QtCore.pyqtSignal()   # an uncached overview is building
     longBuildFinished = QtCore.pyqtSignal()
+    # (new uV/mm, True when zooming out). Separate from sensitivityChanged so
+    # the window can say why the scale moved; the scale itself still travels
+    # by the signal an axis drag uses, so there is one path into the toolbar.
+    overviewScaleChanged = QtCore.pyqtSignal(float, bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -339,6 +343,8 @@ class SignalView(QtWidgets.QWidget):
         self._building = False         # inside a long, uncached overview build
         self._start_dt = None          # recording start, for the axis caption
         self._axis_caption = None      # last caption set, to avoid re-setting
+        self._in_overview = False      # last regime seen, to spot a crossing
+        self._reading_sens = None      # the reviewer's own uV/mm, to restore
         self._full_offsets = None
         self._ref_intervals = []       # cached (start, stop) tuples for refresh
         self._annot_items = []         # EDF+ technician markers (read-only)
@@ -539,6 +545,66 @@ class SignalView(QtWidgets.QWidget):
             self._axis_caption = want
             self._pw.getPlotItem().setLabel('bottom', want)
 
+    def _needed_sensitivity(self, data, max_clipped=0.05):
+        """The smallest preset uV/mm that does not flatten what is drawn.
+
+        Measured on the samples about to be drawn rather than assumed,
+        because the answer is a property of the recording. A lane shows
+        +/- 0.5 * sensitivity * row_mm, and anything past that is clipped to
+        the lane edge.
+        """
+        import numpy as _np
+        if data is None or getattr(data, 'size', 0) == 0:
+            return None
+        mag = _np.abs(_np.asarray(data, dtype=_np.float32))
+        mag = mag[_np.isfinite(mag)]
+        if mag.size == 0:
+            return None
+        mm = self._row_mm(len(self._channel_names) or 1)
+        if mm <= 0:
+            return None
+        from gui.app import SENSITIVITIES          # lazy: app imports this
+        for s in sorted(SENSITIVITIES):
+            if float(_np.mean(mag > 0.5 * float(s) * mm)) <= max_clipped:
+                return float(s)
+        return float(max(SENSITIVITIES))
+
+    def _fit_overview_sensitivity(self, is_overview, data):
+        """Scale the lanes to the overview, and put the reading scale back.
+
+        Zoomed out, each pixel is the min and max of several seconds rather
+        than one sample, so the range drawn is far wider than a reading page's
+        and at a reading sensitivity nearly all of it lands on the lane edge.
+        Measured on pat_21902_part02 at a 2.4 hour view: at 7 uV/mm 38% of
+        drawn pixels clipped, which is why every row read as a solid grey
+        block -- "I can barely tell anything". At 30 uV/mm it is 4.8%.
+
+        Only on the CROSSING, never inside a regime, so a reviewer who sets a
+        scale while zoomed out keeps it. Their reading scale is remembered and
+        restored on the way back in, and the toolbar is updated through the
+        same signal an axis drag uses, so the number on screen is always the
+        number being drawn.
+
+        Returns True when a change was requested, which re-enters this redraw.
+        """
+        if is_overview == self._in_overview:
+            return False
+        self._in_overview = is_overview         # set first: the emit re-enters
+        if is_overview:
+            self._reading_sens = float(self._sensitivity_uv)
+            want = self._needed_sensitivity(data)
+            if want is None or want == float(self._sensitivity_uv):
+                return False
+            self.overviewScaleChanged.emit(want, True)
+        else:
+            want = self._reading_sens
+            self._reading_sens = None
+            if want is None or want == float(self._sensitivity_uv):
+                return False
+            self.overviewScaleChanged.emit(want, False)
+        self.sensitivityChanged.emit(want, True)
+        return True
+
     def _begin_long_build(self):
         """Say, before a forty-second call, that the application is alive.
 
@@ -598,6 +664,9 @@ class SignalView(QtWidgets.QWidget):
         finally:
             if heavy:
                 self._end_long_build()
+        if self._fit_overview_sensitivity((x1 - x0) > FULLRATE_MAX_SPAN_S,
+                                          data_ds):
+            return      # the change re-enters here with the new scale
         # Clip to the current sensitivity so a spike that exceeds the row is
         # drawn flat at the lane edge rather than across the neighbour. Stride
         # decimation selects samples, so clipping after it is pointwise

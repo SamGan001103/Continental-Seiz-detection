@@ -34,7 +34,8 @@ if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
 from gui.io.edf import load_edf_19ch, read_start_datetime
-from gui.display_pipeline import DisplayPipeline, SplicedSource
+from gui.display_pipeline import (DisplayPipeline, FULLRATE_MAX_SPAN_S,
+                                  SplicedSource)
 from gui.io.cache import (load_probs, load_probability_file,
                           save_probability_file)
 from gui.io import csv_bi as csv_bi_module
@@ -451,8 +452,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self.signal_view.channelDoubleClicked.connect(self._open_channel_inspector)
         self.signal_view.viewRangeChanged.connect(self._sync_inspector_ranges)
         self.signal_view.sensitivityChanged.connect(self._on_axis_drag_sens)
+        self.signal_view.overviewScaleChanged.connect(self._on_overview_scale)
         self.signal_view.longBuildStarted.connect(self._on_long_build_started)
         self.signal_view.longBuildFinished.connect(self._on_long_build_done)
+
+    def _on_overview_scale(self, uv_per_mm, zooming_out):
+        """Say that the scale moved, and that it is coming back.
+
+        A sensitivity that changes by itself would be alarming in a clinical
+        display if it were silent -- it is the number the trace is read
+        against. It is not silent: the toolbar shows the new value, and this
+        says in words that the reviewer's own scale is held and restored.
+        """
+        if zooming_out:
+            self.statusBar().showMessage(
+                'Zoomed out past {:.0f} s: sensitivity set to {:g} µV/mm so '
+                'the traces are not all clipped flat. Your {:g} µV/mm comes '
+                'back when you zoom in.'.format(
+                    FULLRATE_MAX_SPAN_S, uv_per_mm, self._sensitivity_uv),
+                8000)
+        else:
+            self.statusBar().showMessage(
+                'Back to {:g} µV/mm.'.format(uv_per_mm), 4000)
 
     def _on_long_build_started(self):
         """Name what the application is doing, and why it is doing it here.
