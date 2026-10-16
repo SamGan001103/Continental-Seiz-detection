@@ -343,6 +343,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.event_list = EventList()
         self.signal_view.link_x_to(self.prob_strip.plot_item())
         self.overview_strip.seek_requested.connect(self._on_overview_seek)
+        self.overview_strip.range_requested.connect(self._on_overview_range)
 
         left = QtWidgets.QWidget()
         lv = QtWidgets.QVBoxLayout(left)
@@ -2685,6 +2686,19 @@ class MainWindow(QtWidgets.QMainWindow):
         if self._raw_data is None:
             return
         self.signal_view.center_on(float(centre_s))
+
+    def _on_overview_range(self, t0, t1):
+        """Dragging one end of the marker sets how much is on screen.
+
+        The marker is the page. Resizing it is the same request as changing
+        the sweep, made on the widget where a reviewer can see what span they
+        are asking for against the whole recording.
+        """
+        if self._raw_data is None:
+            return
+        t0, t1 = float(t0), float(t1)
+        self.signal_view.center_on(0.5 * (t0 + t1),
+                                   half_span=0.5 * max(1e-6, t1 - t0))
 
     def _sync_timebase_combo(self, span):
         """Make the sweep control state the span actually on screen.

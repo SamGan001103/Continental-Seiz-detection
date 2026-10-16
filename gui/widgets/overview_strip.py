@@ -48,10 +48,19 @@ from PyQt5 import QtCore, QtWidgets
 from gui.widgets.time_axis import date_span_text, make_time_axis
 
 
+#: A page narrower than this is not a page. Dragging the marker's handles
+#: past each other would otherwise ask for a zero-width view.
+MIN_VIEWPORT_S = 1.0
+
+
 class OverviewStrip(QtWidgets.QWidget):
     """Whole-recording score map. Emits `seek_requested(centre_seconds)`."""
 
     seek_requested = QtCore.pyqtSignal(float)
+    #: (t0, t1) when the marker was RESIZED rather than moved: dragging one
+    #: end of it is a request to change the span on screen, not to go
+    #: somewhere else at the span you already had.
+    range_requested = QtCore.pyqtSignal(float, float)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -116,6 +125,7 @@ class OverviewStrip(QtWidgets.QWidget):
         self._viewport.setZValue(20)
         pi.addItem(self._viewport)
         self._viewport.sigRegionChangeFinished.connect(self._on_marker_dragged)
+        self._drag_from = None
 
         self._ref_items = []
         self._unscored_items = []
@@ -323,14 +333,50 @@ class OverviewStrip(QtWidgets.QWidget):
         self._suppress = True
         try:
             self._viewport.setRegion((x0, x1))
+            # The span the window last asserted. pyqtgraph has no
+            # drag-started signal, so this is what a finished drag is
+            # measured against -- and it is the right reference anyway: it is
+            # the page as it actually was before anyone touched the marker.
+            self._drag_from = (float(x0), float(x1))
         finally:
             self._suppress = False
 
     def _on_marker_dragged(self):
+        """Body drag goes somewhere; edge drag changes how much is on screen.
+
+        Treating every drag as "go here" meant an edge drag re-centred the
+        page at the span it already had, so the marker snapped straight back
+        to its old width and resizing it looked broken.
+        """
         if self._suppress:
             return
-        x0, x1 = self._viewport.getRegion()
-        self.seek_requested.emit(0.5 * (float(x0) + float(x1)))
+        x0, x1 = (float(v) for v in self._viewport.getRegion())
+        if x1 < x0:
+            x0, x1 = x1, x0
+        was = self._drag_from
+        width = x1 - x0
+        if was is not None:
+            old_width = abs(was[1] - was[0])
+            # A body drag moves both ends by the same amount, so any real
+            # change in width was a handle. The floor stops a shaky mouse on
+            # the body from reading as a resize.
+            if abs(width - old_width) > max(0.5, 0.02 * old_width):
+                lo, hi = self._clamp_span(x0, x1)
+                self.range_requested.emit(lo, hi)
+                return
+        self.seek_requested.emit(0.5 * (x0 + x1))
+
+    def _clamp_span(self, x0, x1):
+        """Inside the recording, and never collapsed to nothing."""
+        span = max(MIN_VIEWPORT_S, x1 - x0)
+        centre = 0.5 * (x0 + x1)
+        lo = centre - 0.5 * span
+        hi = centre + 0.5 * span
+        if self._duration_s > 0:
+            span = min(span, self._duration_s)
+            lo = min(max(0.0, lo), max(0.0, self._duration_s - span))
+            hi = lo + span
+        return lo, hi
 
     def _on_click(self, ev):
         if self._duration_s <= 0:
