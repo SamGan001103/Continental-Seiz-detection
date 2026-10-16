@@ -34,6 +34,7 @@ if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
 from gui.io.edf import load_edf_19ch, read_start_datetime
+from gui.widgets.ied_band import IedBand
 from gui.display_pipeline import (DisplayPipeline, FULLRATE_MAX_SPAN_S,
                                   SplicedSource)
 from gui.io.cache import (load_probs, load_probability_file,
@@ -353,6 +354,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # being READ; every other panel here exists to help someone decide
         # where to look at them, and the overview only needs enough height for
         # a peak to be legible against the threshold line.
+        self.ied_band = IedBand()
         lv.addWidget(self.signal_view, 11)
         # Hidden by default. It shows the score for the PAGE, which at a 10 s
         # sweep is a nearly flat line, and the events it would reveal are
@@ -361,6 +363,13 @@ class MainWindow(QtWidgets.QMainWindow):
         # View > Score under the page brings this back.
         lv.addWidget(self.prob_strip, 1)
         self.prob_strip.setVisible(False)
+        # Between the traces and the score map, and only thirty pixels tall.
+        # Spike density used to be drawn at the foot of the score axis, where
+        # a curve that rests near zero for most of a recording buried it. It
+        # is a different quantity in different units and it now has its own
+        # row; a band rather than a lane because the height belongs to the
+        # traces.
+        lv.addWidget(self.ied_band)
         # A share rather than a fixed height, now that it is the only strip:
         # the peaks were legible but small at 96 px, and this is the widget a
         # reviewer scans to decide where to look.
@@ -625,8 +634,21 @@ class MainWindow(QtWidgets.QMainWindow):
             'on this corpus.')
         self.thr_slider.valueChanged.connect(self._on_thr_changed)
         tb.addWidget(self.thr_slider)
-        self.thr_lbl = QtWidgets.QLabel(' {:.2f} '.format(self._threshold))
-        tb.addWidget(self.thr_lbl)
+        # Typed as well as dragged. A threshold is a number a clinician
+        # arrives at and then wants to SET -- from a protocol, from a previous
+        # session, from what a colleague used -- and a 160-pixel slider cannot
+        # be asked for 0.62. It reads back the same value, so the two are one
+        # control with two ways in.
+        self.thr_box = QtWidgets.QDoubleSpinBox()
+        self.thr_box.setDecimals(2)
+        self.thr_box.setRange(0.0, 1.0)
+        self.thr_box.setSingleStep(0.01)
+        self.thr_box.setValue(self._threshold)
+        self.thr_box.setFixedWidth(64)
+        self.thr_box.setKeyboardTracking(False)   # on commit, not per digit
+        self.thr_box.setToolTip(self.thr_slider.toolTip())
+        self.thr_box.valueChanged.connect(self._on_thr_box_changed)
+        tb.addWidget(self.thr_box)
         tb.addSeparator()
 
         a_export = tb.addAction('Export reviewed…')
@@ -1823,7 +1845,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # marked twenty spikes and then changed the montage would watch them
         # all disappear while the count in the provenance still said twenty.
         drawn = self.signal_view.set_ied_marks(self._ied_marks)
-        self.overview_strip.set_ied_marks(self._ied_marks)
+        self.ied_band.set_marks(self._ied_marks, self._duration_s)
         self._refresh_ied_density()
         hidden = len(self._ied_marks) - (drawn or 0)
         if hidden > 0:
@@ -2064,7 +2086,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # loaded is hundreds of items for one D.
         if not self.signal_view.add_ied_mark(mark):
             self.signal_view.set_ied_marks(self._ied_marks)
-        self.overview_strip.set_ied_marks(self._ied_marks)
+        self.ied_band.set_marks(self._ied_marks, self._duration_s)
         self._refresh_ied_density()
         self._update_ied_summary()
         self._mark_dirty()
@@ -2208,7 +2230,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._ied_marks = marks
         self.signal_view.set_events(self._events)
         self.signal_view.set_ied_marks(self._ied_marks)
-        self.overview_strip.set_ied_marks(self._ied_marks)
+        self.ied_band.set_marks(self._ied_marks, self._duration_s)
         self._refresh_ied_density()
         self._update_ied_summary()
         self.event_list.set_events(self._events)
@@ -2574,8 +2596,33 @@ class MainWindow(QtWidgets.QMainWindow):
         self.signal_view.set_timebase(self._timebase_s)
 
     def _on_thr_changed(self, v):
-        self._threshold = v / 100.0
-        self.thr_lbl.setText(' {:.2f} '.format(self._threshold))
+        """The slider moved."""
+        self._apply_threshold(v / 100.0, from_slider=True)
+
+    def _on_thr_box_changed(self, value):
+        """A number was typed or stepped."""
+        self._apply_threshold(float(value), from_slider=False)
+
+    def _apply_threshold(self, value, from_slider):
+        """One threshold, two ways to set it.
+
+        Each control is updated from the other with its signals blocked.
+        Without that the pair feed each other: the box rounds to two decimals
+        and the slider to a hundredth, so a value that does not land exactly
+        on both bounces between them and re-scores the recording on every
+        bounce.
+        """
+        value = max(0.0, min(1.0, round(float(value), 2)))
+        if abs(value - self._threshold) < 1e-9:
+            return
+        self._threshold = value
+        other = self.thr_box if from_slider else self.thr_slider
+        other.blockSignals(True)
+        if from_slider:
+            self.thr_box.setValue(value)
+        else:
+            self.thr_slider.setValue(int(round(value * 100)))
+        other.blockSignals(False)
         self._rebuild_events_from_probs(preserve_review=True)
 
     def _on_refs_toggled(self, checked):

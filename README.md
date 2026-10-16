@@ -124,7 +124,7 @@ a clone is runnable without any extra download. Their sha256 is pinned in
 | `gui/io/` | readers and writers: EDF, caches, annotations, detectors |
 | `eval_config.py` | the canonical operating point (threshold, stride, ICA, weights) — every script reads it |
 | `experiments/` | evaluation and comparison scripts; not part of the shipped system |
-| `tests/` | 824 tests; `python -m unittest discover -s tests` |
+| `tests/` | 847 tests; `python -m unittest discover -s tests` |
 | `docs/` | results, deployment, intended use, progress logs |
 | `packaging/` | frozen-build scripts |
 | `utils/`, `models/`, `main.py`, `post_process_code/`, `txt_file/` | **upstream** — the original project's training and preprocessing code, unmodified |
